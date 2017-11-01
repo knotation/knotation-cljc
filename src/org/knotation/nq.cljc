@@ -16,7 +16,7 @@
         (remove nil?)
         (map node->nquad-string)
         (clojure.string/join " "))
-   "."))
+   " ."))
 
 (defn states->lines
   [states]

@@ -24,15 +24,15 @@
        .getImplementationVersion
        (or "DEVELOPMENT"))))
 
-(def default-input
-  {:mode :both})
-
 (defn get-format
   [path]
   (cond
     (re-find #"\.kn$" path) :kn
     (re-find #"\.tsv$" path) :tsv
     :else nil))
+
+(def default-input
+  {:mode :both})
 
 (defn build-input
   [current path]

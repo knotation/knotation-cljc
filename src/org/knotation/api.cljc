@@ -21,3 +21,24 @@
   (->> inputs
        inputs->states
        nq/states->lines))
+
+(defn kn
+  [& contents]
+  (->> contents
+       (map
+        (fn [c]
+          {:format :kn
+           :lines (clojure.string/split-lines c)}))
+       inputs->states))
+
+(defn env
+  [states]
+  (->> states last :env))
+
+(def example-kn
+  "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+@prefix ex: <https://example.com/>
+
+: ex:foo
+rdfs:label: Foo
+ex:comment: comment")
