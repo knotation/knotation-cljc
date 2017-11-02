@@ -1,5 +1,6 @@
 (ns org.knotation.object
-  (:require [org.knotation.link :as ln]))
+  (:require [org.knotation.util :as util]
+            [org.knotation.link :as ln]))
 
 (defn string->object
   [env datatype content]
@@ -12,9 +13,9 @@
     {:lexical content :language (clojure.string/replace datatype #"^@" "")}
 
     (and (string? datatype)
-         (re-matches #"https://knotation.org/format/\S+" datatype))
+         (util/starts-with? datatype "https://knotation.org/datatype/"))
     (case datatype
-      "https://knotation.org/format/link"
+      "https://knotation.org/datatype/link"
       (ln/object->node env content))
 
     :else

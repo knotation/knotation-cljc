@@ -20,7 +20,8 @@
 (defn curie->iri
   [env input]
   (when (string? input)
-    (when-let [[_ prefix suffix] (re-matches #"([a-zA-Z0-9]+):([^\s:/][^\s:\\]*)" input)]
+    (when-let [[_ prefix suffix] (re-matches #"(\S+):(\S+)" input)]
+               ; TODO: (re-matches #"([a-zA-Z0-9]+):([^\s:/][^\s:\\]*)" input)]
       (when-let [iri (get-in env [:prefix-iri prefix])]
         (str iri suffix)))))
 

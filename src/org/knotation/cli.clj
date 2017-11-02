@@ -55,6 +55,8 @@
        (assoc-in coll [:current :mode] :env)
        (contains? #{"-d" "--data"} arg)
        (assoc-in coll [:current :mode] :data)
+       (= "--output=env" arg)
+       (update coll :outputs conj {:format :env})
        (.startsWith arg "-")
        (throw (Exception. (str "Unknown option: " arg)))
        :else

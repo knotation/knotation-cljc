@@ -1,39 +1,71 @@
 (ns org.knotation.api
-  (:require [org.knotation.kn :as kn]
+  (:require [org.knotation.state :as st]
+            [org.knotation.kn :as kn]
+            [org.knotation.tsv :as tsv]
             [org.knotation.nq :as nq]))
 
-(defn input->states
-  [{:keys [format] :as input}]
-  (case format
-    :kn (kn/processor input)
-    (throw (Exception. (str "Unknown format: " format " for input " input)))))
+;; The Knotation API deals with:
+;;
+;; 1. input: A map describing a file or string of content.
+;;    The content string is split into a lazy sequence of lines.
+;; 2. block: A map with a vector of strings to process as a unit
+;;    (i.e. lines or cells) and location information from the input.
+;; 3. state: A map for a processed block, including location,
+;;    an environment, and a list of output quads.
+;; 4. quad: A map representing the processed data as an RDF quad.
+;;
+;; We lazily turn inputs into blocks, then reduce to generate states,
+;; and extract the quads.
+;; The last step is usually to turn the quads back into strings.
 
-(defn inputs->states
-  [inputs]
-  ((->> inputs
-        (map input->states)
-        reverse
-        (apply comp))
-   []))
+(defn input->blocks
+  "Given and input, return a lazy sequence of blocks."
+  [{:keys [lines] :as input}]
+  (map-indexed
+   (fn [index line]
+     (-> input
+         (dissoc :lines)
+         (assoc :block [line] :line-number (inc index))))
+   lines))
+
+(defn block->state
+  "Given the previous state and a block in a given format,
+   process the block and return the new state."
+  [state {:keys [format] :as block}]
+  (let [state (-> state (dissoc :quads) (merge block))]
+    (try
+      (case format
+        :kn (kn/block->state state)
+        :tsv (tsv/block->state state)
+        (throw (Exception. (str "Unknown input format: " format))))
+      (catch Exception e
+        (println "STATE" state)
+        (throw e)))))
+
+(defn process-inputs
+  [{:keys [inputs] :as pipeline}]
+  (->> inputs
+       (mapcat input->blocks)
+       (reductions block->state st/default-state)
+       rest))
+
+(defn process-outputs
+  [{:keys [outputs] :as pipeline} states]
+  (let [format (:format (last outputs))]
+    (case format
+      nil
+      (->> states
+           (mapcat :quads)
+           (map nq/quad->line))
+      :env
+      (->> states
+           last
+           :env)
+      (throw (Exception. (str "Unknown output format: " format))))))
 
 (defn process-pipeline
-  [{:keys [inputs outputs] :as pipeline}]
-  (->> inputs
-       inputs->states
-       nq/states->lines))
-
-(defn kn
-  [& contents]
-  (->> contents
-       (map
-        (fn [c]
-          {:format :kn
-           :lines (clojure.string/split-lines c)}))
-       inputs->states))
-
-(defn env
-  [states]
-  (->> states last :env))
+  [pipeline]
+  (process-outputs pipeline (process-inputs pipeline)))
 
 (def example-kn
   "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -42,3 +74,8 @@
 : ex:foo
 rdfs:label: Foo
 ex:comment: comment")
+
+(def example-tsv
+  "@subject  label
+ex:1  One
+ex:2  Two")
