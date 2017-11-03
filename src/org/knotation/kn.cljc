@@ -43,3 +43,32 @@
     \@ (declaration->state state)
     \: (subject->state state)
     (statement->state state)))
+
+(defn quad->lines
+  [env {:keys [predicate object] :as quad}]
+  [(str
+    (ln/node->name env predicate)
+    ": "
+    (if (:iri object)
+      (ln/node->name env object)
+      (:lexical object)))])
+
+(defn state->lines
+  [{:keys [env quads] :as state}]
+  (mapcat (partial quad->lines env) quads))
+
+(defn subject-states->lines
+  [states]
+  (let [{:keys [env-before subject] :as state} (first states)]
+    (->> states
+         (mapcat state->lines)
+         (concat [(str ": " (ln/node->name env-before subject))]))))
+
+(defn states->lines
+  [states]
+  (->> states
+       (filter :quads)
+       (partition-by :subject)
+       (map subject-states->lines)
+       (interpose [""])
+       (mapcat identity)))

@@ -1,5 +1,6 @@
 (ns org.knotation.api
-  (:require [org.knotation.state :as st]
+  (:require [clojure.pprint :as pp]
+            [org.knotation.state :as st]
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
             [org.knotation.nq :as nq]))
@@ -32,11 +33,16 @@
   "Given the previous state and a block in a given format,
    process the block and return the new state."
   [state {:keys [format] :as block}]
-  (let [state (-> state (dissoc :quads) (merge block))]
+  (let [state (-> state
+                  (dissoc :quads)
+                  (merge block)
+                  ; TODO: is this a good idea?
+                  (assoc :env-before (:env state)))]
     (try
       (case format
         :kn (kn/block->state state)
         :tsv (tsv/block->state state)
+        :nq (nq/block->state state)
         (throw (Exception. (str "Unknown input format: " format))))
       (catch Exception e
         (println "STATE" state)
@@ -53,14 +59,12 @@
   [{:keys [outputs] :as pipeline} states]
   (let [format (:format (last outputs))]
     (case format
-      nil
-      (->> states
-           (mapcat :quads)
-           (map nq/quad->line))
-      :env
-      (->> states
-           last
-           :env)
+      (nil :nq) (nq/states->lines states)
+      :kn (kn/states->lines states)
+      ;:ttl
+      ;:rdfa
+      ;:json-ld
+      :env (->> states last :env pp/pprint)
       (throw (Exception. (str "Unknown output format: " format))))))
 
 (defn process-pipeline

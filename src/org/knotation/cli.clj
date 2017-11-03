@@ -29,6 +29,7 @@
   (cond
     (re-find #"\.kn$" path) :kn
     (re-find #"\.tsv$" path) :tsv
+    (re-find #"\.nq$" path) :nq
     :else nil))
 
 (def default-input
@@ -43,6 +44,38 @@
     :format (get-format path)
     :lines (line-seq (clojure.java.io/reader path))}))
 
+(defn lex
+  [arg]
+  (if (.startsWith arg "-")
+    (let [[_ flag value] (re-matches #"(-\S+)=(.*)" arg)
+          flag (or flag arg)]
+      [(case flag
+         ("-e" "--env") {:flag :env :args 1}
+         ("-d" "--data") {:flag :data :args 1}
+         ("-f" "--format") {:flag :format :args 1}
+         ("-s" "--sort") {:flag :sort :args 0}
+         (throw (Exception. (str "Unknown option: " arg))))
+       (when value {:value value})])
+    [{:value arg}]))
+
+(defn lexer
+  [args]
+  (->> args
+       (mapcat lex)
+       (remove nil?)))
+
+(defn group-args
+  [args]
+  (loop [done []
+         todo (lexer args)]
+    (let [{:keys [args] :or {args 0} :as next} (first todo)]
+      (println args)
+      (if-not next
+        done
+        (recur
+         (conj done (take (inc args) todo))
+         (drop (inc args) todo))))))
+
 (defn build-pipeline
   "Given a sequence of strings,
    return a sequence of input configuration maps
@@ -53,12 +86,22 @@
      (cond
        (contains? #{"-e" "--env"} arg)
        (assoc-in coll [:current :mode] :env)
+
        (contains? #{"-d" "--data"} arg)
        (assoc-in coll [:current :mode] :data)
-       (= "--output=env" arg)
+
+       (= "--format=env" arg)
        (update coll :outputs conj {:format :env})
+
+       (= "--format=nq" arg)
+       (update coll :outputs conj {:format :nq})
+
+       (= "--format=kn" arg)
+       (update coll :outputs conj {:format :kn})
+
        (.startsWith arg "-")
        (throw (Exception. (str "Unknown option: " arg)))
+
        :else
        (-> coll
            (dissoc :current)
