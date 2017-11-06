@@ -3,7 +3,8 @@
             [org.knotation.state :as st]
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
-            [org.knotation.nq :as nq]))
+            [org.knotation.nq :as nq]
+            [org.knotation.rdfa :as rdfa]))
 
 ;; The Knotation API deals with:
 ;;
@@ -61,6 +62,7 @@
     (case format
       (nil :nq) (nq/states->lines states)
       :kn (kn/states->lines states)
+      :rdfa (rdfa/states->lines states)
       ;:ttl
       ;:rdfa
       ;:json-ld

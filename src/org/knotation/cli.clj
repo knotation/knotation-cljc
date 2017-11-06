@@ -99,6 +99,9 @@
        (= "--format=kn" arg)
        (update coll :outputs conj {:format :kn})
 
+       (= "--format=rdfa" arg)
+       (update coll :outputs conj {:format :rdfa})
+
        (.startsWith arg "-")
        (throw (Exception. (str "Unknown option: " arg)))
 
