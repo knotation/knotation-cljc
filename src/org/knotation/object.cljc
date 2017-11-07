@@ -1,5 +1,6 @@
 (ns org.knotation.object
-  (:require [org.knotation.util :as util]
+  (:require [clojure.string :as string]
+            [org.knotation.util :as util]
             [org.knotation.link :as ln]))
 
 (defn string->object
@@ -10,7 +11,7 @@
 
     (and (string? datatype)
          (re-matches #"@\S+" datatype))
-    {:lexical content :language (clojure.string/replace datatype #"^@" "")}
+    {:lexical content :language (string/replace datatype #"^@" "")}
 
     (and (string? datatype)
          (util/starts-with? datatype "https://knotation.org/datatype/"))

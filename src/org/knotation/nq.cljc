@@ -1,5 +1,7 @@
 (ns org.knotation.nq
-  (:require [org.knotation.state :as st]
+  (:require [clojure.string :as string]
+
+            [org.knotation.state :as st]
             [org.knotation.link :as ln]
             [org.knotation.object :as ob]))
 
@@ -16,7 +18,7 @@
    (->> [subject predicate object graph]
         (remove nil?)
         (map node->nquad-string)
-        (clojure.string/join " "))
+        (string/join " "))
    " ."))
 
 (defn states->lines

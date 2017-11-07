@@ -1,4 +1,5 @@
-(ns org.knotation.util)
+(ns org.knotation.util
+  (:require [clojure.string :as string]))
 
 (defn starts-with?
   [target prefix]
@@ -13,4 +14,4 @@
    (#?(:clj Exception. :cljs js/Error.)
     (->> messages
          (map str)
-         (clojure.string/join " ")))))
+         (string/join " ")))))

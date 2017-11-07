@@ -1,5 +1,5 @@
 (ns org.knotation.api
-  (:require [clojure.pprint :as pp]
+  (:require [#?(:clj clojure.pprint :cljs cljs.pprint) :as pp]
             [org.knotation.state :as st]
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]

@@ -1,5 +1,7 @@
 (ns org.knotation.link
-  (:require [org.knotation.util :as util]))
+  (:require [clojure.string :as string]
+
+            [org.knotation.util :as util]))
 
 (defn label->iri
   [env input]
@@ -74,7 +76,7 @@
 (defn iri->curie
   [env iri]
   (when-let [[prefix name] (find-prefix env iri)]
-    (clojure.string/replace iri prefix (str name ":"))))
+    (string/replace iri prefix (str name ":"))))
 
 (defn iri->http-url
   [env iri]

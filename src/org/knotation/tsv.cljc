@@ -1,5 +1,7 @@
 (ns org.knotation.tsv
-  (:require [org.knotation.util :as util]
+  (:require [clojure.string :as string]
+
+            [org.knotation.util :as util]
             [org.knotation.state :as st]
             [org.knotation.link :as ln]
             [org.knotation.object :as ob]))
@@ -9,7 +11,7 @@
   (assoc
    state
    :columns
-   (for [[index cell] (map-indexed vector (clojure.string/split (first block) #"\t"))]
+   (for [[index cell] (map-indexed vector (string/split (first block) #"\t"))]
      (merge
       {:label cell
        :column-number (inc index)}
@@ -35,7 +37,7 @@
 
 (defn row->state
   [{:keys [mode env columns block] :as state}]
-  (let [cells (clojure.string/split (first block) #"\t")
+  (let [cells (string/split (first block) #"\t")
         pairs (map vector columns cells)
         subject-cell (->> pairs (filter #(-> % first :subject?)) first second)
         subject (ln/subject->node env subject-cell)
