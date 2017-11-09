@@ -15,3 +15,14 @@
     (->> messages
          (map str)
          (string/join " ")))))
+
+(defmacro handler-case
+  [body & handlers]
+  `(try
+     ~body
+     ~@(map
+        (fn [[exception-type name & body]]
+          `(catch ~(if (= :default exception-type)
+                     #?(:clj Exception :cljs js/Error)
+                     exception-type) ~name ~@body))
+        handlers)))
