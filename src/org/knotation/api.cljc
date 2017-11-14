@@ -61,10 +61,9 @@
        (reductions process-input st/blank-state)
        rest))
 
-(defn process-outputs
-  [{:keys [::outputs] :as pipeline} states]
-  ; WARN: Only handles one output!
-  (let [format (::st/format (last outputs))]
+(defn process-output
+  [{:keys [::output] :as pipeline} states]
+  (let [format (::st/format output)]
     (case format
       (nil :nq) (nq/process-outputs states)
       :kn (kn/process-outputs states)
@@ -72,11 +71,11 @@
       ;:ttl
       ;:json-ld
       :env (->> states last :env pp/pprint)
-      (util/throw-exception "Unknown output format: " format))))
+      (util/throw-exception "Unknown output format:" format))))
 
 (defn process-pipeline
   [pipeline]
-  (process-outputs pipeline (process-inputs pipeline)))
+  (process-output pipeline (process-inputs pipeline)))
 
 (defn kn
   [content]

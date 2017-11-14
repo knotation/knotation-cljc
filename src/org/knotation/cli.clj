@@ -93,16 +93,16 @@
        (assoc-in coll [:current ::st/mode] :data)
 
        (= "--format=env" arg)
-       (update coll ::api/outputs conj {::st/format :env})
+       (assoc coll ::api/output {::st/format :env})
 
        (= "--format=nq" arg)
-       (update coll ::api/outputs conj {::st/format :nq})
+       (assoc coll ::api/output {::st/format :nq})
 
        (= "--format=kn" arg)
-       (update coll ::api/outputs conj {::st/format :kn})
+       (assoc coll ::api/output {::st/format :kn})
 
        (= "--format=rdfa" arg)
-       (update coll ::api/outputs conj {::st/format :rdfa})
+       (assoc coll ::api/output {::st/format :rdfa})
 
        (.startsWith arg "-")
        (throw (Exception. (str "Unknown option: " arg)))
@@ -113,7 +113,7 @@
            (update ::api/inputs conj (build-input (:current coll) arg)))))
    {:current {}
     ::api/inputs []
-    ::api/outputs []}
+    ::api/output nil}
    args))
 
 (defn stop-on-error
