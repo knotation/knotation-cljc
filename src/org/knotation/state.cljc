@@ -1,55 +1,59 @@
-(ns org.knotation.state)
+(ns org.knotation.state
+  (:require [org.knotation.rdf :as rdf]
+            [org.knotation.environment :as en]))
 
-(def rdf (partial apply str "http://www.w3.org/1999/02/22-rdf-syntax-ns#"))
-(def rdfs (partial apply str "http://www.w3.org/2000/01/rdf-schema#"))
-(def xsd (partial apply str "http://www.w3.org/2001/XMLSchema#"))
-(def owl (partial apply str "http://www.w3.org/2002/07/owl#"))
-(def kn (partial apply str "https://knotation.org/"))
+(def example-quad
+  {::rdf/graph nil
+   ::rdf/subject {::rdf/iri "https://example.com/s"}
+   ::rdf/predicate {::rdf/iri "https://example.com/p"}
+   ::rdf/object {::rdf/lexical "o"}})
+
+(def example-quads
+  {::input {::format :knotation
+            ::line-number 4
+            ::lines ["ex:p: \"o\""]}
+   ::en/env-before {}
+   ::en/env {}
+   ::rdf/quads [example-quad]
+   ::output {::format :nquads
+             ::line-number 1
+             ::lines ["<https://example.com/s> <https://example.com/p> \"o\" ."]}})
+
+(def example-error
+  {::input {::format :kn
+            ::line-number 5
+            ::lines ["foo: bar"]}
+   ::en/env-before {}
+   ::en/env {}
+   ::error {::error-message "Unrecognized predicate: foo"
+            ::error-type :unrecognized-predicate}})
 
 (defn add-prefix
-  [state prefix iri]
-  (-> state
-      (assoc-in [:env :prefix-iri prefix] iri)
-      (assoc-in [:env :iri-prefix iri] prefix)
-      (update-in [:env :prefix-sequence] (fnil conj []) prefix)))
+  [{:keys [::en/env] :as state} prefix iri]
+  (assoc state ::en/env (en/add-prefix env prefix iri)))
 
 (defn add-label
-  [state label iri]
-  (-> state
-      (assoc-in [:env :label-iri label] iri)
-      (assoc-in [:env :iri-label iri] label)
-      (update-in [:env :label-sequence] (fnil conj []) label)))
+  [{:keys [::en/env] :as state} label iri]
+  (assoc state ::en/env (en/add-label env label iri)))
 
 (defn add-datatype
-  [state predicate datatype]
-  (-> state
-      (assoc-in [:env :predicate-datatype predicate] datatype)))
+  [{:keys [::en/env] :as state} predicate datatype]
+  (assoc state ::en/env (en/add-datatype env predicate datatype)))
 
 (defn update-state
-  [state {:keys [subject predicate object] :as quad}]
+  [state {:keys [::rdf/subject ::rdf/predicate ::rdf/object] :as quad}]
   ; TODO: make this configurable
   ; WARN: case macro requires literal values, not symbols or functions
-  (case (:iri predicate)
+  (case (::rdf/iri predicate)
     "http://www.w3.org/2000/01/rdf-schema#label"
-    (add-label state (:lexical object) (:iri subject))
+    (add-label state (::rdf/lexical object) (::rdf/iri subject))
 
     "https://knotation.org/predicate/default-datatype"
-    (add-datatype state (:iri subject) (:iri object))
+    (add-datatype state (::rdf/iri subject) (::rdf/iri object))
 
     state))
 
-(def blank-state {})
+(def blank-state {::en/env {}})
 
 (def default-state
-  (-> blank-state
-      (add-prefix "rdf" (rdf))
-      (add-prefix "rdfs" (rdfs))
-      (add-prefix "xsd" (xsd))
-      (add-prefix "owl" (owl))
-      (add-prefix "kn" (kn))
-      (add-label "label" (rdfs "label"))
-      (add-label "type" (rdf "type"))
-      (add-label "link" (kn "datatype/link"))
-      (add-label "default datatype" (kn "predicate/default-datatype"))
-      (add-datatype (rdf "type") (kn "datatype/link"))
-      (add-datatype (kn "predicate/default-datatype") (kn "datatype/link"))))
+  (assoc blank-state ::en/env en/default-env))

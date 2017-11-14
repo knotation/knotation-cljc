@@ -1,43 +1,75 @@
 (ns org.knotation.kn
-  (:require [org.knotation.util :as util]
+  (:require [org.knotation.rdf :as rdf]
+            [org.knotation.environment :as en]
             [org.knotation.state :as st]
             [org.knotation.link :as ln]
             [org.knotation.object :as ob]))
 
 (defn declaration->state
-  [{:keys [mode env block] :as state}]
+  [{:keys [::st/mode] :as state}]
   (if-let [[_ prefix iri]
-           (re-matches #"@prefix (\S+):\s+<(\S+)>\s*" (first block))]
+           (->> state
+                ::st/input
+                ::st/lines
+                first
+                (re-matches #"@prefix (\S+):\s+<(\S+)>\s*"))]
     (if (= mode :data)
       state
       (st/add-prefix state prefix iri))
-    (util/throw-exception "Not a @prefix line")))
+    (assoc
+     state
+     ::st/error
+     {::st/error-type :not-a-prefix-line}
+     {::st/error-message "Not a @prefix line"})))
 
 (defn subject->state
-  [{:keys [env block] :as state}]
-  (if-let [[_ subject] (re-matches #": \s*(.*)\s*" (first block))]
-    (assoc-in state [:subject] (ln/subject->node env subject))
-    (util/throw-exception "Not a subject line")))
+  [{:keys [::en/env] :as state}]
+  (if-let [[_ subject]
+           (->> state
+                ::st/input
+                ::st/lines
+                first
+                (re-matches #": \s*(.*)\s*"))]
+    (assoc state ::rdf/subject (ln/subject->node env subject))
+    (assoc
+     state
+     ::st/error
+     {::st/error-type :not-a-subject-line}
+     {::st/error-message "Not a subject line"})))
 
 (defn statement->state
-  [{:keys [mode env graph subject block] :as state}]
+  [{:keys [::st/mode ::en/env ::rdf/graph ::rdf/subject] :as state}]
   (if-let [[_ predicate-link content]
-           (re-matches #"([^@:].*): (.*)" (first block))]
-    (let [predicate-iri (ln/predicate->iri env predicate-link)
-          predicate {:iri predicate-iri}
-          datatype (get-in env [:predicate-datatype predicate-iri])
-          object (ob/string->object env datatype content)
-          quad {:graph graph
-                :subject subject
-                :predicate predicate
-                :object object}
-          state (if (= mode :data) state (st/update-state state quad))]
-      (if (= mode :env) state (assoc state :quads [quad])))
-    (util/throw-exception "Not a statement:" block)))
+           (->> state
+                ::st/input
+                ::st/lines
+                first
+                (re-matches #"([^@:].*): (.*)"))]
+    (let [predicate-iri (ln/predicate->iri env predicate-link)]
+      (if (nil? predicate-iri)
+        (assoc
+         state
+         ::st/error
+         {::st/error-type :unrecognized-predicate
+          ::st/error-message (str "Unrecognized predicate: " predicate-link)})
+        (let [predicate {::rdf/iri predicate-iri}
+              datatype (get-in env [::en/predicate-datatype predicate-iri])
+              object (ob/string->object env datatype content)
+              quad {::rdf/graph graph
+                    ::rdf/subject subject
+                    ::rdf/predicate predicate
+                    ::rdf/object object}
+              state (if (= mode :data) state (st/update-state state quad))]
+          (if (= mode :env) state (assoc state ::rdf/quads [quad])))))
+    (assoc
+     state
+     ::st/error
+     {::st/error-type :not-a-statement}
+     {::st/error-message "Not a statement"})))
 
 (defn block->state
-  [{:keys [block] :as state}]
-  (case (first (first block))
+  [state]
+  (case (->> state ::st/input ::st/lines first first)
     nil state
     \# state
     \@ (declaration->state state)
@@ -45,30 +77,49 @@
     (statement->state state)))
 
 (defn quad->lines
-  [env {:keys [predicate object] :as quad}]
+  [env {:keys [::rdf/predicate ::rdf/object] :as quad}]
   [(str
     (ln/node->name env predicate)
     ": "
-    (if (:iri object)
+    (if (::rdf/iri object)
       (ln/node->name env object)
-      (:lexical object)))])
+      (::rdf/lexical object)))])
 
-(defn state->lines
-  [{:keys [env quads] :as state}]
-  (mapcat (partial quad->lines env) quads))
+(defn process-output
+  [{:keys [::en/env ::en/env-before
+           ::rdf/quads ::st/output-line-count
+           ::rdf/subject ::st/previous-subject]
+    :or {output-line-count 0}
+    :as state}]
+  (let [lines
+        (concat
+         (when-not (= subject previous-subject)
+           (let [line (str ": " (ln/node->name env-before subject))]
+             (if (nil? previous-subject)
+               [line]
+               ["" line])))
+         (when quads
+           (mapcat (partial quad->lines env) quads)))]
+    (if (> (count lines) 0)
+      (assoc
+       state
+       ::st/output-line-count (+ output-line-count (count lines))
+       ::st/output
+       {::st/format :kn
+        ::st/line-number (inc output-line-count)
+        ::st/lines lines})
+      state)))
 
-(defn subject-states->lines
-  [states]
-  (let [{:keys [env-before subject] :as state} (first states)]
-    (->> states
-         (mapcat state->lines)
-         (concat [(str ": " (ln/node->name env-before subject))]))))
-
-(defn states->lines
+(defn process-outputs
   [states]
   (->> states
-       (filter :quads)
-       (partition-by :subject)
-       (map subject-states->lines)
-       (interpose [""])
-       (mapcat identity)))
+       (reductions
+        (fn [previous-state input-state]
+          (-> input-state
+              (assoc ::st/output-line-count
+                     (get previous-state ::st/output-line-count 0)
+                     ::st/previous-subject
+                     (::rdf/subject previous-state))
+              process-output))
+        st/blank-state)
+       rest))

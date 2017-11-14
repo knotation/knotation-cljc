@@ -1,7 +1,12 @@
 (ns org.knotation.tsv-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.spec.alpha :as s]
+            [clojure.spec.test.alpha :as stest]
+            [org.knotation.rdf :as rdf]
             [org.knotation.state :as st]
             [org.knotation.tsv :as tsv]))
+
+(stest/instrument)
 
 (def example-state-1
   (-> st/default-state
@@ -10,41 +15,44 @@
       (st/add-datatype "https://example.com/homepage" "https://knotation.org/datatype/link")))
 
 (def example-columns-1
-  [{:column-number 1
-    :label "@subject"
-    :subject? true}
-   {:column-number 2
-    :label "label"
-    :predicate {:iri "http://www.w3.org/2000/01/rdf-schema#label"}}
-   {:column-number 3
-    :label "homepage"
-    :predicate {:iri "https://example.com/homepage"}}])
+  [{::tsv/column-number 1
+    ::tsv/label "@subject"
+    ::tsv/subject? true}
+   {::tsv/column-number 2
+    ::tsv/label "label"
+    ::rdf/predicate {::rdf/iri "http://www.w3.org/2000/01/rdf-schema#label"}}
+   {::tsv/column-number 3
+    ::tsv/label "homepage"
+    ::rdf/predicate {::rdf/iri "https://example.com/homepage"}}])
 
 (defn test-line
-  [line before after-fn]
-  (is (= (tsv/block->state (assoc before :block [line]))
-         (assoc (after-fn before) :block [line]))
-      (str "Testing line: " line)))
+  [line before-state after-fn]
+  (let [input {::st/format :tsv
+               ::st/line-number 1
+               ::st/lines [line]}]
+    (is (= (assoc (after-fn before-state) ::st/input input)
+           (tsv/block->state (assoc before-state ::st/input input)))
+        (str "Testing line: " line))))
 
 (deftest test-tsv
   (test-line
    "@subject	label	homepage"
    example-state-1
-   #(assoc % :columns example-columns-1))
+   #(assoc % ::tsv/columns example-columns-1))
 
   (test-line
    "ex:foo	Foo	https://example.com"
-   (assoc example-state-1 :columns example-columns-1)
+   (assoc example-state-1 ::tsv/columns example-columns-1)
    #(-> %
         (st/add-label "Foo" "https://example.com/foo")
         (assoc
-         :subject {:iri "https://example.com/foo"}
-         :quads
-         [{:graph nil
-           :subject {:iri "https://example.com/foo"}
-           :predicate {:iri "http://www.w3.org/2000/01/rdf-schema#label"}
-           :object {:lexical "Foo"}}
-          {:graph nil
-           :subject {:iri "https://example.com/foo"}
-           :predicate {:iri "https://example.com/homepage"}
-           :object {:iri "https://example.com"}}]))))
+         ::rdf/subject {::rdf/iri "https://example.com/foo"}
+         ::rdf/quads
+         [{::rdf/graph nil
+           ::rdf/subject {::rdf/iri "https://example.com/foo"}
+           ::rdf/predicate {::rdf/iri "http://www.w3.org/2000/01/rdf-schema#label"}
+           ::rdf/object {::rdf/lexical "Foo"}}
+          {::rdf/graph nil
+           ::rdf/subject {::rdf/iri "https://example.com/foo"}
+           ::rdf/predicate {::rdf/iri "https://example.com/homepage"}
+           ::rdf/object {::rdf/iri "https://example.com"}}]))))

@@ -1,51 +1,55 @@
 (ns org.knotation.tsv
   (:require [clojure.string :as string]
 
-            [org.knotation.util :as util]
+            [org.knotation.rdf :as rdf]
+            [org.knotation.environment :as en]
             [org.knotation.state :as st]
             [org.knotation.link :as ln]
             [org.knotation.object :as ob]))
 
 (defn header->state
-  [{:keys [env block] :as state}]
-  (assoc
-   state
-   :columns
-   (for [[index cell] (map-indexed vector (string/split (first block) #"\t"))]
-     (merge
-      {:label cell
-       :column-number (inc index)}
-      (if (= cell "@subject")
-        {:subject? true}
-        {:predicate {:iri (ln/predicate->iri env cell)}})))))
+  [{:keys [::en/env block] :as state}]
+  (let [line (->> state ::st/input ::st/lines first)]
+    (assoc
+     state
+     ::columns
+     (for [[index cell] (map-indexed vector (string/split line #"\t"))]
+       (merge
+        {::label cell
+         ::column-number (inc index)}
+        (if (= cell "@subject")
+          {::subject? true}
+          {::rdf/predicate {::rdf/iri (ln/predicate->iri env cell)}}))))))
 
 (defn cell->state
-  [{:keys [mode env graph subject] :as state} [column cell]]
-  (if (:subject? column)
+  [{:keys [::st/mode ::en/env ::rdf/graph ::rdf/subject] :as state}
+   [column cell]]
+  (if (::subject? column)
     state
-    (let [predicate (:predicate column)
-          predicate-iri (:iri predicate)
-          datatype (get-in env [:predicate-datatype predicate-iri])
+    (let [predicate (::rdf/predicate column)
+          predicate-iri (::rdf/iri predicate)
+          datatype (get-in env [::en/predicate-datatype predicate-iri])
           object (ob/string->object env datatype cell)
           quad
-          {:graph graph
-           :subject subject
-           :predicate predicate
-           :object object}
+          {::rdf/graph graph
+           ::rdf/subject subject
+           ::rdf/predicate predicate
+           ::rdf/object object}
           state (if (= mode :data) state (st/update-state state quad))]
-      (if (= mode :env) state (update state :quads conj quad)))))
+      (if (= mode :env) state (update state ::rdf/quads conj quad)))))
 
 (defn row->state
-  [{:keys [mode env columns block] :as state}]
-  (let [cells (string/split (first block) #"\t")
+  [{:keys [::st/mode ::en/env ::columns] :as state}]
+  (let [line (->> state ::st/input ::st/lines first)
+        cells (string/split line #"\t")
         pairs (map vector columns cells)
-        subject-cell (->> pairs (filter #(-> % first :subject?)) first second)
+        subject-cell (->> pairs (filter #(-> % first ::subject?)) first second)
         subject (ln/subject->node env subject-cell)
-        state (assoc state :subject subject :quads [])]
+        state (assoc state ::rdf/subject subject ::rdf/quads [])]
     (reduce cell->state state pairs)))
 
 (defn block->state
-  [{:keys [columns] :as state}]
+  [{:keys [::columns] :as state}]
   (if columns
     (row->state state)
     (header->state state)))

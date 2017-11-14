@@ -1,5 +1,8 @@
 (ns org.knotation.api
   (:require [#?(:clj clojure.pprint :cljs cljs.pprint) :as pp]
+            [org.knotation.util :as util]
+            [org.knotation.rdf :as rdf]
+            [org.knotation.environment :as en]
             [org.knotation.state :as st]
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
@@ -20,68 +23,85 @@
 ;; and extract the quads.
 ;; The last step is usually to turn the quads back into strings.
 
-(defn input->blocks
+; TODO: Format implemenations should group their own lines.
+(defn group-lines
   "Given and input, return a lazy sequence of blocks."
-  [{:keys [lines] :as input}]
+  [{:keys [::st/lines ::st/line-number]
+    :or {line-number 1}
+    :as input}]
   (map-indexed
    (fn [index line]
      (-> input
-         (dissoc :lines)
-         (assoc :block [line] :line-number (inc index))))
+         (assoc ::st/lines [line]
+                ::st/line-number (+ line-number index))))
    lines))
 
-(defn block->state
+(defn process-input
   "Given the previous state and a block in a given format,
    process the block and return the new state."
-  [state {:keys [format] :as block}]
+  [state {:keys [::st/format] :as input}]
   (let [state (-> state
-                  (dissoc :quads)
-                  (merge block)
-                  ; TODO: is this a good idea?
-                  (assoc :env-before (:env state)))]
-    (try
-      (case format
-        :kn (kn/block->state state)
-        :tsv (tsv/block->state state)
-        :nq (nq/block->state state)
-        (throw (Exception. (str "Unknown input format: " format))))
-      (catch Exception e
-        (println "STATE" state)
-        (throw e)))))
+                  (dissoc ::rdf/quads)
+                  (assoc ::st/input input)
+                  (assoc ::en/env-before (::en/env state)))]
+    (case format
+      :kn (kn/block->state state)
+      :tsv (tsv/block->state state)
+      :nq (nq/block->state state)
+      (assoc
+       state
+       ::st/error
+       {::st/error-type :unknown-input-format
+        ::st/error-message (str "Unknown input format: " format)}))))
 
 (defn process-inputs
-  [{:keys [inputs] :as pipeline}]
+  [{:keys [::inputs] :as pipeline}]
   (->> inputs
-       (mapcat input->blocks)
-       (reductions block->state st/default-state)
+       (mapcat group-lines)
+       (reductions process-input st/blank-state)
        rest))
 
 (defn process-outputs
-  [{:keys [outputs] :as pipeline} states]
-  (let [format (:format (last outputs))]
+  [{:keys [::outputs] :as pipeline} states]
+  ; WARN: Only handles one output!
+  (let [format (::st/format (last outputs))]
     (case format
-      (nil :nq) (nq/states->lines states)
-      :kn (kn/states->lines states)
-      :rdfa (rdfa/states->lines states)
+      (nil :nq) (nq/process-outputs states)
+      :kn (kn/process-outputs states)
+      :rdfa (rdfa/process-outputs states)
       ;:ttl
-      ;:rdfa
       ;:json-ld
       :env (->> states last :env pp/pprint)
-      (throw (Exception. (str "Unknown output format: " format))))))
+      (util/throw-exception "Unknown output format: " format))))
 
 (defn process-pipeline
   [pipeline]
   (process-outputs pipeline (process-inputs pipeline)))
 
-(def example-kn
-  "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-@prefix ex: <https://example.com/>
+(defn kn
+  [content]
+  {::st/format :kn
+   ::st/line-number 1
+   ::st/lines (clojure.string/split-lines content)})
 
-: ex:foo
-rdfs:label: Foo
-ex:comment: comment")
+(defn content
+  [states]
+  (clojure.string/join
+   \n
+   (reduce
+    (fn [lines state]
+      (concat lines (-> state ::st/output ::st/lines)))
+    []
+    states)))
 
-(def example-tsv
-  "@subject  label
-ex:1  One
-ex:2  Two")
+(defn errors
+  [states]
+  (clojure.string/join
+   \n
+   (reduce
+    (fn [lines state]
+      (if-let [message (-> state ::st/error ::st/error-message)]
+        (conj lines message)
+        lines))
+    []
+    states)))

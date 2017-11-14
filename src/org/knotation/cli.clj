@@ -1,5 +1,6 @@
 (ns org.knotation.cli
-  (:require [org.knotation.api :as api])
+  (:require [org.knotation.state :as st]
+            [org.knotation.api :as api])
   (:gen-class))
 
 ; The Knotation CLI converts one or more input files to an output file.
@@ -33,16 +34,17 @@
     :else nil))
 
 (def default-input
-  {:mode :both})
+  {::st/mode :both})
 
 (defn build-input
   [current path]
   (merge
    default-input
    current
-   {:input path
-    :format (get-format path)
-    :lines (line-seq (clojure.java.io/reader path))}))
+   {::st/source path
+    ::st/format (get-format path)
+    ::st/line-number 1
+    ::st/lines (line-seq (clojure.java.io/reader path))}))
 
 (defn lex
   [arg]
@@ -85,22 +87,22 @@
    (fn [coll arg]
      (cond
        (contains? #{"-e" "--env"} arg)
-       (assoc-in coll [:current :mode] :env)
+       (assoc-in coll [:current ::st/mode] :env)
 
        (contains? #{"-d" "--data"} arg)
-       (assoc-in coll [:current :mode] :data)
+       (assoc-in coll [:current ::st/mode] :data)
 
        (= "--format=env" arg)
-       (update coll :outputs conj {:format :env})
+       (update coll ::api/outputs conj {::st/format :env})
 
        (= "--format=nq" arg)
-       (update coll :outputs conj {:format :nq})
+       (update coll ::api/outputs conj {::st/format :nq})
 
        (= "--format=kn" arg)
-       (update coll :outputs conj {:format :kn})
+       (update coll ::api/outputs conj {::st/format :kn})
 
        (= "--format=rdfa" arg)
-       (update coll :outputs conj {:format :rdfa})
+       (update coll ::api/outputs conj {::st/format :rdfa})
 
        (.startsWith arg "-")
        (throw (Exception. (str "Unknown option: " arg)))
@@ -108,11 +110,24 @@
        :else
        (-> coll
            (dissoc :current)
-           (update :inputs conj (build-input (:current coll) arg)))))
+           (update ::api/inputs conj (build-input (:current coll) arg)))))
    {:current {}
-    :inputs []
-    :outputs []}
+    ::api/inputs []
+    ::api/outputs []}
    args))
+
+(defn stop-on-error
+  [state]
+  (if-let [message (-> state ::st/error ::st/error-message)]
+    (throw (Exception. (str "ERROR: " message)))
+    state))
+
+(defn print-lines
+  [state]
+  (if-let [lines (-> state ::st/output ::st/lines)]
+    (doseq [line lines]
+      (println line))
+    state))
 
 (defn -main
   [& args]
@@ -126,7 +141,8 @@
     (->> args
          build-pipeline
          api/process-pipeline
-         (map println)
+         (map stop-on-error)
+         (map print-lines)
          doall)
     (catch Exception e
       (println e) ; TODO: remove

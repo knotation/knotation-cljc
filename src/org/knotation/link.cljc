@@ -1,12 +1,14 @@
 (ns org.knotation.link
   (:require [clojure.string :as string]
 
-            [org.knotation.util :as util]))
+            [org.knotation.util :as util]
+            [org.knotation.rdf :as rdf]
+            [org.knotation.environment :as en]))
 
 (defn label->iri
   [env input]
   (when (string? input)
-    (get-in env [:label-iri input])))
+    (get-in env [::en/label-iri input])))
 
 (defn wrapped-iri->iri
   [env input]
@@ -25,15 +27,15 @@
   (when (string? input)
     (when-let [[_ prefix suffix] (re-matches #"(\S+):(\S+)" input)]
                ; TODO: (re-matches #"([a-zA-Z0-9]+):([^\s:/][^\s:\\]*)" input)]
-      (when-let [iri (get-in env [:prefix-iri prefix])]
+      (when-let [iri (get-in env [::en/prefix-iri prefix])]
         (str iri suffix)))))
 
 (defn wrapped-iri-or-bnode->node
   [input]
   (or (when-let [iri (wrapped-iri->iri {} input)]
-        {:iri iri})
+        {::rdf/iri iri})
       (when (re-matches #"_:\S+" input)
-        {:bnode input})))
+        {::rdf/bnode input})))
 
 (defn subject->iri
   [env input]
@@ -45,9 +47,9 @@
 (defn subject->node
   [env input]
   (or (when-let [iri (subject->iri env input)]
-        {:iri iri})
+        {::rdf/iri iri})
       (when (re-matches #"_:\S+" input)
-        {:bnode input})))
+        {::rdf/bnode input})))
 
 (defn predicate->iri
   [env input]
@@ -59,14 +61,14 @@
 (defn object->node
   [env input]
   (or (when-let [iri (subject->iri env input)]
-        {:iri iri})
+        {::rdf/iri iri})
       (when (re-matches #"_:\S+" input)
-        {:bnode input})))
+        {::rdf/bnode input})))
 
 (defn find-prefix
   [env iri]
   (->> env
-       :iri-prefix
+       ::en/iri-prefix
        (sort-by (comp count first) >)
        (filter
         (fn [[prefix-iri prefix]]
@@ -89,13 +91,13 @@
 (defn iri->name
   [env iri]
   (or
-   (get-in env [:iri-label iri])
+   (get-in env [::en/iri-label iri])
    (iri->curie env iri)
    (iri->http-url env iri)
    (iri->wrapped-iri env iri)))
 
 (defn node->name
-  [env {:keys [iri bnode] :as node}]
+  [env {:keys [::rdf/iri ::rdf/bnode] :as node}]
   (or
    (when iri (iri->name env iri))
    bnode))

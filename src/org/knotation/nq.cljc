@@ -1,19 +1,20 @@
 (ns org.knotation.nq
   (:require [clojure.string :as string]
 
+            [org.knotation.rdf :as rdf]
             [org.knotation.state :as st]
             [org.knotation.link :as ln]
             [org.knotation.object :as ob]))
 
 (defn node->nquad-string
-  [{:keys [iri bnode lexical] :as node}]
+  [{:keys [::rdf/iri ::rdf/bnode ::rdf/lexical] :as node}]
   (cond
     iri (ln/iri->wrapped-iri nil iri)
     bnode bnode
     lexical (ob/object->nquads-object node)))
 
 (defn quad->line
-  [{:keys [graph subject predicate object] :as quad}]
+  [{:keys [::rdf/graph ::rdf/subject ::rdf/predicate ::rdf/object] :as quad}]
   (str
    (->> [subject predicate object graph]
         (remove nil?)
@@ -21,28 +22,49 @@
         (string/join " "))
    " ."))
 
-(defn states->lines
+(defn process-output
+  [{:keys [::rdf/quads ::st/output-line-count]
+    :or {output-line-count 0}
+    :as state}]
+  (if quads
+    (assoc
+     state
+     ::st/output-line-count (+ output-line-count (count quads))
+     ::st/output
+     {::st/format :nq
+      ::st/line-number (inc output-line-count)
+      ::st/lines (map quad->line quads)})
+    state))
+
+(defn process-outputs
   [states]
-  (->> states
-       (mapcat :quads)
-       (map quad->line)))
+  (rest
+   (reductions
+    (fn [previous-state input-state]
+      (-> input-state
+          (assoc ::st/output-line-count
+                 (get previous-state ::st/output-line-count 0))
+          process-output))
+    st/blank-state
+    states)))
 
 (defn parse-quad
   [line]
   (if-let [[_ s p o g] (re-matches #"(\S+) (\S+) (.*?) (\S+)?\s*." line)]
-    {:graph (when g {:iri (ln/wrapped-iri->iri nil g)})
-     :subject (ln/wrapped-iri-or-bnode->node s)
-     :predicate {:iri (ln/wrapped-iri->iri nil p)}
-     :object (ob/nquads-object->object o)}
+    {::rdf/graph (when g {::rdf/iri (ln/wrapped-iri->iri nil g)})
+     ::rdf/subject (ln/wrapped-iri-or-bnode->node s)
+     ::rdf/predicate {::rdf/iri (ln/wrapped-iri->iri nil p)}
+     ::rdf/object (ob/nquads-object->object o)}
     (throw (Exception. (str "Could not parse quad: " line)))))
 
 (defn block->state
-  [{:keys [mode env block] :as state}]
-  (let [{:keys [subject] :as quad} (parse-quad (first block))]
+  [{:keys [::st/mode ::st/input] :as state}]
+  (let [line (first (::st/lines input))
+        {:keys [::rdf/subject] :as quad} (parse-quad line)]
     (assoc
      (if (= mode :data)
        state
        (-> state
-           (assoc :subject subject)
+           (assoc ::rdf/subject subject)
            (st/update-state quad)))
-     :quads (if (= mode :env) [] [quad]))))
+     ::rdf/quads (if (= mode :env) [] [quad]))))
