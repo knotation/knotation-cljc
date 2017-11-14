@@ -139,8 +139,8 @@ foo: bar")
 
 (deftest test-step-process-output
   (is (= step-5
-         (api/process-outputs
-          {::api/outputs [{::st/format :nq}]}
+         (api/process-output
+          {::api/output {::st/format :nq}}
           step-4)))
   (is (s/valid? (s/coll-of ::st/output-state) step-5)))
 
