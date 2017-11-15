@@ -19,7 +19,8 @@
           ["foo" "-e" "bar" "baz" "--reset-env" "--format=ttl" "-f" "nq"]))))
 
 (deftest test-operations
-  (with-redefs [line-seq (fn [xs] [])]
+  (with-redefs [line-seq (fn [x] [])
+                clojure.java.io/reader (fn [x] nil)]
     (is (= [{::api/operation-type :read-env
              ::st/source "foo.kn"
              ::st/format :kn
