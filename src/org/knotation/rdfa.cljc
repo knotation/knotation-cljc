@@ -3,9 +3,10 @@
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
             [org.knotation.link :as ln]
-            [org.knotation.object :as ob]))
+            [org.knotation.object :as ob]
+            [org.knotation.format :as fm]))
 
-(defn quad->lines
+(defn render-quad
   [env {:keys [::rdf/predicate ::rdf/object] :as quad}]
   [(str
     "    "
@@ -25,7 +26,7 @@
       (::rdf/lexical object))
     "</li>")])
 
-(defn process-output
+(defn render-state
   [{:keys [::en/env ::rdf/quads ::st/output-line-count
            ::rdf/subject ::st/previous-subject]
     :or {output-line-count 0}
@@ -45,7 +46,7 @@
                (nil? subject) closing
                :else (concat closing lines))))
          (when quads
-           (mapcat (partial quad->lines env) quads)))]
+           (mapcat (partial render-quad env) quads)))]
     (if (> (count lines) 0)
       (assoc
        state
@@ -56,7 +57,7 @@
         ::st/lines lines})
       state)))
 
-(defn process-outputs
+(defn render-states
   [states]
   (->> (concat states [st/blank-state])
        (reductions
@@ -66,7 +67,12 @@
                      (get previous-state ::st/output-line-count 0)
                      ::st/previous-subject
                      (::rdf/subject previous-state))
-              process-output))
+              render-state))
         st/blank-state)
        rest))
        ;butlast))
+
+(fm/register!
+ {::fm/name :rdfa
+  ::fm/description "RDFa format"
+  ::fm/render render-states})

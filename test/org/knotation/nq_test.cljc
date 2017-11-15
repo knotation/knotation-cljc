@@ -8,37 +8,37 @@
 
 (stest/instrument)
 
-(deftest test-parse-quad
+(deftest test-read-quad
   (is (= {::rdf/graph {::rdf/iri "g"}
           ::rdf/subject {::rdf/iri "s"}
           ::rdf/predicate {::rdf/iri "p"}
           ::rdf/object {::rdf/iri "o"}}
-         (nq/parse-quad "<s> <p> <o> <g> .")))
+         (nq/read-quad "<s> <p> <o> <g> .")))
   (is (= {::rdf/graph nil
           ::rdf/subject {::rdf/iri "s"}
           ::rdf/predicate {::rdf/iri "p"}
           ::rdf/object {::rdf/iri "o"}}
-         (nq/parse-quad "<s> <p> <o> .")))
+         (nq/read-quad "<s> <p> <o> .")))
   (is (= {::rdf/graph nil
           ::rdf/subject {::rdf/bnode "_::rdf/b1"}
           ::rdf/predicate {::rdf/iri "p"}
           ::rdf/object {::rdf/bnode "_::rdf/b2"}}
-         (nq/parse-quad "_::rdf/b1 <p> _::rdf/b2 .")))
+         (nq/read-quad "_::rdf/b1 <p> _::rdf/b2 .")))
   (is (= {::rdf/graph nil
           ::rdf/subject {::rdf/iri "s"}
           ::rdf/predicate {::rdf/iri "p"}
           ::rdf/object {::rdf/lexical "o"}}
-         (nq/parse-quad "<s> <p> \"o\" .")))
+         (nq/read-quad "<s> <p> \"o\" .")))
   (is (= {::rdf/graph nil
           ::rdf/subject {::rdf/iri "s"}
           ::rdf/predicate {::rdf/iri "p"}
           ::rdf/object {::rdf/lexical "o" ::rdf/language "en"}}
-         (nq/parse-quad "<s> <p> \"o\"@en .")))
+         (nq/read-quad "<s> <p> \"o\"@en .")))
   (is (= {::rdf/graph nil
           ::rdf/subject {::rdf/iri "s"}
           ::rdf/predicate {::rdf/iri "p"}
           ::rdf/object {::rdf/lexical "o" ::rdf/datatype "d"}}
-         (nq/parse-quad "<s> <p> \"o\"^^<d> ."))))
+         (nq/read-quad "<s> <p> \"o\"^^<d> ."))))
 
 (def example-typed-quad
   {::rdf/graph nil
@@ -46,22 +46,22 @@
    ::rdf/predicate {::rdf/iri "p"}
    ::rdf/object {::rdf/lexical "o" ::rdf/datatype "d"}})
 
-(deftest test-process-output
+(deftest test-render-state
   (is (= {::rdf/quads [example-typed-quad]
           ::st/output-line-count 1
           ::st/output
           {::st/format :nq
            ::st/line-number 1
            ::st/lines ["<s> <p> \"o\"^^<d> ."]}}
-         (nq/process-output
+         (nq/render-state
           {::rdf/quads [example-typed-quad]}))))
 
-(deftest test-process-outputs
+(deftest test-render-states
   (is (= [{::rdf/quads [example-typed-quad]
            ::st/output-line-count 1
            ::st/output
            {::st/format :nq
             ::st/line-number 1
             ::st/lines ["<s> <p> \"o\"^^<d> ."]}}]
-         (nq/process-outputs
+         (nq/render-states
           [{::rdf/quads [example-typed-quad]}]))))

@@ -38,10 +38,10 @@
                ::st/line-number 1
                ::st/lines [line]}]
     (is (= (assoc (after-fn before-state) ::st/input input)
-           (kn/block->state (assoc before-state ::st/input input)))
+           (kn/read-state (assoc before-state ::st/input input)))
         (str "Testing line: " line))))
 
-(deftest test-block->state
+(deftest test-read-state
   (test-line
    "@prefix ex: <https://example.com/>"
    st/blank-state

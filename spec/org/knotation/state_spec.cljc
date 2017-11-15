@@ -30,16 +30,20 @@
                 ::rdf/graph ::rdf/subject
                 ::rdf/quads ::st/error]))
 (s/def ::st/input-state
-  (s/keys :req [::st/input ::en/env-before ::en/env]
+  (s/keys :req [::st/input ::en/env]
           :opt [::st/mode ::st/output
+                ::en/env-before
                 ::rdf/graph ::rdf/subject
                 ::rdf/quads ::st/error]))
 (s/def ::st/output-state
-  (s/keys :req [::st/input ::en/env-before ::en/env]
+  (s/keys :req [::st/input ::en/env]
           :opt [::st/mode
+                ::en/env-before
                 ::rdf/graph ::rdf/subject
                 ::rdf/quads ::st/error
                 ::st/output]))
+
+(s/def ::st/states (s/coll-of ::st/state))
 
 (s/fdef st/add-prefix
         :args (s/cat :state ::st/state :prefix string? :iri string?)

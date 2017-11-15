@@ -4,84 +4,96 @@
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
+            [org.knotation.format :as fm]
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
             [org.knotation.nq :as nq]
             [org.knotation.rdfa :as rdfa]))
 
-;; The Knotation API deals with:
+;; The API works in terms of operations.
+;; Each operation is converted into a function
+;; that takes a sequence of states (usually lazy)
+;; and returns a sequence of states (usually lazy).
+;; The functions are composed and run on a sequence
+;; consisting of a single blank state.
+;; This is similar to a stack of Ring middleware.
 ;;
-;; 1. input: A map describing a file or string of content.
-;;    The content string is split into a lazy sequence of lines.
-;; 2. block: A map with a vector of strings to process as a unit
-;;    (i.e. lines or cells) and location information from the input.
-;; 3. state: A map for a processed block, including location,
-;;    an environment, and a list of output quads.
-;; 4. quad: A map representing the processed data as an RDF quad.
+;; We have three main kinds of operations:
+;; - read operations concatenate a number of states
+;; - render operations render each input state to an output state
+;; - other operations operate on the sequence in arbitrary ways
 ;;
-;; We lazily turn inputs into blocks, then reduce to generate states,
-;; and extract the quads.
-;; The last step is usually to turn the quads back into strings.
+;; The read and render functions are specific to the format
+;; and are looked up in the @fm/formats atom.
 
-; TODO: Format implemenations should group their own lines.
-(defn group-lines
-  "Given and input, return a lazy sequence of blocks."
-  [{:keys [::st/lines ::st/line-number]
-    :or {line-number 1}
-    :as input}]
-  (map-indexed
-   (fn [index line]
-     (-> input
-         (assoc ::st/lines [line]
-                ::st/line-number (+ line-number index))))
-   lines))
+(def example-read-operation
+  {::operation-type :read
+   ::st/format :kn
+   ::st/lines ["@prefix ex: <https://example.com/>" ""]})
 
-(defn process-input
-  "Given the previous state and a block in a given format,
-   process the block and return the new state."
-  [state {:keys [::st/format] :as input}]
-  (let [state (-> state
-                  (dissoc ::rdf/quads)
-                  (assoc ::st/input input)
-                  (assoc ::en/env-before (::en/env state)))]
-    (case format
-      :kn (kn/block->state state)
-      :tsv (tsv/block->state state)
-      :nq (nq/block->state state)
-      (assoc
-       state
-       ::st/error
-       {::st/error-type :unknown-input-format
-        ::st/error-message (str "Unknown input format: " format)}))))
-
-(defn process-inputs
-  [{:keys [::inputs] :as pipeline}]
-  (->> inputs
-       (mapcat group-lines)
-       (reductions process-input st/blank-state)
-       rest))
-
-(defn process-output
-  [{:keys [::output] :as pipeline} states]
-  (let [format (::st/format output)]
-    (case format
-      (nil :nq) (nq/process-outputs states)
-      :kn (kn/process-outputs states)
-      :rdfa (rdfa/process-outputs states)
-      ;:ttl
-      ;:json-ld
-      :env (->> states last :env pp/pprint)
-      (util/throw-exception "Unknown output format:" format))))
-
-(defn process-pipeline
-  [pipeline]
-  (process-output pipeline (process-inputs pipeline)))
+(def example-render-operation
+  {::operation-type :render
+   ::st/format :nq})
 
 (defn kn
   [content]
-  {::st/format :kn
+  {::operation-type :read
+   ::st/format :kn
    ::st/line-number 1
    ::st/lines (clojure.string/split-lines content)})
+
+(defn take-while+
+  [pred coll]
+  (lazy-seq
+   (when-let [[f & r] (seq coll)]
+     (if (pred f)
+       (cons f (take-while+ pred r))
+       [f]))))
+
+(defn operation-function
+  [{:keys [::operation-type ::operation-function
+           ::st/format ::st/lines]
+    :as operation}]
+  (cond
+    operation-function
+    operation-function
+
+    (= operation-type :reset-env)
+    (fn [states]
+      (map #(assoc % ::en/env en/blank-env ::en/env-before en/blank-env) states))
+
+    (= operation-type :stop-on-error)
+    (fn [states]
+      (take-while+ #(not (::st/error %)) states))
+
+    (= operation-type :read)
+    (fm/read-function format lines)
+
+    (= operation-type :read-env)
+    (fm/read-env-function format lines)
+
+    (= operation-type :read-data)
+    (fm/read-data-function format lines)
+
+    (= operation-type :render)
+    (fm/render-function format)
+
+    :else
+    (fn [states]
+      (concat
+       states
+       [{:st/error
+         {:st/error-type :unknown-operation-type
+          ::st/error-message
+          (str "Unknown operation type: " operation-type)}}]))))
+
+(defn run-operations
+  [operations]
+  ((->> operations
+        (map operation-function)
+        reverse
+        (apply comp))
+   [st/blank-state]))
 
 (defn content
   [states]

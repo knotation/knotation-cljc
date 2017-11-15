@@ -31,7 +31,7 @@
                ::st/line-number 1
                ::st/lines [line]}]
     (is (= (assoc (after-fn before-state) ::st/input input)
-           (tsv/block->state (assoc before-state ::st/input input)))
+           (tsv/read-state (assoc before-state ::st/input input)))
         (str "Testing line: " line))))
 
 (deftest test-tsv
