@@ -62,12 +62,14 @@ foo: bar")
                   ::rdf/subject {::rdf/iri "https://example.com/s"}
                   ::rdf/predicate {::rdf/iri "https://example.com/p"}
                   ::rdf/object {::rdf/lexical "o"}}]}
-   {::st/input {::st/format :kn
+   {::st/event ::st/error
+    ::st/input {::st/format :kn
                 ::st/line-number 5
                 ::st/lines ["foo: bar"]}
     ::en/env env-1
     ::rdf/subject {::rdf/iri "https://example.com/s"}
     ::st/error {::st/error-type :unrecognized-predicate
+                ::st/error-info ["foo"]
                 ::st/error-message "Unrecognized predicate: foo"}}
    {::st/event ::st/subject-end
     ::en/env env-1
@@ -114,12 +116,14 @@ foo: bar")
     ::st/output {::st/format :nq
                  ::st/line-number 1
                  ::st/lines ["<https://example.com/s> <https://example.com/p> \"o\" ."]}}
-   {::st/input {::st/format :kn
+   {::st/event ::st/error
+    ::st/input {::st/format :kn
                 ::st/line-number 5
                 ::st/lines ["foo: bar"]}
     ::en/env env-1
     ::rdf/subject {::rdf/iri "https://example.com/s"}
     ::st/error {::st/error-type :unrecognized-predicate
+                ::st/error-info ["foo"]
                 ::st/error-message "Unrecognized predicate: foo"}}
    {::st/event ::st/subject-end
     ::en/env env-1

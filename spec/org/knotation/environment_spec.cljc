@@ -28,6 +28,10 @@
         :args (s/cat :env ::en/env :label string? :iri ::rdf/iri)
         :ret ::en/env)
 
-(s/fdef en/add-datatype
-        :args (s/cat :env ::en/env :predicate ::rdf/iri ::datatype ::rdf/iri)
+(s/fdef en/set-datatype
+        :args (s/cat :env ::en/env :predicate ::rdf/iri :datatype ::rdf/datatype)
+        :ret ::en/env)
+
+(s/fdef en/set-language
+        :args (s/cat :env ::en/env :predicate ::rdf/iri :language ::rdf/language)
         :ret ::en/env)

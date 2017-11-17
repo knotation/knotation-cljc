@@ -15,10 +15,15 @@
       (assoc-in [::iri-label iri] label)
       (update ::label-seq (fnil conj []) label)))
 
-(defn add-datatype
+(defn set-datatype
   [env predicate datatype]
   (-> env
       (assoc-in [::predicate-datatype predicate] datatype)))
+
+(defn set-language
+  [env predicate language]
+  (-> env
+      (assoc-in [::predicate-language predicate] language)))
 
 (def blank-env {})
 
@@ -33,5 +38,5 @@
       (add-label "type" (rdf/rdf "type"))
       (add-label "link" (rdf/kn "datatype/link"))
       (add-label "default datatype" (rdf/kn "predicate/default-datatype"))
-      (add-datatype (rdf/rdf "type") (rdf/kn "datatype/link"))
-      (add-datatype (rdf/kn "predicate/default-datatype") (rdf/kn "datatype/link"))))
+      (set-datatype (rdf/rdf "type") (rdf/kn "datatype/link"))
+      (set-datatype (rdf/kn "predicate/default-datatype") (rdf/kn "datatype/link"))))

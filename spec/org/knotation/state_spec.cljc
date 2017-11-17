@@ -7,7 +7,8 @@
             [org.knotation.state :as st]))
 
 (s/def ::st/event
-  #{::st/comment
+  #{::st/error
+    ::st/comment
     ::st/space
     ::st/prefix
     ::st/graph-start ::st/graph-end
@@ -20,13 +21,15 @@
 (s/def ::st/line-number number?)
 (s/def ::st/lines (s/coll-of string?))
 (s/def ::st/error-type keyword?)
+(s/def ::st/error-info (s/coll-of any?))
 (s/def ::st/error-message string?)
 
 (s/def ::st/input
   (s/keys :req [::st/format ::st/line-number ::st/lines]
           :opt [::st/source]))
 (s/def ::st/error
-  (s/keys :req [::st/error-type ::st/error-message]))
+  (s/keys :req [::st/error-type ::st/error-message]
+          :opt [::st/error-info]))
 (s/def ::st/output
   (s/keys :req [::st/format ::st/line-number ::st/lines]
           :opt [::st/source]))
@@ -61,9 +64,13 @@
         :args (s/cat :state ::st/state :label string? :iri ::rdf/iri)
         :ret ::st/state)
 
-(s/fdef st/add-datatype
-        :args (s/cat :state ::st/state :predicate ::rdf/iri ::datatype ::rdf/iri)
-        :ret ::st/state)
+(s/fdef st/set-datatype
+        :args (s/cat :state ::st/state :predicate ::rdf/iri :datatype ::rdf/datatype)
+        :ret ::en/env)
+
+(s/fdef st/set-language
+        :args (s/cat :state ::st/state :predicate ::rdf/iri :language ::rdf/language)
+        :ret ::en/env)
 
 (s/fdef st/update-state
         :args (s/cat :state ::st/state :quad ::rdf/quad)

@@ -13,7 +13,7 @@
   (-> st/default-state
       (st/add-prefix "ex" "https://example.com/")
       (st/add-label "homepage" "https://example.com/homepage")
-      (st/add-datatype "https://example.com/homepage" "https://knotation.org/datatype/link")))
+      (st/set-datatype "https://example.com/homepage" "https://knotation.org/datatype/link")))
 
 (def example-columns-1
   [{::tsv/column-number 1

@@ -2,6 +2,25 @@
   (:require [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]))
 
+(def error-messages
+  {:not-a-prefix-line "Not a @prefix line"
+   :not-a-subject-line "Not a subject line"
+   :not-a-statement "Not a statement"
+   :unrecognized-predicate "Unrecognized predicate:"
+   :unrecognized-datatype "Unrecognized datatype:"})
+
+(defn error
+  [state error-type & info]
+  (->> info
+       (map str)
+       (concat [(get error-messages error-type "ERROR:")])
+       (clojure.string/join " ")
+       (assoc
+        {::error-type error-type}
+        ::error-message)
+       (merge (when info {::error-info info}))
+       (assoc state ::event ::error ::error)))
+
 (def example-quad
   {::rdf/graph nil
    ::rdf/subject {::rdf/iri "https://example.com/s"}
@@ -36,9 +55,13 @@
   [{:keys [::en/env] :as state} label iri]
   (assoc state ::en/env (en/add-label env label iri)))
 
-(defn add-datatype
+(defn set-datatype
   [{:keys [::en/env] :as state} predicate datatype]
-  (assoc state ::en/env (en/add-datatype env predicate datatype)))
+  (assoc state ::en/env (en/set-datatype env predicate datatype)))
+
+(defn set-language
+  [{:keys [::en/env] :as state} predicate language]
+  (assoc state ::en/env (en/set-language env predicate language)))
 
 (defn update-state
   [state {:keys [::rdf/subject ::rdf/predicate ::rdf/object] :as quad}]
@@ -49,7 +72,10 @@
     (add-label state (::rdf/lexical object) (::rdf/iri subject))
 
     "https://knotation.org/predicate/default-datatype"
-    (add-datatype state (::rdf/iri subject) (::rdf/iri object))
+    (set-datatype state (::rdf/iri subject) (::rdf/iri object))
+
+    "https://knotation.org/predicate/default-language"
+    (set-language state (::rdf/iri subject) (::rdf/iri object))
 
     state))
 

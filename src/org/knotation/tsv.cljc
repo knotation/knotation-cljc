@@ -47,8 +47,9 @@
     state
     (let [predicate (::rdf/predicate column)
           predicate-iri (::rdf/iri predicate)
+          language (get-in env [::en/predicate-language predicate-iri])
           datatype (get-in env [::en/predicate-datatype predicate-iri])
-          object (ob/string->object env datatype cell)
+          object (ob/string->object env language datatype cell)
           quad
           {::rdf/graph graph
            ::rdf/subject subject

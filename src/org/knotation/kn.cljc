@@ -1,5 +1,6 @@
 (ns org.knotation.kn
-  (:require [org.knotation.util :as util]
+  (:require [clojure.string :as string]
+            [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
@@ -22,11 +23,7 @@
       (if (= mode :data)
         state
         (st/add-prefix state prefix iri)))
-    (assoc
-     state
-     ::st/error
-     {::st/error-type :not-a-prefix-line
-      ::st/error-message "Not a @prefix line"})))
+    (st/error state :not-a-prefix-line)))
 
 (defn read-subject
   [{:keys [::en/env] :as state}]
@@ -40,30 +37,41 @@
      state
      ::rdf/subject (ln/subject->node env subject)
      ::st/event ::st/subject-start)
-    (assoc
-     state
-     ::st/error
-     {::st/error-type :not-a-subject-line
-      ::st/error-message "Not a subject line"})))
+    (st/error state :not-a-subject-line)))
+
+(def match-statement #"([^@:].*?)(; (.*))?: (.*)")
 
 (defn read-statement
   [{:keys [::st/mode ::en/env ::rdf/graph ::rdf/subject] :as state}]
-  (if-let [[_ predicate-link content]
+  (if-let [[_ predicate-name _ datatype-name content]
            (->> state
                 ::st/input
                 ::st/lines
                 first
-                (re-matches #"([^@:].*): (.*)"))]
-    (let [predicate-iri (ln/predicate->iri env predicate-link)]
-      (if (nil? predicate-iri)
-        (assoc
-         state
-         ::st/error
-         {::st/error-type :unrecognized-predicate
-          ::st/error-message (str "Unrecognized predicate: " predicate-link)})
+                (re-matches match-statement))]
+    (let [predicate-iri (ln/predicate->iri env predicate-name)
+          language (when (util/starts-with? datatype-name "@")
+                     (string/replace datatype-name #"^@" ""))
+          datatype (when-not (util/starts-with? datatype-name "@")
+                     datatype-name)
+          datatype-iri (when datatype (ln/datatype->iri env datatype))]
+      (cond
+        (nil? predicate-iri)
+        (st/error state :unrecognized-predicate predicate-name)
+
+        (and datatype (nil? datatype-iri))
+        (st/error state :unrecognized-datatype datatype-name)
+
+        :else
         (let [predicate {::rdf/iri predicate-iri}
-              datatype (get-in env [::en/predicate-datatype predicate-iri])
-              object (ob/string->object env datatype content)
+              object
+              (ob/string->object
+               env
+               (or language
+                   (get-in env [::en/predicate-language predicate-iri]))
+               (or datatype-iri
+                   (get-in env [::en/predicate-datatype predicate-iri]))
+               content)
               quad {::rdf/graph graph
                     ::rdf/subject subject
                     ::rdf/predicate predicate
@@ -71,11 +79,7 @@
               state (assoc state ::st/event ::st/statement)
               state (if (= mode :data) state (st/update-state state quad))]
           (if (= mode :env) state (assoc state ::rdf/quads [quad])))))
-    (assoc
-     state
-     ::st/error
-     {::st/error-type :not-a-statement
-      ::st/error-message "Not a statement"})))
+    (st/error state :not-a-statement)))
 
 (defn read-state
   [state]
@@ -155,12 +159,21 @@
 
 (defn render-quad
   [env {:keys [::rdf/predicate ::rdf/object] :as quad}]
-  [(str
-    (ln/node->name env predicate)
-    ": "
-    (if (::rdf/iri object)
-      (ln/node->name env object)
-      (::rdf/lexical object)))])
+  (let [{:keys [::rdf/iri ::rdf/lexical ::rdf/language ::rdf/datatype]}
+        object
+        piri (::rdf/iri predicate)
+        default-datatype (get-in env [::en/predicate-datatype piri])
+        default-language (get-in env [::en/predicate-language piri])]
+    [(str
+      (ln/node->name env predicate)
+      (cond
+        (and datatype (not= datatype default-datatype))
+        (str "; " (ln/iri->name env datatype))
+
+        (and language (not= language default-language))
+        (str "; @" language))
+      ": "
+      (if iri (ln/iri->name env iri) lexical))]))
 
 (defn output-lines
   [state lines]

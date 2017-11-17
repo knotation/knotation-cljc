@@ -5,23 +5,23 @@
             [org.knotation.link :as ln]))
 
 (defn string->object
-  [env lt-or-dt content]
+  [env language datatype content]
   (cond
-    (nil? lt-or-dt)
-    {::rdf/lexical content}
+    (string? language)
+    {::rdf/lexical content ::rdf/language language}
 
-    (and (string? lt-or-dt)
-         (re-matches #"@\S+" lt-or-dt))
-    {::rdf/lexical content ::rdf/language (string/replace lt-or-dt #"^@" "")}
-
-    (and (string? lt-or-dt)
-         (util/starts-with? lt-or-dt "https://knotation.org/datatype/"))
-    (case lt-or-dt
+    (string? datatype)
+    (case datatype
       "https://knotation.org/datatype/link"
-      (ln/object->node env content))
+      (ln/object->node env content)
+
+      ; TODO: warn on unrecognized Knotation datatype
+      ;(util/starts-with? datatype "https://knotation.org/datatype/")
+
+      {::rdf/lexical content ::rdf/datatype datatype})
 
     :else
-    {::rdf/lexical content ::rdf/datatype lt-or-dt}))
+    {::rdf/lexical content}))
 
 (defn nquads-literal->object
   [content]

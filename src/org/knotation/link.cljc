@@ -66,6 +66,13 @@
       (curie->iri env input)
       (http-url->iri env input)))
 
+(defn datatype->iri
+  [env input]
+  (or (wrapped-iri->iri env input)
+      (label->iri env input)
+      (curie->iri env input)
+      (http-url->iri env input)))
+
 (defn object->node
   [env input]
   (or (when-let [iri (subject->iri env input)]
