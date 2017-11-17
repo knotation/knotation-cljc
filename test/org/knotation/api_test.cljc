@@ -33,20 +33,27 @@ foo: bar")
 
 (def step-3
   [st/blank-state
-   {::st/input {::st/format :kn
+   {::st/event ::st/graph-start
+    ::en/env en/blank-env}
+   {::st/event ::st/prefix
+    ::st/input {::st/format :kn
                 ::st/line-number 1
                 ::st/lines ["@prefix ex: <https://example.com/>"]}
+    ::st/prefix "ex"
     ::en/env env-1}
-   {::st/input {::st/format :kn
+   {::st/event ::st/space
+    ::st/input {::st/format :kn
                 ::st/line-number 2
                 ::st/lines [""]}
     ::en/env env-1}
-   {::st/input {::st/format :kn
+   {::st/event ::st/subject-start
+    ::st/input {::st/format :kn
                 ::st/line-number 3
                 ::st/lines [": ex:s"]}
     ::en/env env-1
     ::rdf/subject {::rdf/iri "https://example.com/s"}}
-   {::st/input {::st/format :kn
+   {::st/event ::st/statement
+    ::st/input {::st/format :kn
                 ::st/line-number 4
                 ::st/lines ["ex:p: o"]}
     ::en/env env-1
@@ -61,7 +68,12 @@ foo: bar")
     ::en/env env-1
     ::rdf/subject {::rdf/iri "https://example.com/s"}
     ::st/error {::st/error-type :unrecognized-predicate
-                ::st/error-message "Unrecognized predicate: foo"}}])
+                ::st/error-message "Unrecognized predicate: foo"}}
+   {::st/event ::st/subject-end
+    ::en/env env-1
+    ::rdf/subject {::rdf/iri "https://example.com/s"}}
+   {::st/event ::st/graph-end
+    ::en/env env-1}])
 
 (deftest test-step-process-inputs
   (is (= step-3
@@ -69,25 +81,28 @@ foo: bar")
   (is (s/valid? ::st/states step-3)))
 
 (def step-4
-  [{::en/env {}
-    ::st/output-line-count 0}
-   {::st/input {::st/format :kn
+  [{::en/env {}}
+   {::st/event ::st/graph-start
+    ::en/env en/blank-env}
+   {::st/event ::st/prefix
+    ::st/input {::st/format :kn
                 ::st/line-number 1
                 ::st/lines ["@prefix ex: <https://example.com/>"]}
     ::en/env env-1
-    ::st/output-line-count 0}
-   {::st/input {::st/format :kn
+    ::st/prefix "ex"}
+   {::st/event ::st/space
+    ::st/input {::st/format :kn
                 ::st/line-number 2
                 ::st/lines [""]}
-    ::en/env env-1
-    ::st/output-line-count 0}
-   {::st/input {::st/format :kn
+    ::en/env env-1}
+   {::st/event ::st/subject-start
+    ::st/input {::st/format :kn
                 ::st/line-number 3
                 ::st/lines [": ex:s"]}
     ::en/env env-1
-    ::rdf/subject {::rdf/iri "https://example.com/s"}
-    ::st/output-line-count 0}
-   {::st/input {::st/format :kn
+    ::rdf/subject {::rdf/iri "https://example.com/s"}}
+   {::st/event ::st/statement
+    ::st/input {::st/format :kn
                 ::st/line-number 4
                 ::st/lines ["ex:p: o"]}
     ::en/env env-1
@@ -96,7 +111,6 @@ foo: bar")
                   ::rdf/subject {::rdf/iri "https://example.com/s"}
                   ::rdf/predicate {::rdf/iri "https://example.com/p"}
                   ::rdf/object {::rdf/lexical "o"}}]
-    ::st/output-line-count 1
     ::st/output {::st/format :nq
                  ::st/line-number 1
                  ::st/lines ["<https://example.com/s> <https://example.com/p> \"o\" ."]}}
@@ -105,9 +119,13 @@ foo: bar")
                 ::st/lines ["foo: bar"]}
     ::en/env env-1
     ::rdf/subject {::rdf/iri "https://example.com/s"}
-    ::st/output-line-count 1
     ::st/error {::st/error-type :unrecognized-predicate
-                ::st/error-message "Unrecognized predicate: foo"}}])
+                ::st/error-message "Unrecognized predicate: foo"}}
+   {::st/event ::st/subject-end
+    ::en/env env-1
+    ::rdf/subject {::rdf/iri "https://example.com/s"}}
+   {::st/event ::st/graph-end
+    ::en/env env-1}])
 
 (deftest test-step-process-output
   (is (= step-4

@@ -26,51 +26,43 @@
       (::rdf/lexical object))
     "</li>")])
 
+(defn output-lines
+  [state lines]
+  (assoc
+   state
+   ::st/output
+   {::st/format :rdfa
+    ::st/lines lines}))
+
 (defn render-state
-  [{:keys [::en/env ::rdf/quads ::st/output-line-count
-           ::rdf/subject ::st/previous-subject]
-    :or {output-line-count 0}
+  [{:keys [::st/mode ::st/event
+           ::en/env ::rdf/quads
+           ::rdf/subject]
     :as state}]
-  (let [lines
-        (concat
-         (when-not (= subject previous-subject)
-           (let [label (ln/node->name env subject)
-                 link (str "<a href=\"" (::rdf/iri subject) "\">" (::rdf/iri subject) "</a>")
-                 lines ["<div>"
-                        (str "  <p>" label "</p>")
-                        (str "  <p>" link "</p>")
-                        "  <ul>"]
-                 closing ["  </ul>" "</div>"]]
-             (cond
-               (nil? previous-subject) lines
-               (nil? subject) closing
-               :else (concat closing lines))))
-         (when quads
-           (mapcat (partial render-quad env) quads)))]
-    (if (> (count lines) 0)
-      (assoc
+  (case (if (= :env mode) nil event)
+    ::st/subject-start
+    (let [label (ln/node->name env subject)
+          link (str "<a href=\"" (::rdf/iri subject) "\">" (::rdf/iri subject) "</a>")]
+      (output-lines
        state
-       ::st/output-line-count (+ output-line-count (count lines))
-       ::st/output
-       {::st/format :rdfa
-        ::st/line-number (inc output-line-count)
-        ::st/lines lines})
-      state)))
+       ["<div>"
+        (str "  <p>" label "</p>")
+        (str "  <p>" link "</p>")
+        "  <ul>"]))
+
+    ::st/subject-end
+    (output-lines state ["  </ul>" "</div>"])
+
+    ::st/statement
+    (output-lines state (mapcat (partial render-quad env) quads))
+
+    state))
 
 (defn render-states
   [states]
-  (->> (concat states [st/blank-state])
-       (reductions
-        (fn [previous-state input-state]
-          (-> input-state
-              (assoc ::st/output-line-count
-                     (get previous-state ::st/output-line-count 0)
-                     ::st/previous-subject
-                     (::rdf/subject previous-state))
-              render-state))
-        st/blank-state)
-       rest))
-       ;butlast))
+  (->> states
+       (map render-state)
+       fm/number-output-lines))
 
 (fm/register!
  {::fm/name :rdfa

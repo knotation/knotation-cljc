@@ -5,6 +5,7 @@
 (def xsd (partial apply str "http://www.w3.org/2001/XMLSchema#"))
 (def owl (partial apply str "http://www.w3.org/2002/07/owl#"))
 (def kn (partial apply str "https://knotation.org/"))
+(def ex (partial apply str "http://example.com/"))
 
 (defn bnode
   [& args]

@@ -48,3 +48,10 @@
     language (str "\"" lexical "\"@" language)
     datatype (str "\"" lexical "\"^^<" datatype ">")
     :else (str "\"" lexical "\"")))
+
+(defn object->turtle-object
+  [env {:keys [::rdf/lexical ::rdf/datatype ::rdf/language] :as node}]
+  (cond
+    language (str "\"" lexical "\"@" language)
+    datatype (str "\"" lexical "\"^^" (ln/iri->curie-or-wrapped-iri env datatype))
+    :else (str "\"" lexical "\"")))

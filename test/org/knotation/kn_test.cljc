@@ -45,20 +45,28 @@
   (test-line
    "@prefix ex: <https://example.com/>"
    st/blank-state
-   #(st/add-prefix % "ex" "https://example.com/"))
+   #(-> %
+        (st/add-prefix "ex" "https://example.com/")
+        (assoc ::st/event ::st/prefix ::st/prefix "ex")))
 
   (test-line
    ": ex:foo"
    (-> st/blank-state
        (st/add-prefix "ex" "https://example.com/"))
-   #(assoc % ::rdf/subject {::rdf/iri "https://example.com/foo"}))
+   #(assoc
+     %
+     ::st/event ::st/subject-start
+     ::rdf/subject {::rdf/iri "https://example.com/foo"}))
 
   (test-line
    "ex:text: Foo"
    (-> st/blank-state
        (st/add-prefix "ex" "https://example.com/")
        (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(assoc % ::rdf/quads [example-quad-ex-text-foo]))
+   #(assoc
+     %
+     ::st/event ::st/statement
+     ::rdf/quads [example-quad-ex-text-foo]))
 
   (test-line
    "label: Foo"
@@ -67,7 +75,8 @@
        (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
    #(-> %
         (st/add-label "Foo" "https://example.com/foo")
-        (assoc ::rdf/quads [example-quad-rdfs-label-foo])))
+        (assoc ::st/event ::st/statement
+               ::rdf/quads [example-quad-rdfs-label-foo])))
 
   (test-line
    "homepage: https://example.com"
@@ -75,7 +84,10 @@
        (st/add-label "homepage" "https://example.com/homepage")
        (st/add-datatype "https://example.com/homepage" "https://knotation.org/datatype/link")
        (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(assoc % ::rdf/quads [example-quad-homepage]))
+   #(assoc
+     %
+     ::st/event ::st/statement
+     ::rdf/quads [example-quad-homepage]))
 
   (test-line
    "default datatype: https://knotation.org/datatype/link"
@@ -83,4 +95,71 @@
        (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
    #(-> %
         (st/add-datatype "https://example.com/foo" "https://knotation.org/datatype/link")
-        (assoc ::rdf/quads [example-quad-default-datatype]))))
+        (assoc ::st/event ::st/statement
+               ::rdf/quads [example-quad-default-datatype]))))
+
+(def base-1 st/blank-state)
+(def base-2
+  (-> st/blank-state
+      (st/add-prefix "ex" (rdf/ex))))
+
+(def lines
+  ["@prefix ex: <http://example.com/>"
+   ""
+   ": ex:s"
+   "ex:p: o"])
+
+(def states
+  [(assoc base-1
+          ::st/event ::st/graph-start)
+   (assoc base-2
+          ::st/event ::st/prefix
+          ::st/input
+          {::st/format :kn
+           ::st/line-number 1
+           ::st/lines ["@prefix ex: <http://example.com/>"]}
+          ::st/prefix "ex")
+   (assoc base-2
+          ::st/event ::st/space
+          ::st/input
+          {::st/format :kn
+           ::st/line-number 2
+           ::st/lines [""]})
+   (assoc base-2
+          ::st/event ::st/subject-start
+          ::st/input
+          {::st/format :kn
+           ::st/line-number 3
+           ::st/lines [": ex:s"]}
+          ::rdf/subject {::rdf/iri (rdf/ex "s")})
+   (assoc base-2
+          ::st/event ::st/statement
+          ::st/input
+          {::st/format :kn
+           ::st/line-number 4
+           ::st/lines ["ex:p: o"]}
+          ::rdf/subject {::rdf/iri (rdf/ex "s")}
+          ::rdf/quads
+          [{::rdf/graph nil
+            ::rdf/subject {::rdf/iri (rdf/ex "s")}
+            ::rdf/predicate {::rdf/iri (rdf/ex "p")}
+            ::rdf/object {::rdf/lexical "o"}}])
+   (assoc base-2
+          ::st/event ::st/subject-end
+          ::rdf/subject {::rdf/iri (rdf/ex "s")})
+   (assoc base-2
+          ::st/event ::st/graph-end)])
+
+(deftest test-states
+  (is (s/valid? ::st/states states)))
+
+(deftest test-read-lines
+  (is (= states
+         (kn/read-lines st/blank-state lines))))
+
+(deftest test-render-lines
+  (is (= lines
+         (->> states
+              kn/render-states
+              (map ::st/output)
+              (mapcat ::st/lines)))))

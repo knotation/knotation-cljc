@@ -1,5 +1,6 @@
 (ns org.knotation.nq
   (:require [clojure.string :as string]
+            [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
@@ -7,14 +8,19 @@
             [org.knotation.object :as ob]
             [org.knotation.format :as fm]))
 
+(defn split-quad
+  [line]
+  (if-let [[_ s p o g] (re-matches #"(\S+) (\S+) (.*?) (\S+)?\s*." line)]
+    {::line line ::g g ::s s ::p p ::o o}
+    (throw (Exception. (str "Could not parse quad: " line)))))
+
 (defn read-quad
   [line]
   (if-let [[_ s p o g] (re-matches #"(\S+) (\S+) (.*?) (\S+)?\s*." line)]
     {::rdf/graph (when g {::rdf/iri (ln/wrapped-iri->iri nil g)})
      ::rdf/subject (ln/wrapped-iri-or-bnode->node s)
      ::rdf/predicate {::rdf/iri (ln/wrapped-iri->iri nil p)}
-     ::rdf/object (ob/nquads-object->object o)}
-    (throw (Exception. (str "Could not parse quad: " line)))))
+     ::rdf/object (ob/nquads-object->object o)}))
 
 (defn read-state
   [{:keys [::st/mode ::st/input] :as state}]
@@ -26,26 +32,69 @@
        (-> state
            (assoc ::rdf/subject subject)
            (st/update-state quad)))
+     ::st/event ::st/statement
      ::rdf/quads (if (= mode :env) [] [quad]))))
 
-(defn read-states
-  [{:keys [::st/mode] :as state} lines]
-  (->> lines
+(defn make-state
+  [{:keys [::st/mode ::en/env ::rdf/graph ::rdf/subject] :as previous}
+   {:keys [::line-number ::line] :as quad}]
+  (merge
+   {::en/env env}
+   (when mode
+     {::st/mode mode})
+   (when graph
+     {::rdf/graph graph})
+   (when subject
+     {::rdf/subject subject})
+   (when quad
+     {::st/input
+      {::st/format :nq
+       ::st/line-number line-number
+       ::st/lines [line]}})))
+
+(defn read-subject
+  [states quads]
+  (->> quads
+       (util/surround ::st/subject-start ::st/subject-end)
        (reductions
-        (fn [previous current]
-          (read-state
-           (merge
-            {::st/input
-             {::st/format :kn
-              ::st/line-number 1
-              ::st/lines [current]}
-             ::en/env (::en/env previous)}
-            (when mode
-              {::st/mode mode})
-            (when-let [s (::rdf/subject previous)]
-              {::rdf/subject s}))))
-        state)
+        (fn [previous quad]
+          (if (keyword? quad)
+            (assoc (make-state previous nil) ::st/event quad)
+            (read-state (make-state previous quad))))
+        (assoc (last states) ::rdf/subject (->> quads first ::s (ln/subject->node nil))))
        rest))
+
+(defn read-graph
+  [states quads]
+  (->> quads
+       (partition-by ::s)
+       (util/surround ::st/graph-start ::st/graph-end)
+       (reductions
+        (fn [subject-states quads]
+          (if (keyword? quads)
+            (-> subject-states
+                last
+                (make-state nil)
+                (dissoc ::rdf/subject)
+                (assoc ::st/event quads)
+                vector)
+            (read-subject subject-states quads)))
+        [(merge
+          (dissoc (last states) ::rdf/graph ::rdf/subject)
+          (when-let [graph (->> quads first ::g (ln/graph->node nil))]
+            {::rdf/graph graph}))])
+       rest
+       (mapcat identity)))
+
+(defn read-lines
+  [state lines]
+  (->> lines
+       (map-indexed vector)
+       (map (fn [[i q]] (assoc (split-quad q) ::line-number (inc i))))
+       (partition-by ::g)
+       (reductions read-graph [state])
+       rest
+       (mapcat identity)))
 
 (defn render-node
   [{:keys [::rdf/iri ::rdf/bnode ::rdf/lexical] :as node}]
@@ -64,33 +113,25 @@
    " ."))
 
 (defn render-state
-  [{:keys [::rdf/quads ::st/output-line-count]
-    :or {output-line-count 0}
-    :as state}]
-  (if quads
+  [{:keys [::st/mode ::st/event ::rdf/quads] :as state}]
+  (case (if (= :env mode) nil event)
+    ::st/statement
     (assoc
      state
-     ::st/output-line-count (+ output-line-count (count quads))
      ::st/output
      {::st/format :nq
-      ::st/line-number (inc output-line-count)
       ::st/lines (map render-quad quads)})
+
     state))
 
 (defn render-states
   [states]
-  (rest
-   (reductions
-    (fn [previous-state input-state]
-      (-> input-state
-          (assoc ::st/output-line-count
-                 (get previous-state ::st/output-line-count 0))
-          render-state))
-    st/blank-state
-    states)))
+  (->> states
+       (map render-state)
+       fm/number-output-lines))
 
 (fm/register!
  {::fm/name :nq
   ::fm/description "N-Quads format"
-  ::fm/read read-states
+  ::fm/read read-lines
   ::fm/render render-states})

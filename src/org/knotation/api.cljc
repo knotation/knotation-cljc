@@ -5,10 +5,11 @@
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
             [org.knotation.format :as fm]
-            [org.knotation.kn :as kn]
-            [org.knotation.tsv :as tsv]
-            [org.knotation.nq :as nq]
-            [org.knotation.rdfa :as rdfa]))
+            [org.knotation.kn]
+            [org.knotation.tsv]
+            [org.knotation.nq]
+            [org.knotation.ttl]
+            [org.knotation.rdfa]))
 
 ;; The API works in terms of operations.
 ;; Each operation is converted into a function

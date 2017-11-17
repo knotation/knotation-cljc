@@ -6,6 +6,14 @@
             [org.knotation.environment-spec]
             [org.knotation.state :as st]))
 
+(s/def ::st/event
+  #{::st/comment
+    ::st/space
+    ::st/prefix
+    ::st/graph-start ::st/graph-end
+    ::st/subject-start ::st/subject-end
+    ::st/statement
+    ::st/header})
 (s/def ::st/mode keyword?)
 (s/def ::st/format keyword?)
 (s/def ::st/source string?)

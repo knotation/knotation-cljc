@@ -2,8 +2,8 @@
   (:require [clojure.spec.alpha :as s]
             [org.knotation.rdf :as rdf]))
 
-; TODO: generalize IRI
-(s/def ::rdf/iri (s/and string?  #(re-matches #"https?://\S+" %)))
+; TODO: tighten IRI
+(s/def ::rdf/iri (s/and string?  #(re-matches #"\S+" %)))
 (s/def ::rdf/bnode (s/and string? #(re-matches #"_:\S+" %)))
 (s/def ::rdf/lexical string?)
 (s/def ::rdf/language-tag (s/and string? #(re-matches #"@\S+" %)))

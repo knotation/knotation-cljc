@@ -6,6 +6,23 @@
   (and (>= (count target) (count prefix))
        (every? identity (map = target prefix))))
 
+(defn surround
+  [before after xs]
+  (concat [before] xs [after]))
+
+(defn append
+  [after xs]
+  (concat xs [after]))
+
+; See https://stackoverflow.com/a/42882784
+(defn partition-with
+  "Like split-with for multiple splits."
+  [f coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (let [run (cons (first s) (take-while (complement f) (next s)))]
+       (cons run (partition-with f (seq (drop (count run) s))))))))
+
 (defn throw-exception
   "Given a sequence of arguments,
     throw a cross-platform exception."

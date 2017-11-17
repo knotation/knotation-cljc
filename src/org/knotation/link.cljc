@@ -44,6 +44,14 @@
       (curie->iri env input)
       (http-url->iri env input)))
 
+(defn graph->node
+  [env input]
+  (when input
+    (or (when-let [iri (subject->iri env input)]
+          {::rdf/iri iri})
+        (when (re-matches #"_:\S+" input)
+          {::rdf/bnode input}))))
+
 (defn subject->node
   [env input]
   (or (when-let [iri (subject->iri env input)]
@@ -87,6 +95,11 @@
 (defn iri->wrapped-iri
   [env iri]
   (str "<" iri ">"))
+
+(defn iri->curie-or-wrapped-iri
+  [env iri]
+  (or (iri->curie env iri)
+      (iri->wrapped-iri env iri)))
 
 (defn iri->name
   [env iri]

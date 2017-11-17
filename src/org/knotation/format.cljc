@@ -1,5 +1,6 @@
 (ns org.knotation.format
-  (:require [org.knotation.state :as st]))
+  (:require [org.knotation.rdf :as rdf]
+            [org.knotation.state :as st]))
 
 (def formats (atom {}))
 
@@ -22,9 +23,10 @@
       (fn [states]
         (->> lines
              (func
-              (merge
-               (last states)
-               (when mode {::st/mode mode})))
+              (-> states
+                  last
+                  (dissoc ::st/mode ::rdf/graph ::rdf/subject)
+                  (merge (when mode {::st/mode mode}))))
              (concat states)))
       (fn [states]
         (concat
@@ -62,3 +64,18 @@
          ::st/error-message
          (str "Unknown render format: " format)})
       states))))
+
+(defn number-output-lines
+  [states]
+  (->> states
+       (reductions
+        (fn [{:keys [::line-number] :as previous} current]
+          (let [lines (get-in current [::st/output ::st/lines] [])
+                new-line-number (+ line-number (count lines))
+                current (assoc current ::line-number new-line-number)]
+            (if (::st/output current)
+              (assoc-in current [::st/output ::st/line-number] line-number)
+              current)))
+        {::line-number 1})
+       rest
+       (map #(dissoc % ::line-number))))
