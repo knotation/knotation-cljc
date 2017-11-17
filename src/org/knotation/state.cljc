@@ -75,7 +75,7 @@
     (set-datatype state (::rdf/iri subject) (::rdf/iri object))
 
     "https://knotation.org/predicate/default-language"
-    (set-language state (::rdf/iri subject) (::rdf/iri object))
+    (set-language state (::rdf/iri subject) (::rdf/lexical object))
 
     state))
 

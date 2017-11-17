@@ -36,12 +36,28 @@
   {::operation-type :render
    ::st/format :nq})
 
-(defn kn
-  [content]
+(defn input
+  [format content]
   {::operation-type :read
-   ::st/format :kn
+   ::st/format format
    ::st/line-number 1
    ::st/lines (clojure.string/split-lines content)})
+
+(defn env
+  [format content]
+  {::operation-type :read-env
+   ::st/format format
+   ::st/line-number 1
+   ::st/lines (clojure.string/split-lines content)})
+
+(defn output
+  [format]
+  {::operation-type :render
+   ::st/format format})
+
+(def prefixes {::operation-type :prefixes})
+
+(def space {::operation-type :space})
 
 (defn take-while+
   [pred coll]
@@ -62,6 +78,20 @@
     (= operation-type :reset-env)
     (fn [states]
       (map #(assoc % ::en/env en/blank-env ::en/env-before en/blank-env) states))
+
+    (= operation-type :space)
+    (fn [states]
+      (concat
+       states
+       [{::st/event ::st/space
+         ::en/env (-> states last ::en/env)}]))
+
+    (= operation-type :prefixes)
+    (fn [states]
+      (for [{:keys [::st/event] :as state} states]
+        (if (= ::st/prefix event)
+          (dissoc state ::st/mode)
+          state)))
 
     (= operation-type :stop-on-error)
     (fn [states]
@@ -99,7 +129,7 @@
 (defn content
   [states]
   (clojure.string/join
-   \n
+   "\n"
    (reduce
     (fn [lines state]
       (concat lines (-> state ::st/output ::st/lines)))
@@ -109,7 +139,7 @@
 (defn errors
   [states]
   (clojure.string/join
-   \n
+   "\n"
    (reduce
     (fn [lines state]
       (if-let [message (-> state ::st/error ::st/error-message)]

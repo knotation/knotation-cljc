@@ -77,7 +77,9 @@
                     ::rdf/predicate predicate
                     ::rdf/object object}
               state (assoc state ::st/event ::st/statement)
-              state (if (= mode :data) state (st/update-state state quad))]
+              state (if (= mode :data)
+                      state
+                      (st/update-state state quad))]
           (if (= mode :env) state (assoc state ::rdf/quads [quad])))))
     (st/error state :not-a-statement)))
 

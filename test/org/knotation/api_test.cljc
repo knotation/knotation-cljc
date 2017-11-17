@@ -26,7 +26,7 @@ foo: bar")
 
 (deftest test-kn
   (is (= step-2
-         (api/kn step-1)))
+         (api/input :kn step-1)))
   (is (s/valid? ::st/input step-2)))
 
 (def env-1 (en/add-prefix en/blank-env "ex" "https://example.com/"))
