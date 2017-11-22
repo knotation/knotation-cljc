@@ -5,6 +5,8 @@
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
+            [org.knotation.format :as fm]
+            [org.knotation.omn :as omn]
             [org.knotation.ttl :as ttl]))
 
 (stest/instrument)

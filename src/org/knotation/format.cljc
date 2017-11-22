@@ -2,7 +2,7 @@
   (:require [org.knotation.rdf :as rdf]
             [org.knotation.state :as st]))
 
-(def formats (atom {}))
+(defonce formats (atom {}))
 
 (def example-formats
   {"https://knotation.org/format/knotation"
@@ -64,6 +64,21 @@
          ::st/error-message
          (str "Unknown render format: " format)})
       states))))
+
+(defn sequential-blank-nodes
+  [states]
+  (->> states
+       (reductions
+        (fn [{:keys [::rdf/coll] :as previous} {:keys [::rdf/quads] :as current}]
+          (if quads
+            (let [results (reductions rdf/replace-blank-nodes coll quads)
+                  coll (last results)
+                  quads (map ::rdf/quad (rest results))]
+              (assoc current ::rdf/coll coll ::rdf/quads quads))
+            (assoc current ::rdf/coll coll)))
+        {::rdf/coll {::rdf/counter 1}})
+       rest
+       (map #(dissoc % ::rdf/coll))))
 
 (defn number-output-lines
   [states]

@@ -4,7 +4,8 @@
   :license {:name "BSD 3-Clause License"
             :url "http://opensource.org/licenses/BSD-3-Clause"}
   :plugins [[lein-cljsbuild "1.1.6"]]
-  :dependencies [[org.clojure/clojure "1.9.0-RC1"]]
+  :dependencies [[org.clojure/clojure "1.9.0-RC1"]
+                 [instaparse "1.4.8"]]
   :cljsbuild {:builds [{:source-paths ["src/org/knotation"]
                         :compiler {:output-to "resources/knotation.js"
                                    :optimizations :whitespace

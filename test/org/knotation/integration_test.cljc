@@ -124,19 +124,20 @@ ex:123
 
 (def ex-4-env
   "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-@prefix kn: <https://knotation.org/>
+@prefix knd: <https://knotation.org/datatype/>
+@prefix knp: <https://knotation.org/predicate/>
 @prefix ex: <https://example.com/>
 
 : rdfs:label
 rdfs:label: label
 
-: kn:datatype/link
+: knd:link
 label: link
 
-: kn:predicate/default-language
+: knp:default-language
 label: default language
 
-: kn:predicate/default-datatype
+: knp:default-datatype
 label: default datatype
 default datatype; link: link
 
@@ -159,7 +160,8 @@ has wingspan: 22")
 
 (def ex-4-ttl
   "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix kn: <https://knotation.org/> .
+@prefix knd: <https://knotation.org/datatype/> .
+@prefix knp: <https://knotation.org/predicate/> .
 @prefix ex: <https://example.com/> .
 
 ex:123
@@ -179,16 +181,17 @@ ex:123
 
 (def ex-5-env
   "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-@prefix kn: <https://knotation.org/>
+@prefix knd: <https://knotation.org/datatype/>
+@prefix knp: <https://knotation.org/predicate/>
 @prefix ex: <https://example.com/>
 
 : rdfs:label
 rdfs:label: label
 
-: kn:datatype/link
+: knd:link
 rdfs:label: link
 
-: kn:predicate/default-datatype
+: knp:default-datatype
 label: default datatype
 default datatype; link: link
 
@@ -221,7 +224,8 @@ ex:no-default; link: ex:curie-object")
 
 (def ex-5-ttl
   "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix kn: <https://knotation.org/> .
+@prefix knd: <https://knotation.org/datatype/> .
+@prefix knp: <https://knotation.org/predicate/> .
 @prefix ex: <https://example.com/> .
 
 ex:labelled-object
@@ -243,3 +247,84 @@ ex:some-subject
                (api/output :ttl)]
               api/run-operations
               api/content))))
+
+(def ex-6-env
+  "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+@prefix owl: <http://www.w3.org/2002/07/owl#>
+@prefix obo: <http://purl.obolibrary.org/obo/>
+@prefix knd: <https://knotation.org/datatype/>
+@prefix knp: <https://knotation.org/predicate/>
+@prefix ex: <https://example.com/>
+
+: rdfs:label
+rdfs:label: label
+
+: knd:link
+label: link
+
+: knd:omn
+label: OWL Manchester Syntax
+
+: knp:default-datatype
+label: default datatype
+default datatype; link: link
+
+: rdf:type
+label: type
+default datatype: link
+
+: rdfs:subClassOf
+label: subclass of
+default datatype: OWL Manchester Syntax
+
+: obo:RO_0002162
+label: in taxon
+
+: obo:NCBITaxon_56313
+label: Tyto alba
+
+: obo:UBERON_0000033
+label: head")
+
+(def ex-6-kn
+  ": ex:owl-head
+label: owl head
+type: owl:Class
+subclass of: head and ('in taxon' some 'Tyto alba')")
+
+(def ex-6-ttl
+  "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix knd: <https://knotation.org/datatype/> .
+@prefix knp: <https://knotation.org/predicate/> .
+@prefix ex: <https://example.com/> .
+
+ex:owl-head
+  rdfs:label \"owl head\" ;
+  rdf:type owl:Class ;
+  rdfs:subClassOf [
+    rdf:type owl:Class ;
+    owl:intersectionOf (
+      obo:UBERON_0000033
+      [
+        rdf:type owl:Restriction ;
+        owl:onProperty obo:RO_0002162 ;
+        owl:someValuesFrom obo:NCBITaxon_56313 ;
+      ]
+    ) ;
+  ] .
+")
+
+(deftest ex-6
+  (is (= (string/split-lines ex-6-ttl)
+         (->> [(api/env :kn ex-6-env)
+               api/prefixes
+               api/space
+               (api/input :kn ex-6-kn)
+               (api/output :ttl)]
+              api/run-operations
+              api/content
+              string/split-lines))))

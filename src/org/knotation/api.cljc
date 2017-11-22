@@ -97,6 +97,9 @@
     (fn [states]
       (take-while+ #(not (::st/error %)) states))
 
+    (= operation-type :sequential-blank-nodes)
+    fm/sequential-blank-nodes
+
     (= operation-type :read)
     (fm/read-function format lines)
 

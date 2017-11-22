@@ -116,11 +116,11 @@
   [{:keys [::st/mode ::st/event ::rdf/quads] :as state}]
   (case (if (= :env mode) nil event)
     ::st/statement
-    (assoc
-     state
-     ::st/output
-     {::st/format :nq
-      ::st/lines (map render-quad quads)})
+    (->> quads
+         (mapcat rdf/unbranch-quad)
+         (map render-quad)
+         (assoc {::st/format :nq} ::st/lines)
+         (assoc state ::st/output))
 
     state))
 

@@ -6,7 +6,8 @@
             [org.knotation.state :as st]
             [org.knotation.link :as ln]
             [org.knotation.object :as ob]
-            [org.knotation.format :as fm]))
+            [org.knotation.format :as fm]
+            [org.knotation.omn :as omn]))
 
 (defn render-node
   [env {:keys [::rdf/iri ::rdf/bnode ::rdf/lexical] :as node}]
@@ -17,10 +18,39 @@
 
 (defn render-quad
   [env {:keys [::rdf/predicate ::rdf/object] :as quad}]
-  (->> [predicate object]
-       (remove nil?)
-       (map (partial render-node env))
-       (string/join " ")))
+  (cond
+    (->> object ::rdf/pairs first ::rdf/predicate ::rdf/iri (= (rdf/rdf "first")))
+    (concat
+     [(str (render-node env predicate) " (")]
+     (->> object
+          ::rdf/pairs
+          omn/branch->list
+          (mapcat
+           (fn [{:keys [::rdf/pairs] :as o}]
+             (if pairs
+               (->> pairs
+                    (mapcat (partial render-quad env))
+                    (map (partial str "  "))
+                    (util/surround "[" "]"))
+               [(render-node env o)])))
+          (map (partial str "  ")))
+     [") ;"])
+
+    (::rdf/pairs object)
+    (concat
+     [(str (render-node env predicate) " [")]
+     (->> object
+          ::rdf/pairs
+          (mapcat (partial render-quad env))
+          (map (partial str "  ")))
+     ["] ;"])
+
+    :else
+    [(->> [predicate object]
+          (remove nil?)
+          (map (partial render-node env))
+          (util/append ";")
+          (string/join " "))]))
 
 (defn output-lines
   [state lines]
@@ -48,8 +78,8 @@
 
     ::st/statement
     (->> quads
-         (map (partial render-quad env))
-         (map #(str "  " % " ;"))
+         (mapcat (partial render-quad env))
+         (map (partial str "  "))
          (output-lines state))
 
     state))

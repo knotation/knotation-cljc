@@ -3,7 +3,10 @@
             [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as stest]
             [org.knotation.rdf :as rdf]
+            [org.knotation.environment :as en]
             [org.knotation.state :as st]
+            [org.knotation.format :as fm]
+            [org.knotation.omn :as omn]
             [org.knotation.nq :as nq]))
 
 (stest/instrument)
@@ -133,3 +136,39 @@
               nq/render-states
               (map ::st/output)
               (mapcat ::st/lines)))))
+
+(def ex-subclass
+  "<http://example.com/car> <http://www.w3.org/2000/01/rdf-schema#subClassOf> _:1 .
+_:1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction> .
+_:1 <http://www.w3.org/2002/07/owl#onProperty> <http://purl.obolibrary.org/obo/BFO_0000050> .
+_:1 <http://www.w3.org/2002/07/owl#someValuesFrom> _:2 .
+_:2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .
+_:2 <http://www.w3.org/2002/07/owl#intersectionOf> _:3 .
+_:3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <http://example.com/engine> .
+_:3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:4 .
+_:4 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> _:5 .
+_:4 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:5 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction> .
+_:5 <http://www.w3.org/2002/07/owl#onProperty> <http://purl.obolibrary.org/obo/BFO_0000050> .
+_:5 <http://www.w3.org/2002/07/owl#someValuesFrom> <http://example.com/wheel> .")
+
+(def env-1
+  (-> en/blank-env
+      (en/add-label "has part" "http://purl.obolibrary.org/obo/BFO_0000050")
+      (en/add-label "car" (rdf/ex "car"))
+      (en/add-label "engine" (rdf/ex "engine"))
+      (en/add-label "wheel" (rdf/ex "wheel"))))
+
+(deftest test-render-branch
+  (->> "'has part' some (engine and 'has part' some wheel)"
+       omn/parse-class-expression
+       (omn/convert-class-expression env-1)
+       (merge
+        {::rdf/subject {::rdf/iri (rdf/ex "car")}
+         ::rdf/predicate {::rdf/iri (rdf/rdfs "subClassOf")}})
+       rdf/unbranch-quad
+       rdf/sequential-blank-nodes
+       (map (partial println "->>"))))
+       ;(map nq/render-quad)))
+       ;(= (clojure.string/split-lines ex-subclass))
+       ;is))

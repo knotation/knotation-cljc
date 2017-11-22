@@ -44,6 +44,8 @@
          ("-d" "--data") {::flag :data ::args 1}
          ("-f" "--format") {::flag :format ::args 1}
          ("-s" "--sort") {::flag :sort ::args 0}
+         ("--sbn" "--sequential-blank-nodes")
+         {::flag :sequential-blank-nodes ::args 0}
          ("-E" "--reset-env") {::flag :reset-env ::args 0}
          ("--dump") {::flag :dump ::args 0}
          (throw (Exception. (str "Unknown option: " arg))))
@@ -98,6 +100,9 @@
 
     :sort
     {::api/operation-type :sort}
+
+    :sequential-blank-nodes
+    {::api/operation-type :sequential-blank-nodes}
 
     :reset-env
     {::api/operation-type :reset-env}

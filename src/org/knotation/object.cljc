@@ -2,7 +2,8 @@
   (:require [clojure.string :as string]
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
-            [org.knotation.link :as ln]))
+            [org.knotation.link :as ln]
+            [org.knotation.omn :as omn]))
 
 (defn string->object
   [env language datatype content]
@@ -14,6 +15,9 @@
     (case datatype
       "https://knotation.org/datatype/link"
       (ln/object->node env content)
+
+      "https://knotation.org/datatype/omn"
+      (omn/read-class-expression env content)
 
       ; TODO: warn on unrecognized Knotation datatype
       ;(util/starts-with? datatype "https://knotation.org/datatype/")
