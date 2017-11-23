@@ -35,6 +35,13 @@
      {::rdf/predicate {::rdf/iri "p"}
       ::rdf/object {::rdf/literal "1"}}]}})
 
+(deftest test-branch
+  (is (= (->> ex-branched
+              vector
+              rdf/sequential-blank-nodes)
+         (->> ex-flat
+              rdf/branch-quads))))
+
 (deftest test-unbranch
   (is (= ex-flat
          (->> ex-branched

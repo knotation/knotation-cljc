@@ -19,6 +19,18 @@
   [lexical]
   {::lexical lexical})
 
+(defn blank?
+  [{:keys [::bnode] :as node}]
+  (boolean bnode))
+
+(defn blank-object?
+  [{:keys [::object] :as quad}]
+  (blank? object))
+
+(defn any-blank?
+  [{:keys [::subject ::object] :as quad}]
+  (or (blank? subject) (blank? object)))
+
 (defn random-blank-node
   []
   (bnode
@@ -52,7 +64,13 @@
         subject (::node coll)
         coll (replace-blank-node coll object)
         object (::node coll)]
-    (assoc coll ::quad (assoc quad ::subject subject ::object object))))
+    (assoc
+     coll
+     ::quad
+     (merge
+      quad
+      (when subject {::subject subject})
+      (when object {::object object})))))
 
 (defn sequential-blank-nodes
   [quads]
@@ -72,6 +90,47 @@
   (->> pairs
        (map #(assoc % ::subject (dissoc object ::pairs)))
        (assoc object ::pairs)))
+
+(defn branch-object
+  [object quads]
+  (let [{pairs true quads false}
+        (group-by #(= object (::subject %)) quads)
+        [pairs quads]
+        (reduce
+         (fn [[pairs quads] {:keys [::predicate ::object] :as pair}]
+           (if (blank? object)
+             (let [[object quads] (branch-object object quads)
+                   pair (assoc pair ::object object)]
+               [(conj pairs pair) quads])
+             [(conj pairs pair) quads]))
+         [[] quads]
+         pairs)]
+    [(->> pairs
+          (map #(dissoc % ::subject))
+          (assoc object ::pairs))
+     quads]))
+
+(defn branch-quads
+  [quads]
+  (loop [results []
+         quads quads]
+    (let [{:keys [::subject ::object] :as quad} (first quads)
+          quads (rest quads)]
+      (cond
+        (nil? quad)
+        results
+
+        (not (any-blank? quad))
+        (recur (conj results quad) quads)
+
+        (blank? object)
+        (let [[object quads] (branch-object object quads)]
+          (recur
+           (conj results (assoc quad ::object object))
+           quads))
+
+        :else
+        (recur (conj results quad) quads)))))
 
 (defn unbranch-quad
   [quad]

@@ -137,6 +137,16 @@
               (map ::st/output)
               (mapcat ::st/lines)))))
 
+(def env-1
+  (-> en/blank-env
+      (en/add-label "has part" "http://purl.obolibrary.org/obo/BFO_0000050")
+      (en/add-label "car" (rdf/ex "car"))
+      (en/add-label "engine" (rdf/ex "engine"))
+      (en/add-label "wheel" (rdf/ex "wheel"))))
+
+(def ex-manchester
+  "'has part' some (engine and 'has part' some wheel)")
+
 (def ex-subclass
   "<http://example.com/car> <http://www.w3.org/2000/01/rdf-schema#subClassOf> _:1 .
 _:1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction> .
@@ -152,23 +162,26 @@ _:5 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07
 _:5 <http://www.w3.org/2002/07/owl#onProperty> <http://purl.obolibrary.org/obo/BFO_0000050> .
 _:5 <http://www.w3.org/2002/07/owl#someValuesFrom> <http://example.com/wheel> .")
 
-(def env-1
-  (-> en/blank-env
-      (en/add-label "has part" "http://purl.obolibrary.org/obo/BFO_0000050")
-      (en/add-label "car" (rdf/ex "car"))
-      (en/add-label "engine" (rdf/ex "engine"))
-      (en/add-label "wheel" (rdf/ex "wheel"))))
-
 (deftest test-render-branch
-  (->> "'has part' some (engine and 'has part' some wheel)"
+  (->> ex-manchester
        omn/parse-class-expression
        (omn/convert-class-expression env-1)
-       (merge
+       (assoc
         {::rdf/subject {::rdf/iri (rdf/ex "car")}
-         ::rdf/predicate {::rdf/iri (rdf/rdfs "subClassOf")}})
+         ::rdf/predicate {::rdf/iri (rdf/rdfs "subClassOf")}}
+        ::rdf/object)
        rdf/unbranch-quad
        rdf/sequential-blank-nodes
-       (map (partial println "->>"))))
-       ;(map nq/render-quad)))
-       ;(= (clojure.string/split-lines ex-subclass))
-       ;is))
+       (map nq/render-quad)
+       (= (clojure.string/split-lines ex-subclass))
+       is)
+  (->> ex-subclass
+       clojure.string/split-lines
+       (map nq/read-quad)
+       rdf/branch-quads
+       first
+       ::rdf/object
+       (omn/render-class-expression env-1)
+       omn/write-class-expression
+       (= ex-manchester)
+       is))
