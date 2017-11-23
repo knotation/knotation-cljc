@@ -77,27 +77,27 @@
 
 (deftest test-branch
   (is (= ex-sequential-branched
-         (rdf/branch-quads ex-flat))))
-;  (doseq [permutation (->> ex-flat permutations (filter good-permutation))]
-;    (is (= ex-sequential-branched
-;           (rdf/branch-quads permutation))
-;        "Handle scrambled order")
-;  (is (= (concat [ex-named] ex-sequential-branched)
-;         (rdf/branch-quads (concat [ex-named] ex-flat)))
-;      "Order of named quads is preserved")
-;  (is (= (concat ex-sequential-branched [ex-named])
-;         (rdf/branch-quads (concat ex-flat [ex-named])))
-;      "Order of named quads is preserved")
-;  (doseq [permutation (->> (conj ex-flat ex-blank)
-;                           permutations
-;                           (filter good-permutation))]
-;    (is (= (concat ex-sequential-branched [ex-blank])
-;           (rdf/branch-quads permutation))
-;        "Quads with blank subjects drop to bottom."))
-;  (is (= (concat ex-sequential-branched [ex-blank ex-blank-2])
-;         (rdf/branch-quads
-;          (concat [ex-blank] (take 2 ex-flat) [ex-blank-2] (drop 2 ex-flat))))
-;      "Quads with blank subjects drop to bottom in order."))
+         (rdf/branch-quads ex-flat)))
+  (doseq [permutation (->> ex-flat permutations (filter good-permutation))]
+    (is (= ex-sequential-branched
+           (rdf/branch-quads permutation))
+        "Handle scrambled order"))
+  (is (= (concat [ex-named] ex-sequential-branched)
+         (rdf/branch-quads (concat [ex-named] ex-flat)))
+      "Order of named quads is preserved")
+  (is (= (concat ex-sequential-branched [ex-named])
+         (rdf/branch-quads (concat ex-flat [ex-named])))
+      "Order of named quads is preserved")
+  (doseq [permutation (->> (conj ex-flat ex-blank)
+                           permutations
+                           (filter good-permutation))]
+    (is (= (concat ex-sequential-branched [ex-blank])
+           (rdf/branch-quads permutation))
+        "Quads with blank subjects drop to bottom."))
+  (is (= (concat ex-sequential-branched [ex-blank ex-blank-2])
+         (rdf/branch-quads
+          (concat [ex-blank] (take 2 ex-flat) [ex-blank-2] (drop 2 ex-flat))))
+      "Quads with blank subjects drop to bottom in order."))
 
 (deftest test-unbranch
   (is (= ex-flat
