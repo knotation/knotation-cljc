@@ -91,6 +91,8 @@
        (map #(assoc % ::subject (dissoc object ::pairs)))
        (assoc object ::pairs)))
 
+; TODO: This uses naive recursion.
+; Using zippers or something would be a better idea.
 (defn branch-object
   [object quads]
   (let [{pairs true quads false}
@@ -112,30 +114,23 @@
 
 (defn branch-quads
   [quads]
-  (loop [results []
-         delayed []
-         quads quads]
-    (let [{:keys [::subject ::object] :as quad} (first quads)
-          quads (rest quads)]
-      (cond
-        (nil? quad)
-        results
+  (let [{anonymous true named false}
+        (group-by #(blank? (::subject %)) quads)]
+    (loop [results []
+           named named
+           anonymous anonymous]
+      (let [{:keys [::object] :as quad} (first named)]
+        (cond
+          (nil? quad)
+          (concat results anonymous)
 
-        (= delayed quads)
-        (concat results delayed)
+          (blank? object)
+          (let [[object anonymous] (branch-object object anonymous)
+                quad (assoc quad ::object object)]
+            (recur (conj results quad) (rest named) anonymous))
 
-        (not (any-blank? quad))
-        (recur (conj results quad) delayed quads)
-
-        (blank? object)
-        (let [[object quads] (branch-object object quads)]
-          (recur
-           (conj results (assoc quad ::object object))
-           delayed
-           quads))
-
-        (blank? subject)
-        (recur results (conj delayed quad) quads)))))
+          :else
+          (recur (conj results quad) (rest named) anonymous))))))
 
 (defn unbranch-quad
   [quad]
