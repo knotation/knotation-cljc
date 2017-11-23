@@ -1,5 +1,7 @@
 (ns org.knotation.state
-  (:require [org.knotation.rdf :as rdf]
+  (:require [clojure.string :as string]
+
+            [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]))
 
 (def error-messages
@@ -14,7 +16,7 @@
   (->> info
        (map str)
        (concat [(get error-messages error-type "ERROR:")])
-       (clojure.string/join " ")
+       (string/join " ")
        (assoc
         {::error-type error-type}
         ::error-message)

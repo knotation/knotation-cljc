@@ -1,5 +1,6 @@
 (ns org.knotation.api
   (:require [#?(:clj clojure.pprint :cljs cljs.pprint) :as pp]
+            [clojure.string :as string]
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
@@ -41,14 +42,14 @@
   {::operation-type :read
    ::st/format format
    ::st/line-number 1
-   ::st/lines (clojure.string/split-lines content)})
+   ::st/lines (string/split-lines content)})
 
 (defn env
   [format content]
   {::operation-type :read-env
    ::st/format format
    ::st/line-number 1
-   ::st/lines (clojure.string/split-lines content)})
+   ::st/lines (string/split-lines content)})
 
 (defn output
   [format]
@@ -131,7 +132,7 @@
 
 (defn content
   [states]
-  (clojure.string/join
+  (string/join
    "\n"
    (reduce
     (fn [lines state]
@@ -141,7 +142,7 @@
 
 (defn errors
   [states]
-  (clojure.string/join
+  (string/join
    "\n"
    (reduce
     (fn [lines state]

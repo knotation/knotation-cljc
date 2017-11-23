@@ -1,6 +1,6 @@
 (ns org.knotation.omn
   (:require [clojure.string :as string]
-            [instaparse.core :as insta]
+            [instaparse.core :as insta #?(:clj :refer :cljs :refer-macros) [defparser]]
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
@@ -27,7 +27,7 @@ OBJECT_PROPERTY_EXPRESSION = 'inverse' SPACE LABEL | LABEL
 LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 <SPACE> = #'\\s+'")
 
-(insta/defparser manchester-parser manchester-grammar)
+(defparser manchester-parser manchester-grammar)
 
 (defn parse-class-expression
   [content]
