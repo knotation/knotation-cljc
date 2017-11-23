@@ -113,6 +113,7 @@
 (defn branch-quads
   [quads]
   (loop [results []
+         delayed []
          quads quads]
     (let [{:keys [::subject ::object] :as quad} (first quads)
           quads (rest quads)]
@@ -120,17 +121,21 @@
         (nil? quad)
         results
 
+        (= delayed quads)
+        (concat results delayed)
+
         (not (any-blank? quad))
-        (recur (conj results quad) quads)
+        (recur (conj results quad) delayed quads)
 
         (blank? object)
         (let [[object quads] (branch-object object quads)]
           (recur
            (conj results (assoc quad ::object object))
+           delayed
            quads))
 
-        :else
-        (recur (conj results quad) quads)))))
+        (blank? subject)
+        (recur results (conj delayed quad) quads)))))
 
 (defn unbranch-quad
   [quad]

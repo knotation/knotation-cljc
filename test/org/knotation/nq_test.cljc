@@ -177,6 +177,7 @@ _:5 <http://www.w3.org/2002/07/owl#someValuesFrom> <http://example.com/wheel> ."
        is)
   (->> ex-subclass
        clojure.string/split-lines
+       shuffle ; order should not matter
        (map nq/read-quad)
        rdf/branch-quads
        first
