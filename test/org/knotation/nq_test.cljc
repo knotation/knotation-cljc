@@ -41,7 +41,14 @@
           ::rdf/subject {::rdf/iri "s"}
           ::rdf/predicate {::rdf/iri "p"}
           ::rdf/object {::rdf/lexical "o" ::rdf/datatype "d"}}
-         (nq/read-quad "<s> <p> \"o\"^^<d> ."))))
+         (nq/read-quad "<s> <p> \"o\"^^<d> .")))
+  (is (= {::rdf/graph nil
+          ::rdf/subject {::rdf/iri "s"}
+          ::rdf/predicate {::rdf/iri "p"}
+          ::rdf/object {::rdf/lexical "o
+p
+q"}}
+         (nq/read-quad "<s> <p> \"o\\np\\nq\" ."))))
 
 (def lines
   ["<s> <p> <o> ."

@@ -14,7 +14,10 @@
 : ex:123
 rdfs:label: owl 123
 ex:translation; @fr: hibou 123
-ex:has-wingspan; ex:inches: 22")
+ex:has-wingspan; ex:inches: 22
+ex:text: Text that spans multiple lines...
+ 
+ ... must be indented with a single space.")
 
 (def ex-1-ttl
   "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -23,7 +26,10 @@ ex:has-wingspan; ex:inches: 22")
 ex:123
   rdfs:label \"owl 123\" ;
   ex:translation \"hibou 123\"@fr ;
-  ex:has-wingspan \"22\"^^ex:inches .")
+  ex:has-wingspan \"22\"^^ex:inches ;
+  ex:text \"\"\"Text that spans multiple lines...
+
+... must be indented with a single space.\"\"\" .")
 
 (deftest ex-1
   (is (= ex-1-ttl

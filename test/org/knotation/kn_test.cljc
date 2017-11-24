@@ -186,7 +186,13 @@
   ["@prefix ex: <http://example.com/>"
    ""
    ": ex:s"
-   "ex:p; ex:d: o"])
+   "ex:p; ex:d: Multiline"
+   " string"
+   ;""
+   " "
+   "  with spaces."
+   " "
+   ""])
 
 (def states
   [(assoc base-1
@@ -216,14 +222,29 @@
           ::st/input
           {::st/format :kn
            ::st/line-number 4
-           ::st/lines ["ex:p; ex:d: o"]}
+           ::st/lines ["ex:p; ex:d: Multiline"
+                       " string"
+                       " "
+                       "  with spaces."
+                       " "]}
           ::rdf/subject {::rdf/iri (rdf/ex "s")}
           ::rdf/quads
           [{::rdf/graph nil
             ::rdf/subject {::rdf/iri (rdf/ex "s")}
             ::rdf/predicate {::rdf/iri (rdf/ex "p")}
-            ::rdf/object {::rdf/lexical "o"
+            ::rdf/object {::rdf/lexical "Multiline
+string
+
+ with spaces.
+"
                           ::rdf/datatype (rdf/ex "d")}}])
+   (assoc base-2
+          ::st/event ::st/space
+          ::st/input
+          {::st/format :kn
+           ::st/line-number 9
+           ::st/lines [""]}
+          ::rdf/subject {::rdf/iri (rdf/ex "s")})
    (assoc base-2
           ::st/event ::st/subject-end
           ::rdf/subject {::rdf/iri (rdf/ex "s")})

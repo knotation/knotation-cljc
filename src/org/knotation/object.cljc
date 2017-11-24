@@ -31,11 +31,13 @@
   [content]
   (or
    (when-let [[_ lexical iri] (re-matches #"\"(.*)\"\^\^<(\S+)>\s*" content)]
-     {::rdf/lexical lexical ::rdf/datatype iri})
+     {::rdf/lexical (string/replace lexical "\\n" "\n")
+      ::rdf/datatype iri})
    (when-let [[_ lexical lang] (re-matches #"\"(.*)\"@(\S+)\s*" content)]
-     {::rdf/lexical lexical ::rdf/language lang})
+     {::rdf/lexical (string/replace lexical "\\n" "\n")
+      ::rdf/language lang})
    (when-let [[_ lexical] (re-matches #"\"(.*)\"\s*" content)]
-     {::rdf/lexical lexical})
+     {::rdf/lexical (string/replace lexical "\\n" "\n")})
    (throw (Exception. (str "Bad NQuads object: " content)))))
 
 (defn nquads-object->object
@@ -48,14 +50,20 @@
 
 (defn object->nquads-object
   [{:keys [::rdf/lexical ::rdf/datatype ::rdf/language] :as node}]
-  (cond
-    language (str "\"" lexical "\"@" language)
-    datatype (str "\"" lexical "\"^^<" datatype ">")
-    :else (str "\"" lexical "\"")))
+  (let [lexical (if (re-find #"\n" lexical)
+                  (string/replace lexical "\n" "\\n")
+                  lexical)]
+    (cond
+      language (str "\"" lexical "\"@" language)
+      datatype (str "\"" lexical "\"^^<" datatype ">")
+      :else (str "\"" lexical "\""))))
 
 (defn object->turtle-object
   [env {:keys [::rdf/lexical ::rdf/datatype ::rdf/language] :as node}]
-  (cond
-    language (str "\"" lexical "\"@" language)
-    datatype (str "\"" lexical "\"^^" (ln/iri->curie-or-wrapped-iri env datatype))
-    :else (str "\"" lexical "\"")))
+  (let [lexical (if (re-find #"\n" lexical)
+                  (str "\"\"\"" lexical "\"\"\"")
+                  (str "\"" lexical "\""))]
+    (cond
+      language (str lexical "@" language)
+      datatype (str lexical "^^" (ln/iri->curie-or-wrapped-iri env datatype))
+      :else lexical)))

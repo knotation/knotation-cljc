@@ -54,7 +54,15 @@
                      (string/replace datatype-name #"^@" ""))
           datatype (when-not (util/starts-with? datatype-name "@")
                      datatype-name)
-          datatype-iri (when datatype (ln/datatype->iri env datatype))]
+          datatype-iri (when datatype (ln/datatype->iri env datatype))
+          content
+          (->> state
+               ::st/input
+               ::st/lines
+               rest
+               (map #(string/replace % #"^ " ""))
+               (concat [content])
+               (string/join "\n"))]
       (cond
         (nil? predicate-iri)
         (st/error state :unrecognized-predicate predicate-name)
@@ -70,8 +78,7 @@
                (or language
                    (get-in env [::en/predicate-language predicate-iri]))
                (or datatype-iri
-                   (get-in env [::en/predicate-datatype predicate-iri]))
-               content)
+                   (get-in env [::en/predicate-datatype predicate-iri])) content)
               quad {::rdf/graph graph
                     ::rdf/subject subject
                     ::rdf/predicate predicate
@@ -93,47 +100,48 @@
     (read-statement state)))
 
 (defn make-state
-  [{:keys [::st/mode ::en/env ::rdf/graph ::rdf/subject]} line-number line]
+  [{:keys [::st/mode ::en/env ::rdf/graph ::rdf/subject]} lines]
   (merge
    {::en/env env}
    (when graph
      {::rdf/graph graph})
    (when subject
      {::rdf/subject subject})
-   (when line
+   (when lines
      {::st/input
       {::st/format :kn
-       ::st/line-number line-number
-       ::st/lines [line]}})
+       ::st/line-number (ffirst lines)
+       ::st/lines (map second lines)}})
    (when mode
      {::st/mode mode})))
 
 (defn read-subject-lines
-  [states lines]
-  (->> lines
+  [states numbered-lines]
+  (->> numbered-lines
+       (util/partition-with #(not (util/starts-with? (second %) " ")))
        (util/append ::st/subject-end)
        (reductions
         (fn [previous item]
           (if (keyword? item)
-            (assoc (make-state previous nil nil) ::st/event item)
-            (read-state (make-state previous (first item) (second item)))))
+            (assoc (make-state previous nil) ::st/event item)
+            (read-state (make-state previous item))))
         (last states))
        rest))
 
 (defn read-grouped-lines
-  [states lines]
-  (if (util/starts-with? (second (first lines)) ": ")
-    (read-subject-lines states lines)
-    (->> lines
+  [states numbered-lines]
+  (if (util/starts-with? (second (first numbered-lines)) ": ")
+    (read-subject-lines states numbered-lines)
+    (->> numbered-lines
          (reductions
-          (fn [previous [line-number line]]
-            (read-state (make-state previous line-number line)))
+          (fn [previous item]
+            (read-state (make-state previous [item])))
           (last states))
          rest)))
 
 (defn read-graph
-  [states lines]
-  (->> lines
+  [states numbered-lines]
+  (->> numbered-lines
        (util/partition-with #(util/starts-with? (second %) ": "))
        (util/surround ::st/graph-start ::st/graph-end)
        (reductions
@@ -141,7 +149,7 @@
           (if (keyword? lines)
             (-> subject-states
                 last
-                (make-state nil nil)
+                (make-state nil)
                 (dissoc ::rdf/subject)
                 (assoc ::st/event lines)
                 vector)
@@ -165,18 +173,22 @@
         object
         piri (::rdf/iri predicate)
         default-datatype (get-in env [::en/predicate-datatype piri])
-        default-language (get-in env [::en/predicate-language piri])]
-    [(str
-      (ln/node->name env predicate)
-      (cond
-        (and datatype (not= datatype default-datatype))
-        (str "; " (ln/iri->name env datatype))
+        default-language (get-in env [::en/predicate-language piri])
+        lines (when lexical (string/split lexical #"\n" -1))]
+    (concat
+     [(str
+       (ln/node->name env predicate)
+       (cond
+         (and datatype (not= datatype default-datatype))
+         (str "; " (ln/iri->name env datatype))
 
-        (and language (not= language default-language))
-        (str "; @" language))
-      ": "
-      (if iri (ln/iri->name env iri) lexical))]))
-
+         (and language (not= language default-language))
+         (str "; @" language))
+       ": "
+       (if iri (ln/iri->name env iri) (first lines)))]
+     (->> lines
+          rest
+          (map (partial str " "))))))
 (defn output-lines
   [state lines]
   (assoc
