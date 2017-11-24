@@ -1,5 +1,6 @@
 (ns org.knotation.format
   (:require [org.knotation.rdf :as rdf]
+            [org.knotation.environment :as en]
             [org.knotation.state :as st]))
 
 (defonce formats (atom {}))
@@ -14,6 +15,14 @@
 (defn register!
   [{:keys [::name] :as format}]
   (swap! formats assoc name format))
+
+(defn space-function
+  []
+  (fn [states]
+    (concat
+     states
+     [{::st/event ::st/space
+       ::en/env (-> states last ::en/env)}])))
 
 (defn read-mode-function
   [mode format lines]
@@ -44,6 +53,17 @@
 (defn read-env-function
   [format lines]
   (read-mode-function :env format lines))
+
+(defn read-prefixes-function
+  [format lines]
+  (comp
+   (space-function)
+   (fn [states]
+     (for [{:keys [::st/event] :as state} states]
+       (if (= event ::st/prefix)
+         (dissoc state ::st/mode)
+         state)))
+   (read-mode-function :env format lines)))
 
 ; TODO: improve on this implementation
 (defn read-data-function

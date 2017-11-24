@@ -120,9 +120,7 @@ ex:123
 
 (deftest ex-3
   (is (= ex-3-ttl
-         (->> [(api/env :kn ex-3-env)
-               api/prefixes
-               api/space
+         (->> [(api/prefixes :kn ex-3-env)
                (api/input :kn ex-3-kn)
                (api/output :ttl)]
               api/run-operations
@@ -177,9 +175,7 @@ ex:123
 
 (deftest ex-4
   (is (= ex-4-ttl
-         (->> [(api/env :kn ex-4-env)
-               api/prefixes
-               api/space
+         (->> [(api/prefixes :kn ex-4-env)
                (api/input :kn ex-4-kn)
                (api/output :ttl)]
               api/run-operations
@@ -246,9 +242,7 @@ ex:some-subject
 
 (deftest ex-5
   (is (= ex-5-ttl
-         (->> [(api/env :kn ex-5-env)
-               api/prefixes
-               api/space
+         (->> [(api/prefixes :kn ex-5-env)
                (api/input :kn ex-5-kn)
                (api/output :ttl)]
               api/run-operations
@@ -326,9 +320,7 @@ ex:owl-head
 
 (deftest ex-6
   (is (= (string/split-lines ex-6-ttl)
-         (->> [(api/env :kn ex-6-env)
-               api/prefixes
-               api/space
+         (->> [(api/prefixes :kn ex-6-env)
                (api/input :kn ex-6-kn)
                (api/output :ttl)]
               api/run-operations

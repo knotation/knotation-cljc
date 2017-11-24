@@ -41,6 +41,7 @@
           flag (or flag arg)]
       [(case flag
          ("-e" "--env") {::flag :env ::args 1}
+         ("-p" "--prefixes") {::flag :prefixes ::args 1}
          ("-d" "--data") {::flag :data ::args 1}
          ("-f" "--format") {::flag :format ::args 1}
          ("-s" "--sort") {::flag :sort ::args 0}
@@ -84,6 +85,12 @@
 
     :env
     {::api/operation-type :read-env
+     ::st/source value
+     ::st/format (get-format value)
+     ::st/lines (line-seq (clojure.java.io/reader value))}
+
+    :prefixes
+    {::api/operation-type :read-prefixes
      ::st/source value
      ::st/format (get-format value)
      ::st/lines (line-seq (clojure.java.io/reader value))}

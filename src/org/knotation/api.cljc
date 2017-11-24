@@ -51,12 +51,17 @@
    ::st/line-number 1
    ::st/lines (string/split-lines content)})
 
+(defn prefixes
+  [format content]
+  {::operation-type :read-prefixes
+   ::st/format format
+   ::st/line-number 1
+   ::st/lines (string/split-lines content)})
+
 (defn output
   [format]
   {::operation-type :render
    ::st/format format})
-
-(def prefixes {::operation-type :prefixes})
 
 (def space {::operation-type :space})
 
@@ -81,18 +86,7 @@
       (map #(assoc % ::en/env en/blank-env ::en/env-before en/blank-env) states))
 
     (= operation-type :space)
-    (fn [states]
-      (concat
-       states
-       [{::st/event ::st/space
-         ::en/env (-> states last ::en/env)}]))
-
-    (= operation-type :prefixes)
-    (fn [states]
-      (for [{:keys [::st/event] :as state} states]
-        (if (= ::st/prefix event)
-          (dissoc state ::st/mode)
-          state)))
+    (fm/space-function)
 
     (= operation-type :stop-on-error)
     (fn [states]
@@ -106,6 +100,9 @@
 
     (= operation-type :read-env)
     (fm/read-env-function format lines)
+
+    (= operation-type :read-prefixes)
+    (fm/read-prefixes-function format lines)
 
     (= operation-type :read-data)
     (fm/read-data-function format lines)
