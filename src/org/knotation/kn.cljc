@@ -8,6 +8,18 @@
             [org.knotation.object :as ob]
             [org.knotation.format :as fm]))
 
+(defn read-comment
+  [state]
+  (if (-> state
+          ::st/input
+          ::st/lines
+          first
+          (util/starts-with? "#"))
+    (assoc
+     state ::st/event ::st/comment
+     ::st/comment (-> state ::st/input ::st/lines first))
+    (st/error state :not-a-comment)))
+
 (defn read-declaration
   [{:keys [::st/mode ::en/env] :as state}]
   (if-let [[_ prefix iri]
@@ -94,7 +106,7 @@
   [state]
   (case (->> state ::st/input ::st/lines first first)
     nil (assoc state ::st/event ::st/space)
-    \# (assoc state ::st/event ::st/comment)
+    \# (read-comment state)
     \@ (read-declaration state)
     \: (read-subject state)
     (read-statement state)))
@@ -200,11 +212,15 @@
 (defn render-state
   [{:keys [::st/mode ::st/event
            ::en/env ::en/env-before
+           ::st/comment
            ::st/prefix
            ::rdf/quads
            ::rdf/subject ::st/previous-subject]
     :as state}]
   (case (if (= :env mode) nil event)
+    ::st/comment
+    (output-lines state [comment])
+
     ::st/prefix
     (->> (get-in env [::en/prefix-iri prefix])
          (ln/iri->wrapped-iri nil)

@@ -264,3 +264,27 @@ string
               kn/render-states
               (map ::st/output)
               (mapcat ::st/lines)))))
+
+(defn test-roundtrip
+  [content]
+  (->> content
+       clojure.string/split-lines
+       (kn/read-lines st/blank-state)
+       kn/render-states
+       (map ::st/output)
+       (mapcat ::st/lines)
+       (clojure.string/join "\n")
+       (= content)
+       is))
+
+(deftest test-rountrips
+  (test-roundtrip
+   "@prefix ex: <http://example.com/>
+
+# comment
+
+: ex:s
+ex:p; ex:d: Multiline
+ string
+ 
+  with spaces."))

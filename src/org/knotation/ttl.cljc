@@ -62,9 +62,12 @@
 
 (defn render-state
   [{:keys [::st/mode ::st/event ::en/env
-           ::st/prefix ::rdf/subject ::rdf/quads]
+           ::st/comment ::st/prefix ::rdf/subject ::rdf/quads]
     :as state}]
   (case (if (= :env mode) nil event)
+    ::st/comment
+    (output-lines state [comment])
+
     ::st/prefix
     (output-lines
      state

@@ -5,7 +5,8 @@
             [org.knotation.environment :as en]))
 
 (def error-messages
-  {:not-a-prefix-line "Not a @prefix line"
+  {:not-a-comment "Not a comment line"
+   :not-a-prefix-line "Not a @prefix line"
    :not-a-subject-line "Not a subject line"
    :not-a-statement "Not a statement"
    :unrecognized-predicate "Unrecognized predicate:"
