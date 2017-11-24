@@ -17,7 +17,9 @@ ex:translation; @fr: hibou 123
 ex:has-wingspan; ex:inches: 22
 ex:text: Text that spans multiple lines...
  
- ... must be indented with a single space.")
+ ... must be indented with a single space.
+
+# Lines starting with \"#\" are comments")
 
 (def ex-1-ttl
   "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -29,7 +31,9 @@ ex:123
   ex:has-wingspan \"22\"^^ex:inches ;
   ex:text \"\"\"Text that spans multiple lines...
 
-... must be indented with a single space.\"\"\" .")
+... must be indented with a single space.\"\"\" .
+
+# Lines starting with \"#\" are comments")
 
 (deftest ex-1
   (is (= ex-1-ttl
