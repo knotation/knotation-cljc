@@ -6,6 +6,7 @@
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
             [org.knotation.format :as fm]
+            [org.knotation.info]
             [org.knotation.kn]
             [org.knotation.tsv]
             [org.knotation.nq]
