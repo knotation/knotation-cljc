@@ -1,7 +1,7 @@
 (ns org.knotation.omn
   (:require [clojure.string :as string]
             [instaparse.core :as insta #?(:clj :refer :cljs :refer-macros) [defparser]]
-            [org.knotation.util :as util]
+            [org.knotation.util :as util :refer [throw-exception]]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.link :as ln]))
@@ -34,7 +34,7 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
   (let [result (manchester-parser content)]
     (when (insta/failure? result)
       (println result)
-      (throw (Exception. "Manchester parser failure")))
+      (throw-exception "Manchester parser failure"))
     result))
 
 (defn get-by-predicate

@@ -1,5 +1,6 @@
 (ns org.knotation.cli
   (:require [clojure.pprint :as pp]
+            [org.knotation.util :refer [throw-exception]]
             [org.knotation.state :as st]
             [org.knotation.api :as api])
   (:gen-class))
@@ -49,7 +50,7 @@
          {::flag :sequential-blank-nodes ::args 0}
          ("-E" "--reset-env") {::flag :reset-env ::args 0}
          ("--dump") {::flag :dump ::args 0}
-         (throw (Exception. (str "Unknown option: " arg))))
+         (throw-exception (str "Unknown option: " arg)))
        (when value {::value value})])
     [{::value arg}]))
 
@@ -134,7 +135,7 @@
   [states]
   (doseq [state states]
     (when-let [message (-> state ::st/error ::st/error-message)]
-      (throw (Exception. (str "ERROR: " message))))
+      (throw-exception (str "ERROR: " message)))
     (when-let [lines (-> state ::st/output ::st/lines)]
       (doseq [line lines]
         (println line)))))

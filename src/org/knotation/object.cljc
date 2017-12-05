@@ -1,6 +1,6 @@
 (ns org.knotation.object
   (:require [clojure.string :as string]
-            [org.knotation.util :as util]
+            [org.knotation.util :as util :refer [throw-exception]]
             [org.knotation.rdf :as rdf]
             [org.knotation.link :as ln]
             [org.knotation.omn :as omn]))
@@ -38,7 +38,7 @@
       ::rdf/language lang})
    (when-let [[_ lexical] (re-matches #"\"(.*)\"\s*" content)]
      {::rdf/lexical (string/replace lexical "\\n" "\n")})
-   (throw (Exception. (str "Bad NQuads object: " content)))))
+   (throw-exception (str "Bad NQuads object: " content))))
 
 (defn nquads-object->object
   [content]
@@ -46,7 +46,7 @@
     \< {::rdf/iri (ln/wrapped-iri->iri nil content)}
     \_ {::rdf/bnode content}
     \" (nquads-literal->object content)
-    (throw (Exception. (str "Bad NQuads object: " content)))))
+    (throw-exception (str "Bad NQuads object: " content))))
 
 (defn object->nquads-object
   [{:keys [::rdf/lexical ::rdf/datatype ::rdf/language] :as node}]

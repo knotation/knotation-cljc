@@ -1,6 +1,6 @@
 (ns org.knotation.nq
   (:require [clojure.string :as string]
-            [org.knotation.util :as util]
+            [org.knotation.util :as util :refer [throw-exception]]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
@@ -12,7 +12,7 @@
   [line]
   (if-let [[_ s p o g] (re-matches #"(\S+) (\S+) (.*?) (\S+)?\s*." line)]
     {::line line ::g g ::s s ::p p ::o o}
-    (throw (Exception. (str "Could not parse quad: " line)))))
+    (throw-exception (str "Could not parse quad: " line))))
 
 (defn read-quad
   [line]
