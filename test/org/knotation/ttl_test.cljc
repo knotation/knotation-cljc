@@ -17,6 +17,13 @@
    ::rdf/predicate {::rdf/iri (rdf/ex "p")}
    ::rdf/object {::rdf/lexical "o" ::rdf/datatype (rdf/ex "d")}})
 
+(def example-multiline-quad
+  {::rdf/graph nil
+   ::rdf/subject {::rdf/iri (rdf/ex "s")}
+   ::rdf/predicate {::rdf/iri (rdf/ex "p")}
+   ::rdf/object {::rdf/lexical "multi
+line"}})
+
 (def env-1
   (-> en/blank-env
       (en/add-prefix "ex" (rdf/ex))))
@@ -31,7 +38,18 @@
          (ttl/render-state
           {::st/event ::st/statement
            ::en/env env-1
-           ::rdf/quads [example-typed-quad]}))))
+           ::rdf/quads [example-typed-quad]})))
+  (is (= {::st/event ::st/statement
+          ::en/env env-1
+          ::rdf/quads [example-multiline-quad]
+          ::st/output
+          {::st/format :ttl
+           ::st/lines ["  ex:p \"\"\"multi"
+                       "line\"\"\" ;"]}}
+         (ttl/render-state
+          {::st/event ::st/statement
+           ::en/env env-1
+           ::rdf/quads [example-multiline-quad]}))))
 
 ;(deftest test-indent
 ;  (is (= [{::st/output {::st/lines ["  A ;" "  B ;"]}}

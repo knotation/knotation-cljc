@@ -9,6 +9,12 @@
             [org.knotation.format :as fm]
             [org.knotation.omn :as omn]))
 
+(defn indent
+  [line]
+  (if (re-find #"^  " line)
+    (string/replace line #"^  " "    ")
+    line))
+
 (defn render-node
   [env {:keys [::rdf/iri ::rdf/bnode ::rdf/lexical] :as node}]
   (cond
@@ -21,7 +27,7 @@
   (cond
     (->> object ::rdf/pairs first ::rdf/predicate ::rdf/iri (= (rdf/rdf "first")))
     (concat
-     [(str (render-node env predicate) " (")]
+     [(str "  " (render-node env predicate) " (")]
      (->> object
           ::rdf/pairs
           omn/branch->list
@@ -30,27 +36,30 @@
              (if pairs
                (->> pairs
                     (mapcat (partial render-quad env))
-                    (map (partial str "  "))
-                    (util/surround "[" "]"))
-               [(render-node env o)])))
-          (map (partial str "  ")))
-     [") ;"])
+                    (map indent)
+                    (util/surround "  [" "  ]"))
+               [(str "  " (render-node env o))])))
+          (map indent))
+     ["  ) ;"])
 
     (::rdf/pairs object)
     (concat
-     [(str (render-node env predicate) " [")]
+     [(str "  " (render-node env predicate) " [")]
      (->> object
           ::rdf/pairs
           (mapcat (partial render-quad env))
-          (map (partial str "  ")))
-     ["] ;"])
+          (map indent))
+     ["  ] ;"])
 
     :else
-    [(->> [predicate object]
+    (string/split
+     (->> [predicate object]
           (remove nil?)
           (map (partial render-node env))
-          (util/append ";")
-          (string/join " "))]))
+          (util/surround " " ";")
+          (string/join " "))
+     #"\n"
+     0)))
 
 (defn output-lines
   [state lines]
@@ -82,7 +91,6 @@
     ::st/statement
     (->> quads
          (mapcat (partial render-quad env))
-         (map (partial str "  "))
          (output-lines state))
 
     state))
