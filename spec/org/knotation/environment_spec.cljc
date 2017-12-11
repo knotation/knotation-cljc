@@ -17,6 +17,8 @@
 
 (s/def ::en/predicate-datatype (s/map-of ::rdf/predicate ::rdf/iri))
 
+(s/def ::en/template-content (s/map-of ::rdf/iri string?))
+
 (s/def ::en/env map?)
 (s/def ::en/env-before ::en/env)
 
@@ -34,4 +36,8 @@
 
 (s/fdef en/set-language
         :args (s/cat :env ::en/env :predicate ::rdf/iri :language ::rdf/language)
+        :ret ::en/env)
+
+(s/fdef en/set-template-content
+        :args (s/cat :env ::en/env :template ::rdf/iri :content string?)
         :ret ::en/env)

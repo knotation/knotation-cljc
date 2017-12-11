@@ -66,6 +66,10 @@
   [{:keys [::en/env] :as state} predicate language]
   (assoc state ::en/env (en/set-language env predicate language)))
 
+(defn set-template-content
+  [{:keys [::en/env] :as state} template content]
+  (assoc state ::en/env (en/set-template-content env template content)))
+
 (defn update-state
   [state {:keys [::rdf/subject ::rdf/predicate ::rdf/object] :as quad}]
   ; TODO: make this configurable
@@ -79,6 +83,9 @@
 
     "https://knotation.org/predicate/default-language"
     (set-language state (::rdf/iri subject) (::rdf/lexical object))
+
+    "https://knotation.org/predicate/template-content"
+    (set-template-content state (::rdf/iri subject) (::rdf/lexical object))
 
     state))
 

@@ -25,6 +25,11 @@
   (-> env
       (assoc-in [::predicate-language predicate] language)))
 
+(defn set-template-content
+  [env template content]
+  (-> env
+      (assoc-in [::template-content template] content)))
+
 (def blank-env {})
 
 (def default-env

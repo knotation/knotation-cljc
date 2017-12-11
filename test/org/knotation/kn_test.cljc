@@ -265,17 +265,21 @@ string
               (map ::st/output)
               (mapcat ::st/lines)))))
 
-(defn test-roundtrip
-  [content]
-  (->> content
+(defn test-before-after
+  [before after]
+  (->> before
        clojure.string/split-lines
        (kn/read-lines st/blank-state)
        kn/render-states
        (map ::st/output)
        (mapcat ::st/lines)
        (clojure.string/join "\n")
-       (= content)
+       (= after)
        is))
+
+(defn test-roundtrip
+  [content]
+  (test-before-after content content))
 
 (deftest test-rountrips
   (test-roundtrip
@@ -288,3 +292,29 @@ ex:p; ex:d: Multiline
  string
  
   with spaces."))
+
+(deftest test-templates
+  (test-before-after
+   "@prefix knp: <https://knotation.org/predicate/>
+@prefix ex: <http://example.com/>
+
+: ex:template
+knp:template-content: 
+ ex:label: Foo {label}
+
+: ex:1
+ex:foo: bar
+knp:apply-template: ex:template
+ label: Bar"
+   "@prefix knp: <https://knotation.org/predicate/>
+@prefix ex: <http://example.com/>
+
+: ex:template
+knp:template-content: 
+ ex:label: Foo {label}
+
+: ex:1
+ex:foo: bar
+knp:applied-template: ex:template
+ label: Bar
+ex:label: Foo Bar"))
