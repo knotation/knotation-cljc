@@ -59,7 +59,7 @@
           (util/surround " " ";")
           (string/join " "))
      #"\n"
-     0)))
+     -1)))
 
 (defn output-lines
   [state lines]
