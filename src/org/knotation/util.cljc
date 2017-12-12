@@ -1,5 +1,6 @@
 (ns org.knotation.util
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            #?(:clj [clojure.data.json :as json])))
 
 (defn starts-with?
   [target prefix]
@@ -22,6 +23,11 @@
    (when-let [s (seq coll)]
      (let [run (cons (first s) (take-while (complement f) (next s)))]
        (cons run (partition-with f (seq (drop (count run) s))))))))
+
+(defn edn->json
+  [content]
+  (#?(:clj json/write-str :cljs clj->js)
+   content))
 
 (defn throw-exception
   "Given a sequence of arguments,

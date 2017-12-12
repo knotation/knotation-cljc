@@ -6,6 +6,7 @@
   :plugins [[lein-cljsbuild "1.1.6"]]
   :dependencies [[org.clojure/clojure "1.9.0-RC1"]
                  [org.clojure/clojurescript "1.9.521"]
+                 [org.clojure/data.json "0.2.6"]
 
                  [instaparse "1.4.8"]]
   :cljsbuild {:builds [{:source-paths ["src/org/knotation"]
