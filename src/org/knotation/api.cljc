@@ -48,14 +48,16 @@
 
 (defn env
   [format content]
-  {::operation-type :read-env
+  {::operation-type :read
+   ::st/mode :env
    ::st/format format
    ::st/line-number 1
    ::st/lines (string/split-lines content)})
 
 (defn prefixes
   [format content]
-  {::operation-type :read-prefixes
+  {::operation-type :read
+   ::st/mode :prefixes
    ::st/format format
    ::st/line-number 1
    ::st/lines (string/split-lines content)})
@@ -98,16 +100,7 @@
     fm/sequential-blank-nodes
 
     (= operation-type :read)
-    (fm/read-function format lines)
-
-    (= operation-type :read-env)
-    (fm/read-env-function format lines)
-
-    (= operation-type :read-prefixes)
-    (fm/read-prefixes-function format lines)
-
-    (= operation-type :read-data)
-    (fm/read-data-function format lines)
+    (fm/read-function operation)
 
     (= operation-type :render)
     (fm/render-function format)

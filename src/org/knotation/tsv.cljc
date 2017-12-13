@@ -26,8 +26,10 @@
      {::st/mode mode})))
 
 (defn read-header
-  [states line-number line]
-  (let [{:keys [::st/mode ::en/env ::columns] :as state} (last states)]
+  [states {:keys [::st/input] :as input-state}]
+  (let [{:keys [::st/mode ::en/env ::columns] :as state} (last states)
+        {:keys [::st/line-number ::st/lines]} input
+        line (first lines)]
     (assoc
      (make-state state line-number line)
      ::st/event ::st/header
@@ -61,8 +63,10 @@
       (if (= mode :env) state (assoc state ::rdf/quads [quad])))))
 
 (defn read-row
-  [states line-number line]
+  [states {:keys [::st/input] :as input-state}]
   (let [{:keys [::st/mode ::en/env ::columns] :as state} (last states)
+        {:keys [::st/line-number ::st/lines]} input
+        line (first lines)
         cells (string/split line #"\t")
         pairs (map vector columns cells)
         subject-cell (->> pairs (filter #(-> % first ::subject?)) first second)
@@ -83,31 +87,42 @@
          rest)))
 
 (defn read-one-line
-  [states line-number line]
+  [states input-state]
   (if (-> states last ::columns)
-    (read-row states line-number line)
-    [(read-header states line-number line)]))
+    (read-row states input-state)
+    [(read-header states input-state)]))
 
-(defn read-lines
-  [state lines]
-  (->> lines
-       (map-indexed (fn [i line] [(inc i) line]))
-       (util/surround ::st/graph-start ::st/graph-end)
+(defn read-input-states
+  [env input-states]
+  (->> input-states
        (reductions
-        (fn [states item]
-          (if (keyword? item)
-            (-> states
-                last
-                (make-state nil nil)
-                (dissoc ::columns ::rdf/subject)
-                (assoc ::st/event item)
-                vector)
-            (read-one-line states (first item) (second item))))
-        [state])
+        (fn [previous current]
+          (read-one-line previous current))
+        [{::en/env env}])
        rest
-       (mapcat identity)))
+       (mapcat identity)
+       fm/insert-graph-events
+       fm/insert-subject-events))
+
+(defn read-input
+  [env
+   {:keys [::st/mode ::st/line-number ::st/lines]
+    :or {line-number 1}
+    :as input}]
+  (let [input (-> input
+                  (select-keys [::st/format ::st/source])
+                  (assoc ::st/format :nq))]
+    (->> lines
+         (map-indexed
+          (fn [i line]
+            (assoc
+             input
+             ::st/line-number (+ line-number i)
+             ::st/lines [line])))
+         (map (fn [input] (merge {::st/input input} (when mode {::st/mode mode}))))
+         (read-input-states env))))
 
 (fm/register!
  {::fm/name :tsv
   ::fm/description "Knotation TSV format"
-  ::fm/read read-lines})
+  ::fm/read read-input})

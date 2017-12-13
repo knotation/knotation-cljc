@@ -52,6 +52,27 @@
     (st/error state :not-a-subject-line)))
 
 (def match-statement #"([^@:].*?)(; (.*))?: (.*)")
+(def match-statement-1 #"([^@:].*?)(; (.*))?:(.*)")
+
+(defn parse-statement
+  [{:keys [::st/input] :as state}]
+  (let [lines (::st/lines input)
+        line (last lines)
+        [_ predicate-name _ datatype-name initial-content]
+        (re-matches match-statement-1 (first lines))
+        initial-content
+        (string/replace initial-content #"^ " "")
+        content
+        (->> lines
+             rest
+             (map #(string/replace % #"^ " ""))
+             (concat [initial-content])
+             (string/join "\n"))]
+    (assoc
+     state
+     ::predicate-name predicate-name
+     ::datatype-name datatype-name
+     ::content content)))
 
 (defn read-statement
   [{:keys [::st/mode ::en/env ::rdf/graph ::rdf/subject] :as state}]
@@ -169,57 +190,39 @@
    (when mode
      {::st/mode mode})))
 
-(defn read-subject-lines
-  [states numbered-lines]
-  (->> numbered-lines
-       (util/partition-with #(not (util/starts-with? (second %) " ")))
-       (util/append ::st/subject-end)
+(defn read-input-states
+  [env input-states]
+  (->> input-states
        (reductions
-        (fn [previous item]
-          (if (keyword? item)
-            (assoc (make-state previous nil) ::st/event item)
-            (read-state (make-state previous item))))
-        (last states))
-       rest))
+        (fn [previous current]
+          (read-state
+           (merge
+            (select-keys previous [::en/env ::rdf/graph ::rdf/subject])
+            current)))
+        {::en/env env
+         ::st/event ::st/graph-start})
+       fm/insert-graph-events
+       fm/insert-subject-events))
 
-(defn read-grouped-lines
-  [states numbered-lines]
-  (if (util/starts-with? (second (first numbered-lines)) ": ")
-    (read-subject-lines states numbered-lines)
-    (->> numbered-lines
-         (reductions
-          (fn [previous item]
-            (read-state (make-state previous [item])))
-          (last states))
-         rest)))
-
-(defn read-graph
-  [states numbered-lines]
-  (->> numbered-lines
-       (util/partition-with #(util/starts-with? (second %) ": "))
-       (util/surround ::st/graph-start ::st/graph-end)
-       (reductions
-        (fn [subject-states lines]
-          (if (keyword? lines)
-            (-> subject-states
-                last
-                (make-state nil)
-                (dissoc ::rdf/subject)
-                (assoc ::st/event lines)
-                vector)
-            (read-grouped-lines subject-states lines)))
-        [(assoc (last states) ::rdf/graph nil)]) ; TODO: add graph support
-       rest
-       (mapcat identity)))
-
-(defn read-lines
-  [state lines]
-  (->> lines
-       (map-indexed (fn [i line] [(inc i) line]))
-       (util/partition-with #(util/starts-with? (second %) "@graph"))
-       (reductions read-graph [state])
-       rest
-       (mapcat identity)))
+(defn read-input
+  [env
+   {:keys [::st/mode ::st/line-number ::st/lines]
+    :or {line-number 1}
+    :as input}]
+  (let [input (-> input
+                  (select-keys [::st/format ::st/source])
+                  (assoc ::st/format :kn))]
+    (->> lines
+         (map-indexed (fn [i line] [(+ line-number i) line]))
+         (util/partition-with #(not (util/starts-with? (second %) " ")))
+         (map
+          (fn [numbered-lines]
+            (assoc
+             input
+             ::st/line-number (ffirst numbered-lines)
+             ::st/lines (map second numbered-lines))))
+         (map (fn [input] (merge {::st/input input} (when mode {::st/mode mode}))))
+         (read-input-states env))))
 
 (defn render-quad
   [env {:keys [::rdf/predicate ::rdf/object] :as quad}]
@@ -243,6 +246,7 @@
      (->> lines
           rest
           (map (partial str " "))))))
+
 (defn output-lines
   [state lines]
   (assoc
@@ -290,5 +294,5 @@
 (fm/register!
  {::fm/name :kn
   ::fm/description "Knotation format"
-  ::fm/read read-lines
+  ::fm/read read-input
   ::fm/render render-states})

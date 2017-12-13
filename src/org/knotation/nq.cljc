@@ -25,76 +25,48 @@
 (defn read-state
   [{:keys [::st/mode ::st/input] :as state}]
   (let [line (first (::st/lines input))
-        {:keys [::rdf/subject] :as quad} (read-quad line)]
+        {:keys [::rdf/graph ::rdf/subject] :as quad} (read-quad line)]
     (assoc
      (if (= mode :data)
        state
        (-> state
+           (merge (when graph {::rdf/graph graph}))
            (assoc ::rdf/subject subject)
            (st/update-state quad)))
      ::st/event ::st/statement
      ::rdf/quads (if (= mode :env) [] [quad]))))
 
-(defn make-state
-  [{:keys [::st/mode ::en/env ::rdf/graph ::rdf/subject] :as previous}
-   {:keys [::line-number ::line] :as quad}]
-  (merge
-   {::en/env env}
-   (when mode
-     {::st/mode mode})
-   (when graph
-     {::rdf/graph graph})
-   (when subject
-     {::rdf/subject subject})
-   (when quad
-     {::st/input
-      {::st/format :nq
-       ::st/line-number line-number
-       ::st/lines [line]}})))
-
-(defn read-subject
-  [states quads]
-  (->> quads
-       (util/surround ::st/subject-start ::st/subject-end)
+(defn read-input-states
+  [env input-states]
+  (->> input-states
        (reductions
-        (fn [previous quad]
-          (if (keyword? quad)
-            (assoc (make-state previous nil) ::st/event quad)
-            (read-state (make-state previous quad))))
-        (assoc (last states) ::rdf/subject (->> quads first ::s (ln/subject->node nil))))
-       rest))
-
-(defn read-graph
-  [states quads]
-  (->> quads
-       (partition-by ::s)
-       (util/surround ::st/graph-start ::st/graph-end)
-       (reductions
-        (fn [subject-states quads]
-          (if (keyword? quads)
-            (-> subject-states
-                last
-                (make-state nil)
-                (dissoc ::rdf/subject)
-                (assoc ::st/event quads)
-                vector)
-            (read-subject subject-states quads)))
-        [(merge
-          (dissoc (last states) ::rdf/graph ::rdf/subject)
-          (when-let [graph (->> quads first ::g (ln/graph->node nil))]
-            {::rdf/graph graph}))])
+        (fn [previous current]
+          (read-state
+           (merge
+            (select-keys previous [::en/env ::rdf/graph ::rdf/subject])
+            current)))
+        {::en/env env})
        rest
-       (mapcat identity)))
+       fm/insert-graph-events
+       fm/insert-subject-events))
 
-(defn read-lines
-  [state lines]
-  (->> lines
-       (map-indexed vector)
-       (map (fn [[i q]] (assoc (split-quad q) ::line-number (inc i))))
-       (partition-by ::g)
-       (reductions read-graph [state])
-       rest
-       (mapcat identity)))
+(defn read-input
+  [env
+   {:keys [::st/mode ::st/line-number ::st/lines]
+    :or {line-number 1}
+    :as input}]
+  (let [input (-> input
+                  (select-keys [::st/format ::st/source])
+                  (assoc ::st/format :nq))]
+    (->> lines
+         (map-indexed
+          (fn [i line]
+            (assoc
+             input
+             ::st/line-number (+ line-number i)
+             ::st/lines [line])))
+         (map (fn [input] (merge {::st/input input} (when mode {::st/mode mode}))))
+         (read-input-states env))))
 
 (defn render-node
   [{:keys [::rdf/iri ::rdf/bnode ::rdf/lexical] :as node}]
@@ -133,5 +105,5 @@
 (fm/register!
  {::fm/name :nq
   ::fm/description "N-Quads format"
-  ::fm/read read-lines
+  ::fm/read read-input
   ::fm/render render-states})

@@ -5,6 +5,7 @@
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
+            [org.knotation.state-spec]
             [org.knotation.format :as fm]
             [org.knotation.omn :as omn]
             [org.knotation.nq :as nq]))
@@ -108,9 +109,9 @@ q"}}
 (deftest test-states
   (is (s/valid? ::st/states states)))
 
-(deftest test-read-lines
+(deftest test-read-input
   (is (= states
-         (nq/read-lines st/blank-state lines))))
+         (nq/read-input en/blank-env {::st/lines lines}))))
 
 (def example-typed-quad
   {::rdf/graph nil
@@ -168,6 +169,24 @@ _:4 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02
 _:5 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction> .
 _:5 <http://www.w3.org/2002/07/owl#onProperty> <http://purl.obolibrary.org/obo/BFO_0000050> .
 _:5 <http://www.w3.org/2002/07/owl#someValuesFrom> <http://example.com/wheel> .")
+
+(def ex-annotations
+  "<http://example.com/car> <http://www.w3.org/2000/01/rdf-schema#label> \"car\" .
+_:1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Axiom> .
+_:1 <http://www.w3.org/2002/07/owl#annotatedSource> <http://example.com/car> .
+_:1 <http://www.w3.org/2002/07/owl#annotatedProperty> <http://www.w3.org/2000/01/rdf-
+sc1abel> .
+_:1 <http://www.w3.org/2002/07/owl#annotatedTarget> \"car\" .
+_:1 <http://www.w3.org/2000/01/rdf-schema#comment> _:2
+_:2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> \"A\" .
+_:2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:3 .
+_:3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> \"B\" .
+_:3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:4 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Axiom> .
+_:4 <http://www.w3.org/2002/07/owl#annotatedSource> _:1 .
+_:4 <http://www.w3.org/2002/07/owl#annotatedProperty> <http://www.w3.org/2000/01/rdf-comment> .
+_:4 <http://www.w3.org/2002/07/owl#annotatedTarget> \"A\" .
+_:4 <http://www.w3.org/2000/01/rdf-schema#comment> \"AA\" .")
 
 (deftest test-render-branch
   (->> ex-manchester

@@ -5,6 +5,7 @@
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
+            [org.knotation.state-spec]
             [org.knotation.tsv :as tsv]))
 
 (stest/instrument)
@@ -116,6 +117,6 @@
 ;(deftest test-states)
 ;  (is (s/valid? ::st/states states)))
 
-(deftest test-read-lines
+(deftest test-read-input
   (is (= states
-         (tsv/read-lines base-1 lines))))
+         (tsv/read-input (::en/env base-1) {::st/lines lines}))))

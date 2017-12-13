@@ -3,7 +3,9 @@
             [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as stest]
             [org.knotation.rdf :as rdf]
+            [org.knotation.environment :as en]
             [org.knotation.state :as st]
+            [org.knotation.state-spec]
             [org.knotation.kn :as kn]))
 
 (stest/instrument)
@@ -254,9 +256,9 @@ string
 (deftest test-states
   (is (s/valid? ::st/states states)))
 
-(deftest test-read-lines
+(deftest test-read-input
   (is (= states
-         (kn/read-lines st/blank-state lines))))
+         (kn/read-input en/blank-env {::st/lines lines}))))
 
 (deftest test-render-lines
   (is (= lines
@@ -269,7 +271,8 @@ string
   [before after]
   (->> before
        clojure.string/split-lines
-       (kn/read-lines st/blank-state)
+       (assoc {::st/line-number 1} ::st/lines)
+       (kn/read-input en/blank-env)
        kn/render-states
        (map ::st/output)
        (mapcat ::st/lines)

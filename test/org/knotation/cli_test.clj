@@ -21,7 +21,8 @@
 (deftest test-operations
   (with-redefs [line-seq (fn [x] [])
                 clojure.java.io/reader (fn [x] nil)]
-    (is (= [{::api/operation-type :read-env
+    (is (= [{::api/operation-type :read
+             ::st/mode :env
              ::st/source "foo.kn"
              ::st/format :kn
              ::st/lines []}

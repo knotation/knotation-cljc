@@ -78,29 +78,13 @@
 (defn operation
   [{:keys [::flag ::value] :as arg}]
   (case flag
-    nil
-    {::api/operation-type :read
-     ::st/source value
-     ::st/format (get-format value)
-     ::st/lines (line-seq (clojure.java.io/reader value))}
-
-    :env
-    {::api/operation-type :read-env
-     ::st/source value
-     ::st/format (get-format value)
-     ::st/lines (line-seq (clojure.java.io/reader value))}
-
-    :prefixes
-    {::api/operation-type :read-prefixes
-     ::st/source value
-     ::st/format (get-format value)
-     ::st/lines (line-seq (clojure.java.io/reader value))}
-
-    :data
-    {::api/operation-type :read-data
-     ::st/source value
-     ::st/format (get-format value)
-     ::st/lines (line-seq (clojure.java.io/reader value))}
+    (nil :env :prefixes :data)
+    (merge
+     {::api/operation-type :read
+      ::st/source value
+      ::st/format (get-format value)
+      ::st/lines (line-seq (clojure.java.io/reader value))}
+     (when flag {::st/mode flag}))
 
     :format
     {::api/operation-type :render
