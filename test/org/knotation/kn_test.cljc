@@ -197,7 +197,7 @@
    ""])
 
 (def states
-  [(assoc base-1
+  [(assoc base-2 ; TODO: Not quite right
           ::st/event ::st/graph-start)
    (assoc base-2
           ::st/event ::st/prefix

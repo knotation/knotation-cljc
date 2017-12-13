@@ -34,7 +34,7 @@ foo: bar")
 (def step-3
   [st/blank-state
    {::st/event ::st/graph-start
-    ::en/env en/blank-env}
+    ::en/env env-1} ; TODO: should be blank?
    {::st/event ::st/prefix
     ::st/input {::st/format :kn
                 ::st/line-number 1
@@ -85,7 +85,7 @@ foo: bar")
 (def step-4
   [{::en/env {}}
    {::st/event ::st/graph-start
-    ::en/env en/blank-env}
+    ::en/env env-1} ; TODO: should be blank?
    {::st/event ::st/prefix
     ::st/input {::st/format :kn
                 ::st/line-number 1

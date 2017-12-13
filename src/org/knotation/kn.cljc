@@ -199,10 +199,19 @@
            (merge
             (select-keys previous [::en/env ::rdf/graph ::rdf/subject])
             current)))
-        {::en/env env
-         ::st/event ::st/graph-start})
-       fm/insert-graph-events
-       fm/insert-subject-events))
+        {::en/env env})
+       rest))
+
+(defn merge-multilines
+  [input-states]
+  (->> input-states
+       (util/partition-with #(-> % ::st/input ::st/lines first (util/starts-with? " ") not))
+       (map
+        (fn [states]
+          (assoc-in
+           (first states)
+           [::st/input ::st/lines]
+           (->> states (map ::st/input) (mapcat ::st/lines)))))))
 
 (defn read-input
   [env
@@ -222,7 +231,9 @@
              ::st/line-number (ffirst numbered-lines)
              ::st/lines (map second numbered-lines))))
          (map (fn [input] (merge {::st/input input} (when mode {::st/mode mode}))))
-         (read-input-states env))))
+         (read-input-states env)
+         fm/insert-graph-events
+         fm/insert-subject-events)))
 
 (defn render-quad
   [env {:keys [::rdf/predicate ::rdf/object] :as quad}]
