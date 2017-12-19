@@ -4,6 +4,7 @@
             [org.knotation.state :as st]
             [org.knotation.link :as ln]
             [org.knotation.object :as ob]
+            [org.knotation.omn :as omn]
             [org.knotation.format :as fm]))
 
 (defn render-quad
@@ -16,13 +17,19 @@
     "\">"
     (ln/node->name env predicate)
     "</a>: "
-    (if (::rdf/iri object)
+    (cond
+      (::rdf/iri object)
       (str
        "<a href=\""
        (::rdf/iri object)
        "\">"
        (ln/node->name env object)
        "</a>")
+      (::rdf/bnode object)
+      (->> object
+           (omn/render-class-expression env)
+           (omn/write-class-expression))
+      :else
       (::rdf/lexical object))
     "</li>")])
 
@@ -41,12 +48,10 @@
     :as state}]
   (case (if (= :env mode) nil event)
     ::st/subject-start
-    (let [label (ln/node->name env subject)
-          link (str "<a href=\"" (::rdf/iri subject) "\">" (::rdf/iri subject) "</a>")]
+    (let [link (str "<a href=\"" (::rdf/iri subject) "\">" (::rdf/iri subject) "</a>")]
       (output-lines
        state
        ["<div>"
-        (str "  <p>" label "</p>")
         (str "  <p>" link "</p>")
         "  <ul>"]))
 

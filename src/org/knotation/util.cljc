@@ -26,8 +26,8 @@
 
 (defn edn->json
   [content]
-  (#?(:clj json/write-str :cljs clj->js)
-   content))
+  #?(:clj (json/write-str content)
+     :cljs (.stringify js/JSON (clj->js content) nil 2)))
 
 (defn throw-exception
   "Given a sequence of arguments,

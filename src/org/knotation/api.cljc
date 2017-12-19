@@ -12,7 +12,8 @@
             [org.knotation.nq]
             [org.knotation.ttl]
             [org.knotation.rdfa]
-            [org.knotation.json]))
+            [org.knotation.json]
+            [org.knotation.dot]))
 
 ;; The API works in terms of operations.
 ;; Each operation is converted into a function

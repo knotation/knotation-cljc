@@ -7,6 +7,7 @@
             [org.knotation.state :as st]
             [org.knotation.link :as ln]
             [org.knotation.object :as ob]
+            [org.knotation.omn :as omn]
             [org.knotation.format :as fm]))
 
 (defn output-lines
@@ -21,15 +22,29 @@
   [predicate triples]
   (->> triples
        (filter #(-> % ::rdf/predicate ::rdf/iri (= predicate)))
-       (map (fn [{:keys [::rdf/subject ::rdf/object]}]
-              [(::rdf/iri object) (::rdf/iri subject)]))
+       (filter #(-> % ::rdf/subject ::rdf/iri))
+       (mapcat
+        (fn [{:keys [::rdf/subject ::rdf/object]}]
+         (if (and (::rdf/bnode object)
+                  (-> object ::rdf/pairs second ::rdf/predicate ::rdf/iri (= (rdf/owl "intersectionOf"))))
+           (->> object
+                ::rdf/pairs
+                second
+                ::rdf/object
+                ::rdf/pairs
+                omn/branch->list
+                (map ::rdf/iri)
+                (remove nil?)
+                (map (fn [o] [o (::rdf/iri subject)])))
+           [[(::rdf/iri object) (::rdf/iri subject)]])))
+       (remove nil?)
        (reduce
         (fn [coll [parent child]]
           (update coll parent (fnil conj []) child))
         {})))
 
-(def class-icon "owl-icon glyphicon glyphicon-th-large")
-(def individual-icon "owl-icon glyphicon glyphicon-record")
+(def class-icon "") ; "owl-icon glyphicon glyphicon-th-large")
+(def individual-icon "") ; "owl-icon glyphicon glyphicon-record")
 
 ; WARN: This uses naive recursion and could blow the stack.
 
