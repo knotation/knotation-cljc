@@ -4,8 +4,8 @@
   :license {:name "BSD 3-Clause License"
             :url "http://opensource.org/licenses/BSD-3-Clause"}
   :plugins [[lein-cljsbuild "1.1.6"]]
-  :dependencies [[org.clojure/clojure "1.9.0-RC1"]
-                 [org.clojure/clojurescript "1.9.521"]
+  :dependencies [[org.clojure/clojure "1.9.0"]
+                 [org.clojure/clojurescript "1.9.946"]
                  [org.clojure/data.json "0.2.6"]
 
                  [instaparse "1.4.8"]]
