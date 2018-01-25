@@ -7,7 +7,8 @@
             [org.knotation.state :as st]))
 
 (s/def ::st/event
-  #{::st/error
+  #{::st/blank ; default value
+    ::st/error
     ::st/comment
     ::st/space
     ::st/prefix
@@ -35,23 +36,20 @@
           :opt [::st/source]))
 
 (s/def ::st/state
-  (s/keys :req [::en/env]
+  (s/keys :req [::st/event ::en/env]
           :opt [::st/mode ::st/input ::st/output
-                ::en/env-before
-                ::rdf/graph ::rdf/subject
-                ::rdf/quads ::st/error]))
+                ::rdf/graph ::rdf/subject ::rdf/predicate ::rdf/object
+                ::st/error]))
 (s/def ::st/input-state
-  (s/keys :req [::st/input ::en/env]
+  (s/keys :req [::st/event ::st/input ::en/env]
           :opt [::st/mode ::st/output
-                ::en/env-before
-                ::rdf/graph ::rdf/subject
-                ::rdf/quads ::st/error]))
+                ::rdf/graph ::rdf/subject ::rdf/predicate ::rdf/object
+                ::st/error]))
 (s/def ::st/output-state
-  (s/keys :req [::st/input ::en/env]
+  (s/keys :req [::st/event ::st/input ::en/env]
           :opt [::st/mode
-                ::en/env-before
-                ::rdf/graph ::rdf/subject
-                ::rdf/quads ::st/error
+                ::rdf/graph ::rdf/subject ::rdf/predicate ::rdf/object
+                ::st/error
                 ::st/output]))
 
 (s/def ::st/states (s/coll-of ::st/state))

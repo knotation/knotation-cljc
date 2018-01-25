@@ -42,18 +42,18 @@
            ::st/line-number 2
            ::st/column-number 2
            ::st/lines ["ex:p: o" " a: b"]}
+          ::rdf/graph nil
           ::rdf/subject {::rdf/iri (rdf/ex "s")}
-          ::rdf/quads
-          [{::rdf/graph nil
-            ::rdf/subject {::rdf/iri (rdf/ex "s")}
-            ::rdf/predicate {::rdf/iri (rdf/ex "p")}
-            ::rdf/object {::rdf/lexical "o
-a: b"}}])
+          ::rdf/predicate {::rdf/iri (rdf/ex "p")}
+          ::rdf/object {::rdf/lexical "o
+a: b"})
    (assoc base-1
           ::st/event ::st/subject-end
+          ::rdf/graph nil
           ::rdf/subject {::rdf/iri (rdf/ex "s")})
    (assoc base-1
-          ::st/event ::st/graph-end)])
+          ::st/event ::st/graph-end
+          ::rdf/graph nil)])
 
 ;(deftest test-states)
 ;  (is (s/valid? ::st/states states)))

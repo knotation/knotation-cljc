@@ -57,25 +57,27 @@ foo: bar")
                 ::st/line-number 4
                 ::st/lines ["ex:p: o"]}
     ::en/env env-1
+    ::rdf/graph nil
     ::rdf/subject {::rdf/iri "https://example.com/s"}
-    ::rdf/quads [{::rdf/graph nil
-                  ::rdf/subject {::rdf/iri "https://example.com/s"}
-                  ::rdf/predicate {::rdf/iri "https://example.com/p"}
-                  ::rdf/object {::rdf/lexical "o"}}]}
+    ::rdf/predicate {::rdf/iri "https://example.com/p"}
+    ::rdf/object {::rdf/lexical "o"}}
    {::st/event ::st/error
     ::st/input {::st/format :kn
                 ::st/line-number 5
                 ::st/lines ["foo: bar"]}
     ::en/env env-1
+    ::rdf/graph nil
     ::rdf/subject {::rdf/iri "https://example.com/s"}
     ::st/error {::st/error-type :unrecognized-predicate
                 ::st/error-info ["foo"]
                 ::st/error-message "Unrecognized predicate: foo"}}
    {::st/event ::st/subject-end
     ::en/env env-1
+    ::rdf/graph nil
     ::rdf/subject {::rdf/iri "https://example.com/s"}}
    {::st/event ::st/graph-end
-    ::en/env env-1}])
+    ::en/env env-1
+    ::rdf/graph nil}])
 
 (deftest test-step-process-inputs
   (is (= step-3
@@ -83,7 +85,7 @@ foo: bar")
   (is (s/valid? ::st/states step-3)))
 
 (def step-4
-  [{::en/env {}}
+  [st/blank-state
    {::st/event ::st/graph-start
     ::en/env env-1} ; TODO: should be blank?
    {::st/event ::st/prefix
@@ -108,11 +110,10 @@ foo: bar")
                 ::st/line-number 4
                 ::st/lines ["ex:p: o"]}
     ::en/env env-1
+    ::rdf/graph nil
     ::rdf/subject {::rdf/iri "https://example.com/s"}
-    ::rdf/quads [{::rdf/graph nil
-                  ::rdf/subject {::rdf/iri "https://example.com/s"}
-                  ::rdf/predicate {::rdf/iri "https://example.com/p"}
-                  ::rdf/object {::rdf/lexical "o"}}]
+    ::rdf/predicate {::rdf/iri "https://example.com/p"}
+    ::rdf/object {::rdf/lexical "o"}
     ::st/output {::st/format :nq
                  ::st/line-number 1
                  ::st/lines ["<https://example.com/s> <https://example.com/p> \"o\" ."]}}
@@ -121,15 +122,18 @@ foo: bar")
                 ::st/line-number 5
                 ::st/lines ["foo: bar"]}
     ::en/env env-1
+    ::rdf/graph nil
     ::rdf/subject {::rdf/iri "https://example.com/s"}
     ::st/error {::st/error-type :unrecognized-predicate
                 ::st/error-info ["foo"]
                 ::st/error-message "Unrecognized predicate: foo"}}
    {::st/event ::st/subject-end
     ::en/env env-1
+    ::rdf/graph nil
     ::rdf/subject {::rdf/iri "https://example.com/s"}}
    {::st/event ::st/graph-end
-    ::en/env env-1}])
+    ::en/env env-1
+    ::rdf/graph nil}])
 
 (deftest test-step-process-output
   (is (= step-4

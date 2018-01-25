@@ -25,13 +25,15 @@
        (assoc state ::event ::error ::error)))
 
 (def example-quad
-  {::rdf/graph nil
+  {::event ::statement
+   ::rdf/graph nil
    ::rdf/subject {::rdf/iri "https://example.com/s"}
    ::rdf/predicate {::rdf/iri "https://example.com/p"}
    ::rdf/object {::rdf/lexical "o"}})
 
 (def example-quads
-  {::input {::format :knotation
+  {::event ::statement
+   ::input {::format :knotation
             ::line-number 4
             ::lines ["ex:p: \"o\""]}
    ::en/env-before {}
@@ -42,7 +44,8 @@
              ::lines ["<https://example.com/s> <https://example.com/p> \"o\" ."]}})
 
 (def example-error
-  {::input {::format :kn
+  {::event ::statement
+   ::input {::format :kn
             ::line-number 5
             ::lines ["foo: bar"]}
    ::en/env-before {}
@@ -89,7 +92,9 @@
 
     state))
 
-(def blank-state {::en/env {}})
+(def blank-state
+  {::event ::blank
+   ::en/env {}})
 
 (def default-state
   (assoc blank-state ::en/env en/default-env))

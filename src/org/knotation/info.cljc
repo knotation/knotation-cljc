@@ -48,9 +48,8 @@
        [[:li "Blank Node " (::rdf/bnode subject)]])))])
 
 (defn predicate-status
-  [{:keys [::en/env ::rdf/quads] :as state}]
-  (let [{:keys [::rdf/predicate] :as quad} (first quads)
-        iri (::rdf/iri predicate)
+  [{:keys [::en/env ::rdf/predicate] :as state}]
+  (let [iri (::rdf/iri predicate)
         default-datatype (get-in env [::en/predicate-datatype iri])
         default-language (get-in env [::en/predicate-language iri])]
     [:p
@@ -69,9 +68,8 @@
          [[:li "Default Language: " default-language]])))]))
 
 (defn object-status
-  [{:keys [::en/env ::rdf/quads] :as state}]
-  (let [{:keys [::rdf/object] :as quad} (first quads)
-        {:keys [::rdf/iri ::rdf/bnode ::rdf/lexical ::rdf/language ::rdf/datatype]} object]
+  [{:keys [::en/env ::rdf/object] :as state}]
+  (let [{:keys [::rdf/iri ::rdf/bnode ::rdf/lexical ::rdf/language ::rdf/datatype]} object]
     [:p
      "Object"
      (vec
@@ -186,7 +184,7 @@
       "Statements form RDF triples, using the current subject."]
 
      ; Predicate
-     (case (get-in state [::st/quads 0 ::rdf/predicate ::rdf/iri])
+     (case (get-in state [::rdf/predicate ::rdf/iri])
        "http://www.w3.org/2000/01/rdf-schema#label"
        [:p
         "The "
@@ -215,7 +213,7 @@
        nil)
 
      ; Datatype
-     (case (get-in state [::st/quads 0 ::rdf/object ::rdf/datatype])
+     (case (get-in state [::rdf/object ::rdf/datatype])
        "https://knotation.org/datatype/link"
        [:p
         "The "

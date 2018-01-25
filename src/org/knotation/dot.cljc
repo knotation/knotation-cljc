@@ -45,7 +45,6 @@
                           distinct)
         subject-set (set subject-iris)
         quads (->> states
-                   (mapcat ::rdf/quads states)
                    (filter #(contains? subject-set (-> % ::rdf/object ::rdf/iri)))
                    (remove #(-> % ::rdf/predicate ::rdf/iri (util/starts-with? (rdf/kn "predicate/")))))]
     (concat

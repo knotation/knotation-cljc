@@ -4,6 +4,7 @@
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
+            [org.knotation.state-spec]
             [org.knotation.link :as ln]
             [org.knotation.object :as ob]
             [org.knotation.format :as fm]
@@ -71,7 +72,7 @@
 
 (defn render-state
   [{:keys [::st/mode ::st/event ::en/env
-           ::st/comment ::st/prefix ::rdf/subject ::rdf/quads]
+           ::st/comment ::st/prefix ::rdf/subject]
     :as state}]
   (case (if (= :env mode) nil event)
     ::st/comment
@@ -89,9 +90,7 @@
     (output-lines state [(render-node env subject)])
 
     ::st/statement
-    (->> quads
-         (mapcat (partial render-quad env))
-         (output-lines state))
+    (output-lines state (render-quad env state))
 
     state))
 
@@ -103,7 +102,7 @@
         index (->> states
                    (map-indexed vector)
                    reverse
-                   (filter #(::rdf/quads (second %)))
+                   (filter #(= ::st/statement (::st/event (second %))))
                    first
                    first)
         lines (get-in states [index ::st/output ::st/lines])]

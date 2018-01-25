@@ -11,54 +11,41 @@
 
 (stest/instrument)
 
+(def env-1
+  (-> en/blank-env
+      (en/add-prefix "ex" (rdf/ex))))
+
 (def example-typed-quad
-  {::rdf/graph nil
+  {::st/event ::st/statement
+   ::en/env env-1
+   ::rdf/graph nil
    ::rdf/subject {::rdf/iri (rdf/ex "s")}
    ::rdf/predicate {::rdf/iri (rdf/ex "p")}
    ::rdf/object {::rdf/lexical "o" ::rdf/datatype (rdf/ex "d")}})
 
 (def example-multiline-quad
-  {::rdf/graph nil
+  {::st/event ::st/statement
+   ::en/env env-1
+   ::rdf/graph nil
    ::rdf/subject {::rdf/iri (rdf/ex "s")}
    ::rdf/predicate {::rdf/iri (rdf/ex "p")}
    ::rdf/object {::rdf/lexical "multi
 line"}})
 
-(def env-1
-  (-> en/blank-env
-      (en/add-prefix "ex" (rdf/ex))))
-
 (deftest test-render-state
-  (is (= {::st/event ::st/statement
-          ::en/env env-1
-          ::rdf/quads [example-typed-quad]
+  (is (= (assoc
+          example-typed-quad
           ::st/output
           {::st/format :ttl
-           ::st/lines ["  ex:p \"o\"^^ex:d ;"]}}
-         (ttl/render-state
-          {::st/event ::st/statement
-           ::en/env env-1
-           ::rdf/quads [example-typed-quad]})))
-  (is (= {::st/event ::st/statement
-          ::en/env env-1
-          ::rdf/quads [example-multiline-quad]
+           ::st/lines ["  ex:p \"o\"^^ex:d ;"]})
+         (ttl/render-state example-typed-quad)))
+  (is (= (assoc
+          example-multiline-quad
           ::st/output
           {::st/format :ttl
            ::st/lines ["  ex:p \"\"\"multi"
-                       "line\"\"\" ;"]}}
-         (ttl/render-state
-          {::st/event ::st/statement
-           ::en/env env-1
-           ::rdf/quads [example-multiline-quad]}))))
-
-;(deftest test-indent
-;  (is (= [{::st/output {::st/lines ["  A ;" "  B ;"]}}
-;          {::st/output {::st/lines ["  C ."]}}
-;          {}]
-;         (ttl/indent-states
-;          [{::st/output {::st/lines ["A" "B"]}}
-;           {::st/output {::st/lines ["C"]}}
-;           {}]))))
+                       "line\"\"\" ;"]})
+         (ttl/render-state example-multiline-quad))))
 
 (def input-states
   [{::st/event ::st/prefix
@@ -69,14 +56,8 @@ line"}})
    {::st/event ::st/subject-start
     ::en/env env-1
     ::rdf/subject {::rdf/iri (rdf/ex "s")}}
-   {::st/event ::st/statement
-    ::en/env env-1
-    ::rdf/subject {::rdf/iri (rdf/ex "s")}
-    ::rdf/quads [example-typed-quad]}
-   {::st/event ::st/statement
-    ::en/env env-1
-    ::rdf/subject {::rdf/iri (rdf/ex "s")}
-    ::rdf/quads [example-typed-quad]}
+   example-typed-quad
+   example-typed-quad
    {::st/event ::st/subject-end
     ::en/env env-1
     ::rdf/subject {::rdf/iri (rdf/ex "s")}}])
@@ -102,22 +83,18 @@ line"}})
     {::st/format :ttl
      ::st/line-number 3
      ::st/lines ["ex:s"]}}
-   {::st/event ::st/statement
-    ::en/env env-1
-    ::rdf/subject {::rdf/iri (rdf/ex "s")}
-    ::rdf/quads [example-typed-quad]
+   (assoc
+    example-typed-quad
     ::st/output
     {::st/format :ttl
      ::st/line-number 4
-     ::st/lines ["  ex:p \"o\"^^ex:d ;"]}}
-   {::st/event ::st/statement
-    ::en/env env-1
-    ::rdf/subject {::rdf/iri (rdf/ex "s")}
-    ::rdf/quads [example-typed-quad]
+     ::st/lines ["  ex:p \"o\"^^ex:d ;"]})
+   (assoc
+    example-typed-quad
     ::st/output
     {::st/format :ttl
      ::st/line-number 5
-     ::st/lines ["  ex:p \"o\"^^ex:d ."]}}
+     ::st/lines ["  ex:p \"o\"^^ex:d ."]})
    {::st/event ::st/subject-end
     ::en/env env-1
     ::rdf/subject {::rdf/iri (rdf/ex "s")}}])

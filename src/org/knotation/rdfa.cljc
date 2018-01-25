@@ -43,7 +43,7 @@
 
 (defn render-state
   [{:keys [::st/mode ::st/event
-           ::en/env ::rdf/quads
+           ::en/env
            ::rdf/subject]
     :as state}]
   (case (if (= :env mode) nil event)
@@ -59,7 +59,7 @@
     (output-lines state ["  </ul>" "</div>"])
 
     ::st/statement
-    (output-lines state (mapcat (partial render-quad env) quads))
+    (output-lines state (render-quad env state))
 
     state))
 

@@ -120,50 +120,45 @@
               state (if (= mode :data)
                       state
                       (st/update-state state quad))]
-          (if (= mode :env) state (assoc state ::rdf/quads [quad])))))
+          (if (= mode :env) state (merge state quad)))))
     (st/error state :not-a-statement)))
 
 (declare make-state)
 (declare read-state)
 
 (defn expand-template
-  [{:keys [::en/env ::rdf/quads] :as state}]
-  (if-let [{:keys [::rdf/predicate ::rdf/object] :as quad} (first quads)]
-    (if (= (::rdf/iri predicate) "https://knotation.org/predicate/apply-template")
-      (let [value (::rdf/lexical object)
-            template (->> value
-                          string/split-lines
-                          first
-                          string/trim
-                          (ln/predicate->iri env))
-            content (get-in env [::en/template-content template])
-            values (->> value
+  [{:keys [::en/env ::rdf/predicate ::rdf/object] :as state}]
+  (if (= (::rdf/iri predicate) "https://knotation.org/predicate/apply-template")
+    (let [value (::rdf/lexical object)
+          template (->> value
                         string/split-lines
-                        rest
-                        (map #(string/split % #": "))
-                        (into {}))
-            result (string/replace
-                    content
-                    #"\{(.*?)\}"
-                    (fn [[_ x]] (get values x)))
-            states
-            (->> result
-                 string/split-lines
-                 rest
-                 (map-indexed (fn [i line] [(inc i) line]))
-                 (reductions
-                  (fn [previous line]
-                    (read-state (make-state previous [line])))
-                  state)
-                 rest)
-            quads
-            (assoc-in
-             quads
-             [0 ::rdf/predicate ::rdf/iri]
-             "https://knotation.org/predicate/applied-template")]
-        (assoc (last states) ::rdf/quads (concat quads (mapcat ::rdf/quads states))))
-      state)
-    state))
+                        first
+                        string/trim
+                        (ln/predicate->iri env))
+          content (get-in env [::en/template-content template])
+          values (->> value
+                      string/split-lines
+                      rest
+                      (map #(string/split % #": "))
+                      (into {}))
+          result (string/replace
+                  content
+                  #"\{(.*?)\}"
+                  (fn [[_ x]] (get values x)))
+          states
+          (->> result
+               string/split-lines
+               rest
+               (map-indexed (fn [i line] [(inc i) line]))
+               (reductions
+                (fn [previous line]
+                  (read-state (make-state previous [line])))
+                state)
+               rest)]
+      (concat
+       [(assoc state ::rdf/predicate {::rdf/iri "https://knotation.org/predicate/applied-template"})]
+       states))
+    [state]))
 
 (defn read-state
   [state]
@@ -172,7 +167,7 @@
     \# (read-comment state)
     \@ (read-declaration state)
     \: (read-subject state)
-    (expand-template (read-statement state))))
+    (read-statement state)))
 
 (defn make-state
   [{:keys [::st/mode ::en/env ::rdf/graph ::rdf/subject]} lines]
@@ -200,7 +195,8 @@
             (select-keys previous [::en/env ::rdf/graph ::rdf/subject])
             current)))
         {::en/env env})
-       rest))
+       rest
+       (mapcat expand-template)))
 
 (defn merge-multilines
   [input-states]
@@ -271,8 +267,7 @@
            ::en/env ::en/env-before
            ::st/comment
            ::st/prefix
-           ::rdf/quads
-           ::rdf/subject ::st/previous-subject]
+           ::rdf/subject]
     :as state}]
   (case (if (= :env mode) nil event)
     ::st/comment
@@ -292,7 +287,7 @@
     (output-lines state [(str ": " (ln/node->name env subject))])
 
     ::st/statement
-    (output-lines state (mapcat (partial render-quad env) quads))
+    (output-lines state (render-quad env state))
 
     state))
 

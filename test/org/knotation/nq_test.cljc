@@ -57,9 +57,11 @@ q"}}
 
 (def states
   [(assoc st/blank-state
-          ::st/event ::st/graph-start)
+          ::st/event ::st/graph-start
+          ::rdf/graph nil)
    (assoc st/blank-state
           ::st/event ::st/subject-start
+          ::rdf/graph nil
           ::rdf/subject {::rdf/iri "s"})
    (assoc st/blank-state
           ::st/event ::st/statement
@@ -67,17 +69,17 @@ q"}}
           {::st/format :nq
            ::st/line-number 1
            ::st/lines ["<s> <p> <o> ."]}
+          ::rdf/graph nil
           ::rdf/subject {::rdf/iri "s"}
-          ::rdf/quads
-          [{::rdf/graph nil
-            ::rdf/subject {::rdf/iri "s"}
-            ::rdf/predicate {::rdf/iri "p"}
-            ::rdf/object {::rdf/iri "o"}}])
+          ::rdf/predicate {::rdf/iri "p"}
+          ::rdf/object {::rdf/iri "o"})
    (assoc st/blank-state
           ::st/event ::st/subject-end
+          ::rdf/graph nil
           ::rdf/subject {::rdf/iri "s"})
    (assoc st/blank-state
-          ::st/event ::st/graph-end)
+          ::st/event ::st/graph-end
+          ::rdf/graph nil)
    (assoc st/blank-state
           ::st/event ::st/graph-start
           ::rdf/graph {::rdf/iri "g"})
@@ -93,11 +95,8 @@ q"}}
            ::st/lines ["<s> <p> \"o\" <g> ."]}
           ::rdf/graph {::rdf/iri "g"}
           ::rdf/subject {::rdf/iri "s"}
-          ::rdf/quads
-          [{::rdf/graph {::rdf/iri "g"}
-            ::rdf/subject {::rdf/iri "s"}
-            ::rdf/predicate {::rdf/iri "p"}
-            ::rdf/object {::rdf/lexical "o"}}])
+          ::rdf/predicate {::rdf/iri "p"}
+          ::rdf/object {::rdf/lexical "o"})
    (assoc st/blank-state
           ::st/event ::st/subject-end
           ::rdf/graph {::rdf/iri "g"}
@@ -114,31 +113,28 @@ q"}}
          (nq/read-input en/blank-env {::st/lines lines}))))
 
 (def example-typed-quad
-  {::rdf/graph nil
+  {::st/event ::st/statement
+   ::rdf/graph nil
    ::rdf/subject {::rdf/iri "s"}
    ::rdf/predicate {::rdf/iri "p"}
    ::rdf/object {::rdf/lexical "o" ::rdf/datatype "d"}})
 
 (deftest test-render-state
-  (is (= {::st/event ::st/statement
-          ::rdf/quads [example-typed-quad]
+  (is (= (assoc
+          example-typed-quad
           ::st/output
           {::st/format :nq
-           ::st/lines ["<s> <p> \"o\"^^<d> ."]}}
-         (nq/render-state
-          {::st/event ::st/statement
-           ::rdf/quads [example-typed-quad]}))))
+           ::st/lines ["<s> <p> \"o\"^^<d> ."]})
+         (nq/render-state example-typed-quad))))
 
 (deftest test-render-states
-  (is (= [{::st/event ::st/statement
-           ::rdf/quads [example-typed-quad]
+  (is (= [(assoc
+           example-typed-quad
            ::st/output
            {::st/format :nq
             ::st/line-number 1
-            ::st/lines ["<s> <p> \"o\"^^<d> ."]}}]
-         (nq/render-states
-          [{::st/event ::st/statement
-            ::rdf/quads [example-typed-quad]}])))
+            ::st/lines ["<s> <p> \"o\"^^<d> ."]})]
+         (nq/render-states [example-typed-quad])))
   (is (= lines
          (->> states
               nq/render-states

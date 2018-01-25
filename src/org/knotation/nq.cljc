@@ -24,17 +24,14 @@
 
 (defn read-state
   [{:keys [::st/mode ::st/input] :as state}]
-  (let [line (first (::st/lines input))
-        {:keys [::rdf/graph ::rdf/subject] :as quad} (read-quad line)]
-    (assoc
-     (if (= mode :data)
-       state
-       (-> state
-           (merge (when graph {::rdf/graph graph}))
-           (assoc ::rdf/subject subject)
-           (st/update-state quad)))
-     ::st/event ::st/statement
-     ::rdf/quads (if (= mode :env) [] [quad]))))
+  (->> state
+       ::st/input
+       ::st/lines
+       first
+       read-quad
+       (merge
+        state
+        {::st/event ::st/statement})))
 
 (defn read-input-states
   [env input-states]
@@ -85,11 +82,11 @@
    " ."))
 
 (defn render-state
-  [{:keys [::st/mode ::st/event ::rdf/quads] :as state}]
+  [{:keys [::st/mode ::st/event] :as state}]
   (case (if (= :env mode) nil event)
     ::st/statement
-    (->> quads
-         (mapcat rdf/unbranch-quad)
+    (->> state
+         rdf/unbranch-quad
          (map render-quad)
          (assoc {::st/format :nq} ::st/lines)
          (assoc state ::st/output))
