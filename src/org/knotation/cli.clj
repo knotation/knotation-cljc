@@ -1,5 +1,6 @@
 (ns org.knotation.cli
-  (:require [clojure.pprint :as pp]
+  (:require [clojure.string :as string]
+            [clojure.pprint :as pp]
             [org.knotation.util :refer [throw-exception]]
             [org.knotation.state :as st]
             [org.knotation.api :as api])
@@ -123,6 +124,13 @@
     (when-let [lines (-> state ::st/output ::st/lines)]
       (doseq [line lines]
         (println line)))))
+
+(defn run-string
+  [s]
+  (->> (string/split s #"\s+")
+       group-args
+       (map operation)
+       api/run-operations))
 
 (defn -main
   [& args]

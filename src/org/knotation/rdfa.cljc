@@ -7,30 +7,107 @@
             [org.knotation.omn :as omn]
             [org.knotation.format :as fm]))
 
-(defn render-quad
+(defn render-link
+  [env node]
+  (str
+   "<a href=\"?iri="
+   (::rdf/iri node)
+   "\">"
+   (ln/node->name env node)
+   "</a>"))
+
+(defn render-subject
+  [env {:keys [::rdf/subject] :as quad}]
+  (render-link env subject))
+
+(defn render-predicate
+  [env {:keys [::rdf/predicate] :as quad}]
+  (render-link env predicate))
+
+(defn render-object
   [env {:keys [::rdf/predicate ::rdf/object] :as quad}]
+  (cond
+    (::rdf/iri object)
+    (str
+     "<a rel=\""
+     (::rdf/iri predicate)
+     "\" resource=\""
+     (::rdf/iri object)
+     "\" href=\"?iri="
+     (::rdf/iri object)
+     "\">"
+     (ln/node->name env object)
+     "</a>")
+    ; TODO: Fix this
+    (::rdf/bnode object)
+    (str
+     "<span property=\""
+     (::rdf/iri predicate)
+     "\">"
+     (->> object
+          (omn/render-class-expression env)
+          (omn/write-class-expression))
+     "</span>")
+    :else
+    (str
+     "<span property=\""
+     (::rdf/iri predicate)
+     "\">"
+     (::rdf/lexical object)
+     "</span>")))
+
+(defn render-pair
+  [env quad]
+  (str
+   "<strong>"
+   (render-predicate env quad)
+   "</strong> "
+   (render-object env quad)))
+
+(defn render-triple
+  [env quad]
+  (str
+   (render-subject env quad)
+   " <strong>"
+   (render-predicate env quad)
+   "</strong> "
+   (render-object env quad)))
+
+(defn render-pair-row
+  [env quad]
+  (str
+   "<tr>"
+   "<td>"
+   (render-predicate env quad)
+   "</td>"
+   "<td>"
+   (render-object env quad)
+   "</td>"
+   "</tr>"))
+
+(defn render-triple-row
+  [env {:keys [::rdf/subject] :as quad}]
+  (str
+   "<tr resource=\""
+   (::rdf/iri subject)
+   "\">"
+   "<td>"
+   (render-subject env quad)
+   "</td>"
+   "<td>"
+   (render-predicate env quad)
+   "</td>"
+   "<td>"
+   (render-object env quad)
+   "</td>"
+   "</tr>"))
+
+(defn render-list-item
+  [env quad]
   [(str
     "    "
     "<li>"
-    "<a href=\""
-    (::rdf/iri predicate)
-    "\">"
-    (ln/node->name env predicate)
-    "</a>: "
-    (cond
-      (::rdf/iri object)
-      (str
-       "<a href=\""
-       (::rdf/iri object)
-       "\">"
-       (ln/node->name env object)
-       "</a>")
-      (::rdf/bnode object)
-      (->> object
-           (omn/render-class-expression env)
-           (omn/write-class-expression))
-      :else
-      (::rdf/lexical object))
+    (render-pair env quad)
     "</li>")])
 
 (defn output-lines
@@ -53,13 +130,13 @@
        state
        ["<div>"
         (str "  <p>" link "</p>")
-        "  <ul>"]))
+        (str "  <ul resource=\"" (::rdf/iri subject) "\">")]))
 
     ::st/subject-end
     (output-lines state ["  </ul>" "</div>"])
 
     ::st/statement
-    (output-lines state (render-quad env state))
+    (output-lines state (render-list-item env state))
 
     state))
 
