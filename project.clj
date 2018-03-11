@@ -8,6 +8,8 @@
                  [org.clojure/clojurescript "1.9.946"]
                  [org.clojure/data.json "0.2.6"]
 
+                 [ring/ring-codec "1.1.0"]
+
                  [instaparse "1.4.8"]]
   :cljsbuild {:builds [{:source-paths ["src/org/knotation"]
                         :compiler {:output-to "resources/knotation.js"
