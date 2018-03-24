@@ -5,10 +5,10 @@
             :url "http://opensource.org/licenses/BSD-3-Clause"}
   :plugins [[lein-cljsbuild "1.1.6"]]
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [org.clojure/clojurescript "1.9.946"]
+                 [org.clojure/clojurescript "1.10.217"]
                  [org.clojure/data.json "0.2.6"]
 
-                 [ring/ring-codec "1.1.0"]
+                 [com.cemerick/url "0.1.1"]
 
                  [instaparse "1.4.8"]]
   :cljsbuild {:builds [{:source-paths ["src/org/knotation"]

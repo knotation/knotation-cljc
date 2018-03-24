@@ -1,5 +1,5 @@
 (ns org.knotation.format-spec
-  (:require [clojure.spec.alpha :as s]
+  (:require [#?(:clj clojure.spec.alpha :cljs cljs.spec.alpha) :as s]
             [org.knotation.state :as st]
             [org.knotation.state-spec]
             [org.knotation.format :as fm]))

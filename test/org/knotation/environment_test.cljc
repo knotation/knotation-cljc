@@ -1,7 +1,7 @@
 (ns org.knotation.environment-test
   (:require [clojure.test :refer [deftest is testing]]
-            [clojure.spec.alpha :as s]
-            [clojure.spec.test.alpha :as stest]
+            [#?(:clj clojure.spec.alpha :cljs cljs.spec.alpha) :as s]
+            [#?(:clj clojure.spec.test.alpha :cljs cljs.spec.test.alpha) :as stest]
             [org.knotation.environment-spec]
             [org.knotation.environment :as en]))
 

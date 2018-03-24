@@ -1,7 +1,7 @@
 (ns org.knotation.rdf-test
   (:require [clojure.test :refer [deftest is testing]]
-            [clojure.spec.alpha :as s]
-            [clojure.spec.test.alpha :as stest]
+            [#?(:clj clojure.spec.alpha :cljs cljs.spec.alpha) :as s]
+            [#?(:clj clojure.spec.test.alpha :cljs cljs.spec.test.alpha) :as stest]
             [org.knotation.rdf :as rdf]))
 
 (stest/instrument)

@@ -1,5 +1,5 @@
 (ns org.knotation.link-spec
-  (:require [clojure.spec.alpha :as s]
+  (:require [#?(:clj clojure.spec.alpha :cljs cljs.spec.alpha) :as s]
             [org.knotation.rdf :as rdf]
             [org.knotation.rdf-spec]
             [org.knotation.environment :as en]

@@ -1,7 +1,7 @@
 (ns org.knotation.kn-test
   (:require [clojure.test :refer [deftest is testing]]
-            [clojure.spec.alpha :as s]
-            [clojure.spec.test.alpha :as stest]
+            [#?(:clj clojure.spec.alpha :cljs cljs.spec.alpha) :as s]
+            [#?(:clj clojure.spec.test.alpha :cljs cljs.spec.test.alpha) :as stest]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
@@ -274,7 +274,7 @@ string
 : ex:s
 ex:p; ex:d: Multiline
  string
- 
+
   with spaces."))
 
 (deftest test-templates
@@ -283,7 +283,7 @@ ex:p; ex:d: Multiline
 @prefix ex: <http://example.com/>
 
 : ex:template
-knp:template-content: 
+knp:template-content:
  ex:label: Foo {label}
 
 : ex:1
@@ -294,7 +294,7 @@ knp:apply-template: ex:template
 @prefix ex: <http://example.com/>
 
 : ex:template
-knp:template-content: 
+knp:template-content:
  ex:label: Foo {label}
 
 : ex:1

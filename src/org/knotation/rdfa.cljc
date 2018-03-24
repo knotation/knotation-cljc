@@ -1,5 +1,5 @@
 (ns org.knotation.rdfa
-  (:require [ring.util.codec :as codec]
+  (:require [cemerick.url :as url]
 
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
@@ -13,7 +13,7 @@
   [env node]
   (str
    "<a href=\"?iri="
-   (codec/url-encode (::rdf/iri node))
+   (url/url-encode (::rdf/iri node))
    "\">"
    (ln/node->name env node)
    "</a>"))
@@ -36,7 +36,7 @@
      "\" resource=\""
      (::rdf/iri object)
      "\" href=\"?iri="
-     (codec/url-encode (::rdf/iri object))
+     (url/url-encode (::rdf/iri object))
      "\">"
      (ln/node->name env object)
      "</a>")

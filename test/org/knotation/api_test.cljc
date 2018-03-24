@@ -1,7 +1,7 @@
 (ns org.knotation.api-test
   (:require [clojure.test :refer [deftest is testing]]
-            [clojure.spec.alpha :as s]
-            [clojure.spec.test.alpha :as stest]
+            [#?(:clj clojure.spec.alpha :cljs cljs.spec.alpha) :as s]
+            [#?(:clj clojure.spec.test.alpha :cljs cljs.spec.test.alpha) :as stest]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]

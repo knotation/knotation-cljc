@@ -1,7 +1,7 @@
 (ns org.knotation.integration-test
   (:require [clojure.test :refer [deftest is testing]]
-            [clojure.spec.alpha :as s]
-            [clojure.spec.test.alpha :as stest]
+            [#?(:clj clojure.spec.alpha :cljs cljs.spec.alpha) :as s]
+            [#?(:clj clojure.spec.test.alpha :cljs cljs.spec.test.alpha) :as stest]
             [clojure.string :as string]
             [org.knotation.api :as api]))
 
@@ -16,7 +16,7 @@ rdfs:label: owl 123
 ex:translation; @fr: hibou 123
 ex:has-wingspan; ex:inches: 22
 ex:text: Text that spans multiple lines...
- 
+
  ... must be indented with a single space.
 
 # Lines starting with \"#\" are comments")
