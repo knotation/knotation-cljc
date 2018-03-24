@@ -265,7 +265,7 @@ string
   [content]
   (test-before-after content content))
 
-(deftest test-rountrips
+(deftest test-roundtrips
   (test-roundtrip
    "@prefix ex: <http://example.com/>
 
@@ -274,7 +274,7 @@ string
 : ex:s
 ex:p; ex:d: Multiline
  string
-
+ 
   with spaces."))
 
 (deftest test-templates
@@ -283,7 +283,7 @@ ex:p; ex:d: Multiline
 @prefix ex: <http://example.com/>
 
 : ex:template
-knp:template-content:
+knp:template-content: 
  ex:label: Foo {label}
 
 : ex:1
@@ -294,7 +294,7 @@ knp:apply-template: ex:template
 @prefix ex: <http://example.com/>
 
 : ex:template
-knp:template-content:
+knp:template-content: 
  ex:label: Foo {label}
 
 : ex:1
