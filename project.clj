@@ -8,7 +8,8 @@
                  [org.clojure/clojurescript "1.9.946"]
                  [org.clojure/tools.cli "0.3.5"]
 
-                 [org.apache.jena/jena-arq "3.6.0"]]
+                 [org.apache.jena/jena-arq "3.6.0"]
+                 [org.slf4j/slf4j-nop "1.7.12"]]
   :cljsbuild {:builds [{:source-paths ["src/org/knotation"]
                         :compiler {:output-to "resources/knotation.js"
                                    :optimizations :whitespace
