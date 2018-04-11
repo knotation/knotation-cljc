@@ -10,6 +10,7 @@
   [path]
   (cond
     (util/ends-with? path ".nt") :nt
+    (util/ends-with? path ".ttl") :ttl
     (util/ends-with? path ".edn") :edn
     :else nil))
 
@@ -21,6 +22,7 @@
   [fmt env input]
   (case fmt
     :nt (jena/read-triples "nt" input)
+    :ttl (jena/read-triples "ttl" input)
     (throw (Exception. (format "Unsupported read format '%s'" fmt)))))
 
 (defn read-path
