@@ -5,12 +5,17 @@
             [org.knotation.util :as util]
             [org.knotation.jena :as jena]))
 
+; For Apache Jena's preferred file extnesions see
+; https://jena.apache.org/documentation/io/#command-line-tools
+
 (defn path-format
   "Given a path string, return a format keyword or nil."
   [path]
   (cond
-    (util/ends-with? path ".nt") :nt
+    (util/ends-with? path ".nt")  :nt
     (util/ends-with? path ".ttl") :ttl
+    (util/ends-with? path ".rdf") :rdfxml
+    (util/ends-with? path ".owl") :rdfxml
     (util/ends-with? path ".edn") :edn
     :else nil))
 
@@ -23,6 +28,7 @@
   (case fmt
     :nt (jena/read-triples "nt" input)
     :ttl (jena/read-triples "ttl" input)
+    :rdfxml (jena/read-triples "rdfxml" input)
     (throw (Exception. (format "Unsupported read format '%s'" fmt)))))
 
 (defn read-path
