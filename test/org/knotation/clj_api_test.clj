@@ -1,18 +1,22 @@
 (ns org.knotation.clj-api-test
   (:require [clojure.test :refer :all]
             [clojure.string :as string]
+            [org.knotation.rdf :as rdf]
             [org.knotation.clj-api :as api]))
 
 (deftest test-nt->edn
   (->> "<s> <p> <o> .
 <s> <p> \"o\" .
 <s> <p> \"o\"@l .
-<s> <p> \"o\"^^<d> ."
+<s> <p> \"o\"^^<d> .
+_:s <p> _:o ."
        (api/read-string :nt nil)
+       rdf/sequential-blank-nodes
        (= [{:si "s" :pi "p" :oi "o"}
            {:si "s" :pi "p" :ol "o" :di "http://www.w3.org/2001/XMLSchema#string"}
            {:si "s" :pi "p" :ol "o" :ln "l"}
-           {:si "s" :pi "p" :ol "o" :di "d"}])
+           {:si "s" :pi "p" :ol "o" :di "d"}
+           {:sb "_:b0" :pi "p" :ob "_:b1"}])
        is))
 
 (deftest test-ttl->edn
@@ -25,8 +29,10 @@ ex:s
   ex:p ex:o ;
   ex:p \"o\" ;
   ex:p \"o\"@l ;
-  ex:p \"o\"^^ex:d ."
+  ex:p \"o\"^^ex:d ;
+  ex:p _:o ."
        (api/read-string :ttl nil)
+       rdf/sequential-blank-nodes
        (= [{:prefix "ex" :iri "http://example.com/"}
            {:base "http://example.com/"}
            {:si "http://example.com/s"
@@ -49,7 +55,10 @@ ex:s
            {:si "http://example.com/s"
             :pi "http://example.com/p"
             :ol "o"
-            :di "http://example.com/d"}])
+            :di "http://example.com/d"}
+           {:si "http://example.com/s"
+            :pi "http://example.com/p"
+            :ob "_:b0"}])
        is))
 
 (deftest test-rdfxml->edn
