@@ -54,7 +54,9 @@ Options:
       (= 0 (count arguments)) (exit 1 (error-msg ["Specify at least one FILE"]))
       :else
       (api/render-file
-       (or (:to options) (:write options) (api/path-format (:output options)))
+       (or (keyword (:to options))
+           (keyword (:write options))
+           (api/path-format (:output options)))
        nil
        (api/read-paths
         (or (:from options) (:read options))

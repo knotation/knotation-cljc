@@ -3,7 +3,9 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [org.knotation.util :as util]
-            [org.knotation.jena :as jena]))
+            [org.knotation.jena :as jena]
+            [org.knotation.rdf :as rdf]
+            [org.knotation.ttl :as ttl]))
 
 ; For Apache Jena's preferred file extnesions see
 ; https://jena.apache.org/documentation/io/#command-line-tools
@@ -74,6 +76,11 @@
     (with-open [w (java.io.PrintWriter. output)]
       (doseq [state states]
         (.println w (pr-str state))))
+    :ttl
+    (with-open [w (java.io.PrintWriter. output)]
+      (doseq [o (->> states rdf/assign-stanzas (filter :pi) ttl/render-stanzas flatten)]
+        (.print w o))
+      (.print w "\n"))
     ;else
     (throw (Exception. (format "Unsupported write format '%s'" fmt)))))
 
@@ -82,7 +89,7 @@
    and a sequence of state maps,
    return a string."
   [fmt env states]
-  (let [fmt (or fmt :edn)
+  (let [fmt (or fmt :ttl)
         output (java.io.ByteArrayOutputStream.)]
     (try
       (render-output fmt env states output)
@@ -95,7 +102,7 @@
    a sequence of state maps, and a file,
    write strings to the file."
   [fmt env states file]
-  (let [fmt (or fmt :edn)]
+  (let [fmt (or fmt :ttl)]
     (try
       (render-output fmt env states (io/output-stream file))
       (catch Exception e
