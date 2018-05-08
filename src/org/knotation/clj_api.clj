@@ -5,6 +5,7 @@
             [org.knotation.util :as util]
             [org.knotation.jena :as jena]
             [org.knotation.rdf :as rdf]
+            [org.knotation.environment :as en]
             [org.knotation.ttl :as ttl]))
 
 ; For Apache Jena's preferred file extnesions see
@@ -66,6 +67,19 @@
 
 ; Render Output
 
+(def default-env (en/add-prefix en/default-env "ex" (rdf/ex)))
+
+(defn collect-env
+  [states]
+  (reduce
+   (fn [env {:keys [prefix iri base] :as state}]
+     (cond
+       (and prefix iri) (en/add-prefix env prefix iri)
+       base (en/add-base env base)
+       :else env))
+   {}
+   states))
+
 (defn render-output
   "Given a format keyword, an initial environment (or nil),
    a sequence of state maps, and an output-stream,
@@ -78,7 +92,7 @@
         (.println w (pr-str state))))
     :ttl
     (with-open [w (java.io.PrintWriter. output)]
-      (doseq [o (->> states rdf/assign-stanzas (filter :pi) ttl/render-stanzas flatten)]
+      (doseq [o (->> states rdf/assign-stanzas (ttl/render-stanzas (collect-env states)) flatten)]
         (.print w o))
       (.print w "\n"))
     ;else
