@@ -6,7 +6,8 @@
             [org.knotation.jena :as jena]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
-            [org.knotation.ttl :as ttl]))
+            [org.knotation.ttl :as ttl]
+            [org.knotation.json-ld :as json-ld]))
 
 ; For Apache Jena's preferred file extnesions see
 ; https://jena.apache.org/documentation/io/#command-line-tools
@@ -93,6 +94,11 @@
     :ttl
     (with-open [w (java.io.PrintWriter. output)]
       (doseq [o (->> states rdf/assign-stanzas (ttl/render-stanzas (collect-env states)) flatten)]
+        (.print w o))
+      (.print w "\n"))
+    :json-ld
+    (with-open [w (java.io.PrintWriter. output)]
+      (doseq [o (->> states rdf/assign-stanzas (json-ld/render-stanzas (collect-env states)) flatten)]
         (.print w o))
       (.print w "\n"))
     ;else
