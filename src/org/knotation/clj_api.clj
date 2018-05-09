@@ -6,6 +6,8 @@
             [org.knotation.jena :as jena]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
+            [org.knotation.format :as fm]
+            [org.knotation.kn :as kn]
             [org.knotation.ttl :as ttl]
             [org.knotation.json-ld :as json-ld]))
 
@@ -16,6 +18,7 @@
   "Given a path string, return a format keyword or nil."
   [path]
   (cond
+    (util/ends-with? path ".kn")  :kn
     (util/ends-with? path ".nt")  :nt
     (util/ends-with? path ".ttl") :ttl
     (util/ends-with? path ".rdf") :rdfxml
@@ -30,6 +33,7 @@
    return a lazy sequence of state maps."
   [fmt env input]
   (case fmt
+    :kn (fm/read-lines fmt env (line-seq (io/reader input)))
     :nt (jena/read-triples "nt" input)
     :ttl (jena/read-triples "ttl" input)
     :rdfxml (jena/read-triples "rdfxml" input)

@@ -28,9 +28,7 @@
   (cond
     oi (render-iri env oi)
 
-    ol (str "\"" ol "\"")
-
-    (rdf/rdf-list? triples ob)
+    (and ob (rdf/rdf-list? triples ob))
     (concat
      ["(" "\n" "    "]
      (->> (rdf/collect-list triples ob)
@@ -40,10 +38,17 @@
           indent)
      ["\n" "  " ")"])
 
-    (rdf/rdf-anonymous-subject? triples ob)
+    (and ob (rdf/rdf-anonymous-subject? triples ob))
     (indent (render-subject env triples ob))
 
-    ob ob))
+    ob ob
+
+    (and dt (not= dt (rdf/xsd "string")))
+    (str "\"" ol "\"^^" (render-iri env dt))
+
+    ln (str "\"" ol "\"@" ln)
+
+    ol (str "\"" ol "\"")))
 
 (defn render-statement
   "Given an environment, a sequence of triple maps, and a triple to render,
@@ -64,6 +69,7 @@
   (concat
    (if (rdf/blank? s) ["[ "] [(render-iri env s) "\n" "  "])
    (->> triples
+        (filter #(= (:event %) :statement))
         (filter #(= s (or (:si %) (:sb %))))
         (map (partial render-statement env triples))
         (interpose [" ;" "\n" "  "])
@@ -73,9 +79,9 @@
 (defn render-declaration
   [{:keys [prefix iri base] :as triple}]
   (cond
-    (and prefix iri) ["@prefix " prefix ": <" iri "> .\n"]
-    base ["@base <" base "> .\n"]
-    :else []))
+    (and prefix iri) ["@prefix " prefix ": <" iri "> ."]
+    base ["@base <" base "> ."]
+    :else nil))
 
 (defn render-stanza
   "Given an environment and a sequence of triple maps for a single stanza,
@@ -96,8 +102,9 @@
            flatten)
       (->> triples
            (map render-declaration)
-           flatten
-           (#(concat % "\n"))))))
+           (remove nil?)
+           (interpose "\n")
+           flatten))))
 
 (defn render-stanzas
   "Given an environment and a sequence of triple maps for zero or more stanza,
@@ -105,4 +112,6 @@
   [env triples]
   (->> triples
        (partition-by :zi)
-       (map (partial render-stanza env))))
+       (map (partial render-stanza env))
+       (interpose "\n\n")
+       flatten))

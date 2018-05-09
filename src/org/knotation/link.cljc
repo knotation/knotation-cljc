@@ -1,7 +1,8 @@
 (ns org.knotation.link
   (:require [clojure.string :as string]
             [org.knotation.util :as util]
-            [org.knotation.environment :as en]))
+            [org.knotation.environment :as en]
+            [org.knotation.rdf :as rdf])) ; TODO: eliminate this
 
 (defn label->iri
   [env input]
@@ -62,3 +63,48 @@
    (iri->curie env iri)
    (iri->http-url env iri)
    (iri->wrapped-iri env iri)))
+
+; TODO: Eliminate these
+
+(defn subject->iri
+  [env input]
+  (or (wrapped-iri->iri env input)
+      (label->iri env input)
+      (curie->iri env input)
+      (http-url->iri env input)))
+
+(defn graph->node
+  [env input]
+  (when input
+    (or (when-let [iri (subject->iri env input)]
+          {::rdf/iri iri})
+        (when (re-matches #"_:\S+" input)
+          {::rdf/bnode input}))))
+
+(defn subject->node
+  [env input]
+  (or (when-let [iri (subject->iri env input)]
+        {::rdf/iri iri})
+      (when (re-matches #"_:\S+" input)
+        {::rdf/bnode input})))
+
+(defn predicate->iri
+  [env input]
+  (or (wrapped-iri->iri env input)
+      (label->iri env input)
+      (curie->iri env input)
+      (http-url->iri env input)))
+
+(defn datatype->iri
+  [env input]
+  (or (wrapped-iri->iri env input)
+      (label->iri env input)
+      (curie->iri env input)
+      (http-url->iri env input)))
+
+(defn object->node
+  [env input]
+  (or (when-let [iri (subject->iri env input)]
+        {:oi iri})
+      (when (re-matches #"_:\S+" input)
+        {:ob input})))
