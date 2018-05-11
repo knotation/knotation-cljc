@@ -8,6 +8,7 @@
             [org.knotation.environment :as en]
             [org.knotation.format :as fm]
             [org.knotation.kn :as kn]
+            [org.knotation.tsv :as tsv]
             [org.knotation.ttl :as ttl]
             [org.knotation.json-ld :as json-ld]))
 
@@ -19,12 +20,28 @@
   [path]
   (cond
     (util/ends-with? path ".kn")  :kn
+    (util/ends-with? path ".tsv") :tsv
     (util/ends-with? path ".nt")  :nt
     (util/ends-with? path ".ttl") :ttl
     (util/ends-with? path ".rdf") :rdfxml
     (util/ends-with? path ".owl") :rdfxml
     (util/ends-with? path ".edn") :edn
     :else nil))
+
+; Environments
+
+(def default-env (en/add-prefix en/default-env "ex" (rdf/ex)))
+
+(defn collect-prefixes
+  [states]
+  (reduce
+   (fn [env {:keys [prefix iri base] :as state}]
+     (cond
+       (and prefix iri) (en/add-prefix env prefix iri)
+       base (en/add-base env base)
+       :else env))
+   {}
+   states))
 
 ; Read Input
 
@@ -34,6 +51,7 @@
   [fmt env input]
   (case fmt
     :kn (fm/read-lines fmt env (line-seq (io/reader input)))
+    :tsv (fm/read-lines fmt env (line-seq (io/reader input)))
     :nt (jena/read-triples "nt" input)
     :ttl (jena/read-triples "ttl" input)
     :rdfxml (jena/read-triples "rdfxml" input)
@@ -52,7 +70,15 @@
 (defn read-paths
   [fmt env paths]
   ;(read-path fmt nil (first paths)))
-  (mapcat (partial read-path fmt env) paths))
+  (mapcat (partial read-path fmt env) paths)
+  (->> paths
+       (reductions
+        (fn [[env _] path]
+          (let [states (read-path fmt env path)]
+            [(::en/env (last states)) states]))
+        [nil []])
+       rest
+       (mapcat second)))
 
 (defn read-string
   "Given a format keyword, an initial environment (or nil), and a content string
@@ -72,19 +98,6 @@
 
 ; Render Output
 
-(def default-env (en/add-prefix en/default-env "ex" (rdf/ex)))
-
-(defn collect-env
-  [states]
-  (reduce
-   (fn [env {:keys [prefix iri base] :as state}]
-     (cond
-       (and prefix iri) (en/add-prefix env prefix iri)
-       base (en/add-base env base)
-       :else env))
-   {}
-   states))
-
 (defn render-output
   "Given a format keyword, an initial environment (or nil),
    a sequence of state maps, and an output-stream,
@@ -97,12 +110,18 @@
         (.println w (pr-str state))))
     :ttl
     (with-open [w (java.io.PrintWriter. output)]
-      (doseq [o (->> states rdf/assign-stanzas (ttl/render-stanzas (collect-env states)) flatten)]
+      (doseq [o (->> states
+                     rdf/assign-stanzas
+                     (ttl/render-stanzas (collect-prefixes states))
+                     flatten)]
         (.print w o))
       (.print w "\n"))
     :json-ld
     (with-open [w (java.io.PrintWriter. output)]
-      (doseq [o (->> states rdf/assign-stanzas (json-ld/render-stanzas (collect-env states)) flatten)]
+      (doseq [o (->> states
+                     rdf/assign-stanzas
+                     (json-ld/render-stanzas (collect-prefixes states))
+                     flatten)]
         (.print w o))
       (.print w "\n"))
     ;else

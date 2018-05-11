@@ -20,6 +20,12 @@
 
 (declare render-subject)
 
+(defn render-lexical
+  [ol]
+  (if (re-find #"\n" ol)
+    (str "\"\"\"" ol "\"\"\"")
+    (str "\"" ol "\"")))
+
 (defn render-object
   "Given an environment, a sequence of triple maps, and an object node,
    return a (possibly nested) sequence of strings representing the object,
@@ -44,11 +50,11 @@
     ob ob
 
     (and dt (not= dt (rdf/xsd "string")))
-    (str "\"" ol "\"^^" (render-iri env dt))
+    (str (render-lexical ol) "^^" (render-iri env dt))
 
-    ln (str "\"" ol "\"@" ln)
+    ln (str (render-lexical ol) "@" ln)
 
-    ol (str "\"" ol "\"")))
+    ol (render-lexical ol)))
 
 (defn render-statement
   "Given an environment, a sequence of triple maps, and a triple to render,
@@ -111,6 +117,10 @@
    return a (possibly nested) sequence of strings representing the stanzas."
   [env triples]
   (->> triples
+       (remove
+        #(contains?
+          #{:blank :comment :subject-start :subject-end :graph-start :graph-end}
+          (:event %)))
        (partition-by :zi)
        (map (partial render-stanza env))
        (interpose "\n\n")

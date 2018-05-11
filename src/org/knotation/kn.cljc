@@ -357,25 +357,27 @@
    (empty if this is not a template statement)."
   [env {:keys [pi ol] :as state}]
   (if (= pi "https://knotation.org/predicate/apply-template")
-    (let [template-iri (->> ol
-                            util/split-lines
-                            first
-                            string/trim
-                            (ln/predicate->iri env))
-          values (->> ol
-                      util/split-lines
-                      rest
-                      (map #(string/split % #": "))
-                      (into {}))]
-      [(assoc state :pi "https://knotation.org/predicate/applied-template")
-       (->> (string/replace
-             (get-in env [::en/template-content template-iri])
-             #"\{(.*?)\}"
-             (fn [[_ x]] (get values x)))
-            util/split-lines
-            rest
-            (map parse-line)
-            process-parses)])
+    (try
+      (let [template-iri (->> ol
+                              util/split-lines
+                              first
+                              string/trim
+                              (ln/predicate->iri env))
+            values (->> ol
+                        util/split-lines
+                        rest
+                        (map #(string/split % #": " 2))
+                        (into {}))]
+        [(assoc state :pi "https://knotation.org/predicate/applied-template")
+         (->> (string/replace
+               (get-in env [::en/template-content template-iri])
+               #"\{(.*?)\}"
+               (fn [[_ x]] (get values x)))
+              util/split-lines
+              rest
+              (map parse-line)
+              process-parses)])
+      (catch Exception e (throw (Exception. (str "Template error for " ol " " e)))))
     [state []]))
 
 (defn render-state

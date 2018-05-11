@@ -280,10 +280,10 @@
   [fmt env parses]
   (->> parses
        (inner-read-parses fmt env)
-       (map last)))
-       ;(map (fn [[env parse state]] (assoc state ::en/env env :input {:parse parse})))))
-       ;insert-graph-events
-       ;insert-subject-events))
+       ;(map last)))
+       (map (fn [[env parse state]] (assoc state ::en/env env :input {:parse parse})))
+       insert-graph-events
+       insert-subject-events))
 
 (defmulti read-lines
   "Given an initial environment, a format keyword, and a sequence of lines,
@@ -317,5 +317,5 @@
   [fmt env states]
   (->> states
        (inner-render-states fmt env)
-       (map last)))
-       ;(map (fn [[env state parse]] (assoc state ::en/env env :output {:parse parse})))))
+       ;(map last)))
+       (map (fn [[env state parse]] (assoc state ::en/env env :output {:parse parse})))))

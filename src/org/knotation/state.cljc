@@ -23,55 +23,6 @@
        (merge (when info {::error-info info}))
        (assoc state ::event ::error ::error)))
 
-(def example-quad
-  {::event ::statement
-   ::rdf/graph nil
-   ::rdf/subject {::rdf/iri "https://example.com/s"}
-   ::rdf/predicate {::rdf/iri "https://example.com/p"}
-   ::rdf/object {::rdf/lexical "o"}})
-
-(def example-quads
-  {::event ::statement
-   ::input {::format :knotation
-            ::line-number 4
-            ::lines ["ex:p: \"o\""]}
-   ::en/env-before {}
-   ::en/env {}
-   ::rdf/quads [example-quad]
-   ::output {::format :nquads
-             ::line-number 1
-             ::lines ["<https://example.com/s> <https://example.com/p> \"o\" ."]}})
-
-(def example-error
-  {::event ::statement
-   ::input {::format :kn
-            ::line-number 5
-            ::lines ["foo: bar"]}
-   ::en/env-before {}
-   ::en/env {}
-   ::error {::error-message "Unrecognized predicate: foo"
-            ::error-type :unrecognized-predicate}})
-
-(defn add-prefix
-  [{:keys [::en/env] :as state} prefix iri]
-  (assoc state ::en/env (en/add-prefix env prefix iri)))
-
-(defn add-label
-  [{:keys [::en/env] :as state} label iri]
-  (assoc state ::en/env (en/add-label env label iri)))
-
-(defn set-datatype
-  [{:keys [::en/env] :as state} predicate datatype]
-  (assoc state ::en/env (en/set-datatype env predicate datatype)))
-
-(defn set-language
-  [{:keys [::en/env] :as state} predicate language]
-  (assoc state ::en/env (en/set-language env predicate language)))
-
-(defn set-template-content
-  [{:keys [::en/env] :as state} template content]
-  (assoc state ::en/env (en/set-template-content env template content)))
-
 (defn update-env
   [env {:keys [prefix iri si sb pi oi ol] :as state}]
   (cond
