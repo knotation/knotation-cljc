@@ -8,7 +8,7 @@
             [org.knotation.environment :as en]
             [org.knotation.format :as fm]
             [org.knotation.kn :as kn]
-            ;; [org.knotation.tsv :as tsv]
+            [org.knotation.tsv :as tsv]
             [org.knotation.ttl :as ttl]
             [org.knotation.json-ld :as json-ld]))
 
