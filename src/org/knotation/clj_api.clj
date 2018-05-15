@@ -9,8 +9,7 @@
             [org.knotation.format :as fm]
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
-            [org.knotation.ttl :as ttl]
-            [org.knotation.json-ld :as json-ld]))
+            [org.knotation.ttl :as ttl]))
 
 ; For Apache Jena's preferred file extnesions see
 ; https://jena.apache.org/documentation/io/#command-line-tools
@@ -113,14 +112,6 @@
       (doseq [o (->> states
                      rdf/assign-stanzas
                      (ttl/render-stanzas (collect-prefixes states))
-                     flatten)]
-        (.print w o))
-      (.print w "\n"))
-    :json-ld
-    (with-open [w (java.io.PrintWriter. output)]
-      (doseq [o (->> states
-                     rdf/assign-stanzas
-                     (json-ld/render-stanzas (collect-prefixes states))
                      flatten)]
         (.print w o))
       (.print w "\n"))

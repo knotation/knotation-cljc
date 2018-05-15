@@ -6,6 +6,7 @@
   :plugins [[lein-cljsbuild "1.1.6"]]
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/clojurescript "1.9.946"]
+                 [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.cli "0.3.5"]
 
                  [org.apache.jena/jena-arq "3.6.0"]

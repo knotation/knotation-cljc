@@ -56,10 +56,14 @@
   [env iri]
   (wrap-iri iri))
 
+(defn iri->label
+  [env iri]
+  (get-in env [::en/iri-label iri]))
+
 (defn iri->name
   [env iri]
   (or
-   (get-in env [::en/iri-label iri])
+   (iri->label env iri)
    (iri->curie env iri)
    (iri->http-url env iri)
    (iri->wrapped-iri env iri)))
