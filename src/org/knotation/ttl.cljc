@@ -75,8 +75,8 @@
   (concat
    (if (rdf/blank? s) ["[ "] [(render-iri env s) "\n" "  "])
    (->> triples
-        (filter #(= (:event %) :statement))
         (filter #(= s (or (:si %) (:sb %))))
+        (filter :pi)
         (map (partial render-statement env triples))
         (interpose [" ;" "\n" "  "])
         flatten)
