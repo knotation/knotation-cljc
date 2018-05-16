@@ -20,12 +20,6 @@
   [after xs]
   (concat xs [after]))
 
-; TODO: There must be a better way of doing this. re-seq?
-(defn split-lines
-  "Split a string on newlines."
-  [s]
-  (string/split s #"\n" 0))
-
 ; See https://stackoverflow.com/a/42882784
 (defn partition-with
   "Like split-with for multiple splits."

@@ -359,12 +359,12 @@
   (if (= pi "https://knotation.org/predicate/apply-template")
     (try
       (let [template-iri (->> ol
-                              util/split-lines
+                              string/split-lines
                               first
                               string/trim
                               (ln/->iri env))
             values (->> ol
-                        util/split-lines
+                        string/split-lines
                         rest
                         (map #(string/split % #": " 2))
                         (into {}))]
@@ -373,7 +373,7 @@
                (get-in env [::en/template-content template-iri])
                #"\{(.*?)\}"
                (fn [[_ x]] (get values x)))
-              util/split-lines
+              string/split-lines
               rest
               (map parse-line)
               process-parses)])
