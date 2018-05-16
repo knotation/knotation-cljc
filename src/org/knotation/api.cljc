@@ -1,5 +1,6 @@
 (ns org.knotation.api
-  (:require [org.knotation.environment :as env]
+  (:require [clojure.string :as string]
+            [org.knotation.environment :as env]
             [org.knotation.link :as ln]
             [org.knotation.format :as fmt]))
 
@@ -26,9 +27,14 @@
   (::env/env (last h)))
 
 ;; Processing to/from hub
-(defn hub-from-string
-  [format string]
-  hub)
+(defn read-lines
+  ([format lines] (read-lines format default-env lines))
+  ([format env lines] (fmt/read-lines format env lines)))
+
+(defn read-string
+  ([format string] (read-lines format (string/split-lines string)))
+  ([format env string] (read-lines format env (string/split-lines string))))
+
 (defn render-to
   ([format h] (render-to format (env-of h) h))
   ([format env h]
