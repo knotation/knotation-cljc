@@ -1,6 +1,8 @@
 (ns org.knotation.api
   (:require [clojure.string :as string]
+
             [org.knotation.environment :as env]
+            [org.knotation.state :as st]
             [org.knotation.link :as ln]
             [org.knotation.format :as fmt]))
 
@@ -13,12 +15,14 @@
 (def set-template-content env/set-template-content)
 (def default-env env/default-env)
 
+(defn labels [env] (::env/label-seq env))
+(defn prefixes [env] (::env/prefix-seq env))
+
 (def find-prefix ln/find-prefix)
 (def ->iri ln/->iri)
 (def iri->name ln/iri->name)
 (def iri->curie ln/iri->curie)
 (def iri->label ln/iri->label)
-
 
 ;; Hub format manipulation
 ;;; I'm calling it "hub", because this is the internal representation
@@ -28,6 +32,18 @@
 (defn env-of
   [h]
   (::env/env (last h)))
+
+;; Hub state queries
+(defn graph-end? [s] (= ::st/graph-end (::st/event s)))
+(defn error? [s] (= ::st/error (::st/event s)))
+
+(defn error-message [s] (->> s ::st/error ::st/error-message))
+
+(defn line-num-in [s] (->> s ::st/input ::st/line-number))
+(defn lines-in [s] (->> s ::st/input ::st/lines))
+
+(defn line-num-out [s] (->> s ::st/output ::st/line-number))
+(defn lines-out [s] (->> s ::st/output ::st/lines))
 
 ;; Processing to/from hub
 (defn read-lines
