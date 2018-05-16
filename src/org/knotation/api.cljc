@@ -14,7 +14,7 @@
            default-env])
 
 (pull ln [find-prefix
-          label->iri curie->iri subject->iri
+          ->iri
           iri->name iri->curie iri->label])
 
 ;; Hub format manipulation

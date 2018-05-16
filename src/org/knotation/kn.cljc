@@ -121,7 +121,7 @@
 (defn read-subject
   [env parse]
   (if-let [name (-> parse fm/parse-map :name)]
-    (if-let [iri (ln/subject->iri env name)]
+    (if-let [iri (ln/->iri env name)]
       {:event :subject-start
        :si iri}
       (util/error :unrecognized-name name))
@@ -228,10 +228,10 @@
   (let [names (->> parse rest (filter #(= :name (first %))))
         predicate-name (-> names first second)
         datatype-name (-> names second second)]
-    (if-let [predicate-iri (ln/predicate->iri env predicate-name)]
+    (if-let [predicate-iri (ln/->iri env predicate-name)]
       (if (or (nil? datatype-name)
               (util/starts-with? datatype-name "@")
-              (ln/datatype->iri env datatype-name))
+              (ln/->iri env datatype-name))
         (if-let [object
                  (read-object
                   env
@@ -240,7 +240,7 @@
                   (when (util/starts-with? datatype-name "@")
                     (string/replace datatype-name #"^@" ""))
                   (when-not (util/starts-with? datatype-name "@")
-                    (ln/datatype->iri env datatype-name)))]
+                    (ln/->iri env datatype-name)))]
           (assoc
            object
            :event :statement
@@ -362,7 +362,7 @@
                               util/split-lines
                               first
                               string/trim
-                              (ln/predicate->iri env))
+                              (ln/->iri env))
             values (->> ol
                         util/split-lines
                         rest

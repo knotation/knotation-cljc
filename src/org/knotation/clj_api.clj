@@ -43,17 +43,13 @@
    states))
 
 ; Read Input
-
 (defn read-input
   "Given a format keyword, an initial environment (or nil), and an input-stream,
    return a lazy sequence of state maps."
   [fmt env input]
   (case fmt
-    :kn (fm/read-lines fmt env (line-seq (io/reader input)))
-    :tsv (fm/read-lines fmt env (line-seq (io/reader input)))
-    :nt (jena/read-triples "nt" input)
-    :ttl (jena/read-triples "ttl" input)
-    :rdfxml (jena/read-triples "rdfxml" input)
+    (:nt :ttl :rdfxml) (jena/read-triples (name fmt) input)
+    (:kn :tsv)  (fm/read-lines fmt env (line-seq (io/reader input)))
     (throw (Exception. (format "Unsupported read format '%s'" fmt)))))
 
 (defn read-path
@@ -68,8 +64,6 @@
 
 (defn read-paths
   [fmt env paths]
-  ;(read-path fmt nil (first paths)))
-  (mapcat (partial read-path fmt env) paths)
   (->> paths
        (reductions
         (fn [[env _] path]

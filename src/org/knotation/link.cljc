@@ -68,47 +68,35 @@
    (iri->http-url env iri)
    (iri->wrapped-iri env iri)))
 
-; TODO: Eliminate these
-
-(defn subject->iri
+(defn ->iri
   [env input]
   (or (wrapped-iri->iri env input)
       (label->iri env input)
       (curie->iri env input)
       (http-url->iri env input)))
 
+; TODO: Eliminate these
+;;; Eliminated the various *->iri functions (they were trivially equivalent)
+;;; It looks like we don't call graph->node or subject->node anywhere
+
 (defn graph->node
   [env input]
   (when input
-    (or (when-let [iri (subject->iri env input)]
+    (or (when-let [iri (->iri env input)]
           {::rdf/iri iri})
         (when (re-matches #"_:\S+" input)
           {::rdf/bnode input}))))
 
 (defn subject->node
   [env input]
-  (or (when-let [iri (subject->iri env input)]
+  (or (when-let [iri (->iri env input)]
         {::rdf/iri iri})
       (when (re-matches #"_:\S+" input)
         {::rdf/bnode input})))
 
-(defn predicate->iri
-  [env input]
-  (or (wrapped-iri->iri env input)
-      (label->iri env input)
-      (curie->iri env input)
-      (http-url->iri env input)))
-
-(defn datatype->iri
-  [env input]
-  (or (wrapped-iri->iri env input)
-      (label->iri env input)
-      (curie->iri env input)
-      (http-url->iri env input)))
-
 (defn object->node
   [env input]
-  (or (when-let [iri (subject->iri env input)]
+  (or (when-let [iri (->iri env input)]
         {:oi iri})
       (when (re-matches #"_:\S+" input)
         {:ob input})))
