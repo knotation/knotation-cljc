@@ -1,6 +1,8 @@
 (ns org.knotation.kn
   (:require [clojure.string :as string]
             [org.knotation.util :as util]
+            #?(:clj [org.knotation.util :as util :refer [handler-case]]
+               :cljs [org.knotation.util :as util :refer-macros [handler-case]])
             [org.knotation.environment :as en]
             [org.knotation.link :as ln]
             [org.knotation.format :as fm]))
@@ -357,27 +359,27 @@
    (empty if this is not a template statement)."
   [env {:keys [pi ol] :as state}]
   (if (= pi "https://knotation.org/predicate/apply-template")
-    (try
-      (let [template-iri (->> ol
-                              string/split-lines
-                              first
-                              string/trim
-                              (ln/->iri env))
-            values (->> ol
-                        string/split-lines
-                        rest
-                        (map #(string/split % #": " 2))
-                        (into {}))]
-        [(assoc state :pi "https://knotation.org/predicate/applied-template")
-         (->> (string/replace
-               (get-in env [::en/template-content template-iri])
-               #"\{(.*?)\}"
-               (fn [[_ x]] (get values x)))
-              string/split-lines
-              rest
-              (map parse-line)
-              process-parses)])
-      (catch Exception e (throw (Exception. (str "Template error for " ol " " e)))))
+    (util/handler-case
+     (let [template-iri (->> ol
+                             util/split-lines
+                             first
+                             string/trim
+                             (ln/->iri env))
+           values (->> ol
+                       util/split-lines
+                       rest
+                       (map #(string/split % #": " 2))
+                       (into {}))]
+       [(assoc state :pi "https://knotation.org/predicate/applied-template")
+        (->> (string/replace
+              (get-in env [::en/template-content template-iri])
+              #"\{(.*?)\}"
+              (fn [[_ x]] (get values x)))
+             util/split-lines
+             rest
+             (map parse-line)
+             process-parses)])
+     (:default e (util/throw-exception "Template error for " ol " " e)))
     [state []]))
 
 (defn render-state

@@ -1,10 +1,15 @@
 (ns org.knotation.api
   (:require [clojure.string :as string]
 
+            [org.knotation.util :as util]
             [org.knotation.environment :as env]
             [org.knotation.state :as st]
             [org.knotation.link :as ln]
-            [org.knotation.format :as fmt]))
+            [org.knotation.format :as fmt]
+
+            org.knotation.kn
+            org.knotation.ttl
+            org.knotation.tsv))
 
 ;; Environments
 (def add-base env/add-base)
@@ -51,8 +56,8 @@
   ([format env lines] (fmt/read-lines format env lines)))
 
 (defn read-string
-  ([format string] (read-lines format (string/split-lines string)))
-  ([format env string] (read-lines format env (string/split-lines string))))
+  ([format string] (read-lines format (util/split-lines string)))
+  ([format env string] (read-lines format env (util/split-lines string))))
 
 (defn read-strings
   ([format strings] (read-strings format default-env strings))
