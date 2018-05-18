@@ -7,6 +7,6 @@
      ~@(map
         (fn [[exception-type name & body]]
           `(catch ~(if (= :default exception-type)
-                     #(:cljs js/Error :clj nil)
+                     #?(:cljs js/Error :clj nil)
                      exception-type) ~name ~@body))
         handlers)))

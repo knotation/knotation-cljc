@@ -360,7 +360,7 @@
    (empty if this is not a template statement)."
   [env {:keys [pi ol] :as state}]
   (if (= pi "https://knotation.org/predicate/apply-template")
-    (util/handler-case
+    (handler-case
      (let [template-iri (->> ol
                              util/split-lines
                              first
