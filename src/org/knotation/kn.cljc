@@ -2,7 +2,8 @@
   (:require [clojure.string :as string]
             [org.knotation.util :as util]
             #?(:clj [org.knotation.util :as util :refer [handler-case]]
-               :cljs [org.knotation.util :as util :refer-macros [handler-case]])
+               :cljs [org.knotation.util :as util])
+            #?(:cljs [org.knotation.util-macros-cljs :refer-macros [handler-case]])
             [org.knotation.environment :as en]
             [org.knotation.link :as ln]
             [org.knotation.format :as fm]))

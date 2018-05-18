@@ -1,6 +1,7 @@
 (ns org.knotation.util
   (:require [clojure.string :as string]
-            #?(:clj [clojure.data.json :as json])))
+            #?(:clj [clojure.data.json :as json])
+            #?(:cljs [org.knotation.util-macros-cljs])))
 
 (defn starts-with?
   [target prefix]
@@ -66,13 +67,13 @@
          (map str)
          (string/join " ")))))
 
-(defmacro handler-case
-  [body & handlers]
-  `(try
-     ~body
-     ~@(map
-        (fn [[exception-type name & body]]
-          `(catch ~(if (= :default exception-type)
-                     #?(:clj Exception :cljs js/Error)
-                     exception-type) ~name ~@body))
-        handlers)))
+#?(:clj (defmacro handler-case
+          [body & handlers]
+          `(try
+             ~body
+             ~@(map
+                (fn [[exception-type name & body]]
+                  `(catch ~(if (= :default exception-type)
+                             Exception
+                             exception-type) ~name ~@body))
+                handlers))))
