@@ -28,7 +28,7 @@
          (map (juxt :prefix :iri))
          (into {}))
     (->> states
-         (mapcat #(select-keys % [:si :pi :oi :dt]))
+         (mapcat #(select-keys % [:si :pi :oi :di]))
          vals
          (map (fn [iri]
                 (let [label (ln/iri->label env iri)]

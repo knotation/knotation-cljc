@@ -6,6 +6,7 @@
             [org.knotation.jena :as jena]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
+            [org.knotation.state :as st]
             [org.knotation.format :as fm]
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
@@ -30,6 +31,14 @@
 ; Environments
 
 (def default-env (en/add-prefix en/default-env "ex" (rdf/ex)))
+
+(defn collect-env
+  [states]
+  (reduce
+   (fn [env state]
+     (st/update-env env state))
+   {}
+   states))
 
 (defn collect-prefixes
   [states]

@@ -199,12 +199,12 @@
       ;"https://knotation.org/datatype/omn"
       ;(assoc
       ; (om/read-class-expression env content)
-      ; :dt datatype)
+      ; :di datatype)
 
       ; TODO: warn on unrecognized Knotation datatype
       ;(util/starts-with? datatype "https://knotation.org/datatype/")
 
-      {:ol content :dt datatype})
+      {:ol content :di datatype})
 
     :else
     {:ol content}))
