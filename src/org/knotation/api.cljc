@@ -34,21 +34,31 @@
 ;;; that each of the spokes eventually comes down to. I think we can
 ;;; simplify it a great deal once we figure out what we want the
 ;;; external interface to look like
-(defn env-of
-  [h]
-  (::env/env (last h)))
 
 ;; Hub state queries
 (defn graph-end? [s] (= ::st/graph-end (::st/event s)))
 (defn error? [s] (= ::st/error (::st/event s)))
 
 (defn error-message [s] (->> s ::st/error ::st/error-message))
+(defn error-type [s] (->> s ::st/error ::st/error-type))
 
 (defn line-num-in [s] (->> s ::st/input ::st/line-number))
 (defn lines-in [s] (->> s ::st/input ::st/lines))
 
 (defn line-num-out [s] (->> s ::st/output ::st/line-number))
 (defn lines-out [s] (->> s ::st/output ::st/lines))
+
+;; Hub collection queries
+(defn env-of
+  [h]
+  (::env/env (last h)))
+
+(defn errors-of [h]
+  (map
+   (fn [s]
+     (when (error? s)
+       [(error-type s) (error-message s)]))
+   h))
 
 ;; Processing to/from hub
 (defn read-lines
