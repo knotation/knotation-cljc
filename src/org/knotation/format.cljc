@@ -280,7 +280,6 @@
   [fmt env parses]
   (->> parses
        (inner-read-parses fmt env)
-       ;(map last)))
        (map (fn [[env parse state]] (assoc state ::en/env env :input {:parse parse})))
        insert-graph-events
        insert-subject-events))

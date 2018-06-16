@@ -4,7 +4,7 @@
             [org.knotation.link :as ln]))
 
 (defn render-object
-  [env {:keys [oi ob ol dt ln]}]
+  [env {:keys [oi ob ol di ln]}]
   (cond
     oi
     {"@id" (or (ln/iri->curie env oi) oi)
@@ -14,8 +14,8 @@
     {"@id" ob}
     (and ol ln)
     {"@value" ol "@language" ln}
-    (and ol dt)
-    {"@value" ol "@type" (or (ln/iri->name env dt) dt)}
+    (and ol di)
+    {"@value" ol "@type" (or (ln/iri->name env di) di)}
     ol
     {"@value" ol}))
 
