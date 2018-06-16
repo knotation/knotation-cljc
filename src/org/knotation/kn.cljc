@@ -256,23 +256,23 @@
 (defn render-datatype
   "Render the datatype part of a statement.
    Handles default dataypes and languages."
-  [env predicate-iri {:keys [oi ob ol dt ln] :as object}]
-  (let [dt (if oi "https://knotation.org/datatype/link" dt)]
+  [env predicate-iri {:keys [oi ob ol di ln] :as object}]
+  (let [di (if oi "https://knotation.org/datatype/link" di)]
     (cond
       (and ln (not= ln (get-in env [::en/predicate-language predicate-iri])))
       [[:symbol ";"]
        [:space " "]
        [:name (str "@" ln)]]
-      (and dt (not= dt (get-in env [::en/predicate-datatype predicate-iri])))
+      (and di (not= di (get-in env [::en/predicate-datatype predicate-iri])))
       [[:symbol ";"]
        [:space " "]
-       [:name (ln/iri->name env dt)]]
+       [:name (ln/iri->name env di)]]
       :else
       [])))
 
 (defn render-object
   "Render the lexical part of a statement."
-  [env {:keys [oi ob ol dt ln] :as object}]
+  [env {:keys [oi ob ol di ln] :as object}]
   (cond
     oi
     [[:space " "]
