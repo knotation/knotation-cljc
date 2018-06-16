@@ -3,16 +3,6 @@
             #?(:clj [clojure.data.json :as json])
             #?(:cljs [org.knotation.util-macros-cljs])))
 
-(defn starts-with?
-  [target prefix]
-  (and (>= (count target) (count prefix))
-       (every? identity (map = target prefix))))
-
-(defn ends-with?
-  [target prefix]
-  (and (>= (count target) (count prefix))
-       (every? identity (map = (reverse target) (reverse prefix)))))
-
 (defn split-lines
   "Split a string on newlines."
   ;; NOTE: This function is intentionally defined to not drop

@@ -103,7 +103,7 @@
 (defn parse-declaration
   [line]
   (cond
-    (util/starts-with? line "@prefix ")
+    (string/starts-with? line "@prefix ")
     (parse-prefix line)
     :else
     (util/error :unrecognized-declaration-line line)))
@@ -202,7 +202,7 @@
       ; :di datatype)
 
       ; TODO: warn on unrecognized Knotation datatype
-      ;(util/starts-with? datatype "https://knotation.org/datatype/")
+      ;(string/starts-with? datatype "https://knotation.org/datatype/")
 
       {:ol content :di datatype})
 
@@ -230,19 +230,20 @@
   [env parse]
   (let [names (->> parse rest (filter #(= :name (first %))))
         predicate-name (-> names first second)
-        datatype-name (-> names second second)]
+        datatype-name (-> names second second)
+        leading-at? (when datatype-name (string/starts-with? datatype-name "@"))]
     (if-let [predicate-iri (ln/->iri env predicate-name)]
       (if (or (nil? datatype-name)
-              (util/starts-with? datatype-name "@")
+              leading-at?
               (ln/->iri env datatype-name))
         (if-let [object
                  (read-object
                   env
                   parse
                   predicate-iri
-                  (when (util/starts-with? datatype-name "@")
+                  (when leading-at?
                     (string/replace datatype-name #"^@" ""))
-                  (when-not (util/starts-with? datatype-name "@")
+                  (when-not leading-at?
                     (ln/->iri env datatype-name)))]
           (assoc
            object

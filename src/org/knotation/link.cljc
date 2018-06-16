@@ -36,7 +36,7 @@
        (sort-by (comp count first) >)
        (filter
         (fn [[prefix-iri prefix]]
-          (util/starts-with? iri prefix-iri)))
+          (string/starts-with? iri prefix-iri)))
        first))
 
 (defn iri->curie
