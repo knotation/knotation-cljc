@@ -285,7 +285,7 @@
      [:eol "\n"]]
 
     ol
-    (->> (string/split ol #"\n" 0)
+    (->> (util/split-lines ol)
          (mapcat (fn [line] [[:space " "] [:lexical line] [:eol "\n"]])))
 
     :else
