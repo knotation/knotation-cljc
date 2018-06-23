@@ -18,15 +18,16 @@
 (defn path-format
   "Given a path string, return a format keyword or nil."
   [path]
-  (cond
-    (string/ends-with? path ".kn")  :kn
-    (string/ends-with? path ".tsv") :tsv
-    (string/ends-with? path ".nt")  :nt
-    (string/ends-with? path ".ttl") :ttl
-    (string/ends-with? path ".rdf") :rdfxml
-    (string/ends-with? path ".owl") :rdfxml
-    (string/ends-with? path ".edn") :edn
-    :else nil))
+  (when (string? path)
+    (cond
+      (string/ends-with? path ".kn")  :kn
+      (string/ends-with? path ".tsv") :tsv
+      (string/ends-with? path ".nt")  :nt
+      (string/ends-with? path ".ttl") :ttl
+      (string/ends-with? path ".rdf") :rdfxml
+      (string/ends-with? path ".owl") :rdfxml
+      (string/ends-with? path ".edn") :edn
+      :else nil)))
 
 ; Environments
 

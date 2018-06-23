@@ -30,12 +30,12 @@
 ; - render the parses (flatten, filter for strings, joining them)
 ;
 ; Each format must provide:
-; - (parse-line line)
-; - (read-parse env parse)
-; - (render-state env state)
+; - (parse-line line) :: String -> {}
+; - (read-parse env parse) :: Env -> {:env :input} -> {:env :input ...}
+; - (render-state env state) :: Env -> {:env :input ...} -> ParseVector
 ;
 ; Formats may optionally provide:
-; - (process-parses parses)
+; - (process-parses parses) :: [{:env :input ...}] -> [{:env :input ...}]
 ; - (expand-state env state)
 
 ; Parse handling functions
