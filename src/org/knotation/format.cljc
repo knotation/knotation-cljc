@@ -36,7 +36,8 @@
 ;
 ; Formats may optionally provide:
 ; - (process-parses parses) :: [{:env :input ...}] -> [{:env :input ...}]
-; - (expand-state env state)
+; - (expand-state env state) :: Env -> {:env :input ...} -> ({:env :input ...} ParseVector) 
+; - (render-states env states) :: Env -> [{:env :input ...}] -> [{:env :input (:output :: {:parse...}) ...}] 
 
 ; Parse handling functions
 

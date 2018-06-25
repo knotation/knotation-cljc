@@ -65,17 +65,20 @@
   ([format lines] (read-lines format default-env lines))
   ([format env lines] (fmt/read-lines format env lines)))
 
-(defn read-string
-  ([format string] (read-lines format (util/split-lines string)))
-  ([format env string] (read-lines format env (util/split-lines string))))
+(defn read-from
+  ([format thing] (read-from format default-env thing))
+  ([format env thing]
+   (cond
+     (string? thing)
+     (read-lines format env (util/split-lines thing))
 
-(defn read-strings
-  ([format strings] (read-strings format default-env strings))
-  ([format env strings]
-   (reduce
-    (fn [hub s]
-      (concat hub (read-string format (env-of hub) s)))
-    strings)))
+     (coll? thing)
+     (reduce
+      (fn [hub s]
+        (concat hub (read-lines format env (util/split-lines s))))
+      thing)
+
+     :else (util/throw-exception "Can't read from a thing of type" (type thing)))))
 
 (defn render-to
   ([format h] (render-to format (env-of h) h))

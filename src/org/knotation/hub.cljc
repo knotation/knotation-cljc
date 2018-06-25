@@ -21,8 +21,24 @@
   (println "PROCESSING HUB PARSES!" (str (vec (map #(dissoc % :en/env) parses))))
   parses)
 
+(defmethod fm/expand-state
+  :hub [fmt env state]
+  (println "EXPANDING HUB STATE!")
+  (println "  " (str (dissoc state :en/env)))
+  [state []])
+
 (defmethod fm/render-state
   :hub [fmt env state]
-  (println "RENDERING HUB STATE!")
-  (when (= :statement (:event state))
-    [[(str (select-keys state [:rt :gi :si :sb :pi :oi :ob :ol :di :ln :event]))]]))
+  (println "  RENDERING HUB STATE!")
+  (println "  " (keys state))
+  (println "  " (dissoc state :org.knotation.environment/env))
+  [[(str (select-keys state [:rt :gi :si :sb :pi :oi :ob :ol :di :ln :event]))]])
+
+(defmethod fm/render-states
+  :hub [fmt env states]
+  (println "RENDERING HUB STATE SEQUENCE!")
+  (->> states
+       (filter #(= :statement (:event %)))
+       (map #(assoc % :output {:parse (fm/render-state fmt (or (:en/env %) env) %)}))))
+
+;; (render-to :hub (read-from :hub "{:event :statement :gi \"http://example.com/graph\" :pi \"http://example.com/predicate\" :si \"http://example.com/subject\" :ol \"An object\"}" ))
