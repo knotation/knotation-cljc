@@ -1,4 +1,4 @@
-(defproject org.knotation/knotation-cljc "0.2.0-SNAPSHOT"
+(defproject org.knotation/knotation-cljc "0.3.0-SNAPSHOT"
   :description "A library for working with Knotation format."
   :url "https://github.com/knotation/knotation-cljc"
   :license {:name "BSD 3-Clause License"
