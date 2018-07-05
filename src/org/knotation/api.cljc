@@ -83,4 +83,4 @@
 (defn render-to
   ([format h] (render-to format (env-of h) h))
   ([format env h]
-   (fmt/render-lines (fmt/render-states format env h))))
+   (fmt/render-output (fmt/render-states format env h))))
