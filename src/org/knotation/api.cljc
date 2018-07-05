@@ -36,29 +36,34 @@
 ;;; external interface to look like
 
 ;; Hub state queries
-(defn graph-end? [s] (= ::st/graph-end (::st/event s)))
-(defn error? [s] (= ::st/error (::st/event s)))
+(defn graph-end? [s] (= :graph-end (:event s)))
+(defn error? [s] (= :error (:event s)))
 
-(defn error-message [s] (->> s ::st/error ::st/error-message))
-(defn error-type [s] (->> s ::st/error ::st/error-type))
+(defn error-message [s] (->> s :error :error-message))
+(defn error-type [s] (->> s :error :error-type))
 
-(defn line-num-in [s] (->> s ::st/input ::st/line-number))
-(defn lines-in [s] (->> s ::st/input ::st/lines))
+(defn line-num-in [s] (->> s :input :line-number))
+(defn lines-in [s] (->> s :input :lines))
 
-(defn line-num-out [s] (->> s ::st/output ::st/line-number))
-(defn lines-out [s] (->> s ::st/output ::st/lines))
+(defn line-num-out [s] (->> s :output :line-number))
+(defn lines-out [s] (->> s :output :lines))
 
 ;; Hub collection queries
 (defn env-of
   [h]
   (::env/env (last h)))
 
-(defn errors-of [h]
+(defn errors-of
+  [h]
   (map
    (fn [s]
      (when (error? s)
        [(error-type s) (error-message s)]))
    h))
+
+(defn any-errors?
+  [h]
+  (->> h errors-of (remove nil?) empty? not))
 
 ;; Processing to/from hub
 (defn read-lines
