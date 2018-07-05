@@ -37,6 +37,7 @@
 ; Formats may optionally provide:
 ; - (process-parses parses) :: [{:env :input ...}] -> [{:env :input ...}]
 ; - (expand-state env state) :: Env -> {:env :input ...} -> ({:env :input ...} ParseVector) 
+; - (process-states states) :: [{:env :input ...}] -> [{:env :input ...}]
 ; - (render-states env states) :: Env -> [{:env :input ...}] -> [{:env :input (:output :: {:parse...}) ...}] 
 
 ; Parse handling functions
@@ -253,6 +254,17 @@
        (map (partial parse-line fmt))
        (process-parses fmt)))
 
+(defmulti process-states
+  "Given a format keyword and a sequence of states, do any format-specific
+   post-processing on finished states, and return a lazy sequence of
+   potentially modified states."
+  (fn [fmt states] fmt))
+
+(defmethod process-states
+  :default
+  [fmt states]
+  states)
+
 (defn inner-read-parses
   "Given a format keyword, and initial environment (or nil), and a sequence of parses,
    return a lazy sequence of [env parse state] triples."
@@ -283,7 +295,8 @@
        (inner-read-parses fmt env)
        (map (fn [[env parse state]] (assoc state ::en/env env :input {:parse parse})))
        insert-graph-events
-       insert-subject-events))
+       insert-subject-events
+       (#(process-states fmt %))))
 
 (defmulti read-lines
   "Given an initial environment, a format keyword, and a sequence of lines,
