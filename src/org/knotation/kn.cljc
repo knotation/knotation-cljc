@@ -345,10 +345,22 @@
   (map (fn [[s prev]]
          (if (= (:event s) :annotation)
            (let [tgt (select-keys prev [:rt :gi :si :sb :pi :oi :ob :ol :di :ln])]
-             (case (:event prev)
-               :statement (assoc s :target tgt)
-               :annotation (assoc s :target tgt) ;; We need to implement a stack of annotations here
-               (util/error :no-annotation-target s)))
+             (cond (and (not= (:event prev) :annotation) (> (:level s) 1))
+                   (util/error :invalid-annotation-level (->> s :input :parse))
+
+                   (= (:event prev) :statement)
+                   (assoc s :target tgt :stack [])
+
+                   (and (= (:event prev) :annotation) (= (:level prev) (:level s)))
+                   (assoc s :target (:target prev) :stack (:stack prev))
+
+                   (= (:event prev) :annotation)
+                   (do
+                     (println "PREV" (str prev)) ;; BUG - we're assuming that the next prev is going to have target and stack, but prev is actually fixed in the inner map call. Think about this a bit more; I think it basically has to be recursively defined :/
+                     (assoc s :target tgt :stack [(:target prev)]))
+
+                   :else
+                   (util/error :no-annotation-target (->> s :input :parse))))
            s))
        (map list states (cons nil states))))
 
@@ -482,3 +494,14 @@
 ;;      ;;(map #(dissoc % :org.knotation.environment/env))
 ;;      fmt/render-output println
 ;;      )
+
+
+;; (->> "@prefix ex: <http://example.com/>
+
+;; : ex:s
+;; ex:p: ex:o
+;; > ex:a: ex:b
+;; >> ex:c: ex:d"
+;;      util/split-lines
+;;      (fmt/read-lines :kn env/blank-env)
+;;      (map #(dissoc % :org.knotation.environment/env)))
