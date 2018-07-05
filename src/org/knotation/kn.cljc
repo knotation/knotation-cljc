@@ -184,6 +184,19 @@
       (util/error :invalid-predicate-datatype pd))
     (util/error :not-a-statement line)))
 
+; An annotation is a line starting with some number of >
+(defn parse-annotation
+  [line]
+  (if-let [[_ arrows annotation] (re-matches #"(>+) (.*)\n?" line)]
+    (vec
+     (concat
+      [::annotation-line
+       [:symbol arrows]
+       [:space " "]]
+      (rest (parse-statement
+             (subs line (+ (count arrows) 1))))))
+    (util/error :not-a-statement line)))
+
 (defn inner-read-object
   [env language datatype content]
   (cond
@@ -253,6 +266,10 @@
         (util/error :unrecognized-datatype datatype-name))
       (util/error :unrecognized-predicate predicate-name))))
 
+(defn read-annotation
+  [env parse]
+  {:event :annotation :level (count (second (second parse)))})
+
 (defn render-datatype
   "Render the datatype part of a statement.
    Handles default dataypes and languages."
@@ -304,6 +321,10 @@
       (util/error :invalid-iri pi))
     (util/error :not-a-statement-state state)))
 
+(defn render-annotation
+  [env state]
+  (->> state :input :parse flatten (filter string?)))
+
 ; Handle multi-line structures
 
 (defn merge-parses
@@ -312,12 +333,24 @@
    into a single ::statement-block."
   [parses]
   ; TODO: check more carefully
-  (if (= ::statement-line (ffirst parses))
+  (if (contains? #{::statement-line ::annotation-line} (ffirst parses))
     (concat
-     [::statement-block]
+     [(if (= (ffirst parses) ::statement-line) ::statement-block ::annotation-block)]
      (->> parses first rest)
      (->> parses rest (mapcat rest)))
     (first parses)))
+
+(defn process-annotations
+  [states]
+  (map (fn [[s prev]]
+         (if (= (:event s) :annotation)
+           (let [tgt (select-keys prev [:rt :gi :si :sb :pi :oi :ob :ol :di :ln])]
+             (case (:event prev)
+               :statement (assoc s :target tgt)
+               :annotation (assoc s :target tgt) ;; We need to implement a stack of annotations here
+               (util/error :no-annotation-target s)))
+           s))
+       (map list states (cons nil states))))
 
 ; Primary interface: step-by-step
 
@@ -331,10 +364,11 @@
     \@ (parse-declaration line)
     \: (parse-subject line)
     \space (parse-indented line)
+    \> (parse-annotation line)
     (parse-statement line)))
 
 (defn process-parses
-  "Given a sequence of parses, return a lazy sequence of merged parses."
+  "Given a sequence of parses, return a lazy sequence of processed parses."
   [parses]
   (->> parses
        (util/partition-with #(not= ::indented-line (first %)))
@@ -352,6 +386,7 @@
      ::prefix-line (read-prefix env parse)
      ::subject-line (read-subject env parse)
      ::statement-block (read-statement env parse)
+     ::annotation-block (read-annotation env parse)
      (util/throw-exception :bad-parse parse))))
 
 (defn expand-state
@@ -396,6 +431,7 @@
     :subject-start (render-subject env state)
     :subject-end [::subject-end]
     :statement (render-statement env state)
+    :annotation (render-annotation env state)
     (util/throw-exception :bad-state state)))
 
 ; Implement format interface
@@ -409,6 +445,11 @@
   :kn
   [fmt parses]
   (process-parses parses))
+
+(defmethod fm/process-states
+  :kn
+  [fmt states]
+  (process-annotations states))
 
 (defmethod fm/read-parse
   :kn
@@ -424,3 +465,20 @@
   :kn
   [fmt env state]
   (render-state env state))
+
+
+;; (->> "@prefix ex: <http://example.com/>
+
+;; : ex:s
+;; ex:p: A
+;; > ex:p: B is an annotation on A
+;;   that includes a multi-line string
+;; >> ex:p: C is an annotation on B
+;;    that likewise includes a multi-line string
+;; > ex:p: D is an annotation on A"
+;;      util/split-lines
+;;      (fmt/read-lines :kn env/blank-env)
+;;      (fmt/render-states :kn env/blank-env)
+;;      ;;(map #(dissoc % :org.knotation.environment/env))
+;;      fmt/render-output println
+;;      )

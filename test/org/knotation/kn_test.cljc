@@ -3,7 +3,8 @@
             [org.knotation.util :as util]
             [org.knotation.environment :as en]
             [org.knotation.format :as fm]
-            [org.knotation.kn :as kn]))
+            [org.knotation.kn :as kn]
+            [org.knotation.api :as api]))
 
 (defn test-roundtrip-line
   [parse-fn read-fn render-fn line]
@@ -15,6 +16,9 @@
        (= line)
        is))
 
+(defn normalize-trailing-newlines [s]
+  (str (clojure.string/trim s) "\n"))
+
 (defn test-before-after
   [before after]
   (->> before
@@ -22,7 +26,8 @@
        (fm/read-lines :kn en/blank-env)
        (fm/render-states :kn en/blank-env)
        fm/render-output
-       (= after)
+       normalize-trailing-newlines
+       (= (normalize-trailing-newlines after))
        is))
 
 (defn test-roundtrip
@@ -80,3 +85,44 @@ knp:applied-template: ex:template
  label: Bar
 ex:label: Foo Bar
 "))
+
+(deftest test-annotations
+  (testing "Annotations with no valid targets show up as errors"
+    (let [res (->> "@prefix ex: <http://example.com/>
+
+> ex:p: This annotation has no target and should therefore error"
+                   util/split-lines
+                   (fm/read-lines :kn en/blank-env))]
+      (is (api/any-errors? res))
+      (is (->> (nth res 3) api/error-type (= :no-annotation-target)))))
+  (testing "Annotations start with pointies"
+    (test-roundtrip "@prefix ex: <http://example.com/>
+
+: ex:s
+ex:p: ex:o
+> ex:a: ex:b"))
+  (testing "Annotations can refer to other annotations"
+    (test-roundtrip "@prefix ex: <http://example.com/>
+
+: ex:s
+ex:p: ex:o
+> ex:a: ex:b
+>> ex:c: ex:d"))
+  (testing "Non-adjacent annotations can refer to previous annotation targets"
+    (test-roundtrip "@prefix ex: <http://example.com/>
+
+: ex:s
+ex:p: A
+> ex:p: B is an annotation on A
+>> ex:p: C is an annotation on B
+> ex:p: D is an annotation on A"))
+  (testing "Annotations can have multi-line strings"
+    (test-roundtrip "@prefix ex: <http://example.com/>
+
+: ex:s
+ex:p: A
+> ex:p: B is an annotation on A
+  that includes a multi-line string
+>> ex:p: C is an annotation on B
+   that likewise includes a multi-line string
+> ex:p: D is an annotation on A")))
