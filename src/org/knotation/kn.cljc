@@ -340,29 +340,33 @@
      (->> parses rest (mapcat rest)))
     (first parses)))
 
+(defn process-annotation
+  [prev s]
+  (if (= (:event s) :annotation)
+    (let [tgt (select-keys prev [:rt :gi :si :sb :pi :oi :ob :ol :di :ln])]
+      (cond (and (not= (:event prev) :annotation) (> (:level s) 1))
+            (util/error :invalid-annotation-level (->> s :input :parse))
+
+            (= (:event prev) :statement)
+            (assoc s :target tgt :stack [])
+
+            (and (= (:event prev) :annotation) (= (:level prev) (:level s)))
+            (assoc s :target (:target prev) :stack (:stack prev))
+
+            (= (:event prev) :annotation)
+            (assoc s :target tgt :stack [(:target prev)])
+
+            :else
+            (util/error :no-annotation-target (->> s :input :parse))))
+    s))
+
 (defn process-annotations
   [states]
-  (map (fn [[s prev]]
-         (if (= (:event s) :annotation)
-           (let [tgt (select-keys prev [:rt :gi :si :sb :pi :oi :ob :ol :di :ln])]
-             (cond (and (not= (:event prev) :annotation) (> (:level s) 1))
-                   (util/error :invalid-annotation-level (->> s :input :parse))
-
-                   (= (:event prev) :statement)
-                   (assoc s :target tgt :stack [])
-
-                   (and (= (:event prev) :annotation) (= (:level prev) (:level s)))
-                   (assoc s :target (:target prev) :stack (:stack prev))
-
-                   (= (:event prev) :annotation)
-                   (do
-                     (println "PREV" (str prev)) ;; BUG - we're assuming that the next prev is going to have target and stack, but prev is actually fixed in the inner map call. Think about this a bit more; I think it basically has to be recursively defined :/
-                     (assoc s :target tgt :stack [(:target prev)]))
-
-                   :else
-                   (util/error :no-annotation-target (->> s :input :parse))))
-           s))
-       (map list states (cons nil states))))
+  ((fn rec [ss]
+     (when (not (empty? (rest ss)))
+       (let [res (process-annotation (first ss) (second ss))]
+         (lazy-seq (cons res (rec (cons res (rest (rest ss)))))))))
+   (cons nil states)))
 
 ; Primary interface: step-by-step
 
