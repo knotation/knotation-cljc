@@ -268,7 +268,8 @@
 
 (defn read-annotation
   [env parse]
-  {:event :annotation :level (count (second (second parse)))})
+  (merge (read-statement env (cons ::statement-block (drop 3 parse)))
+         {:event :annotation :level (count (second (second parse)))}))
 
 (defn render-datatype
   "Render the datatype part of a statement.
@@ -343,18 +344,22 @@
 (defn process-annotation
   [prev s]
   (if (= (:event s) :annotation)
-    (let [tgt (select-keys prev [:rt :gi :si :sb :pi :oi :ob :ol :di :ln])]
-      (cond (and (not= (:event prev) :annotation) (> (:level s) 1))
+    (let [tgt (select-keys prev [:rt :gi :si :sb :pi :oi :ob :ol :di :ln])
+          ann-prev? (= (:event prev) :annotation)]
+      (cond (and (not ann-prev?) (> (:level s) 1))
             (util/error :invalid-annotation-level (->> s :input :parse))
 
             (= (:event prev) :statement)
-            (assoc s :target tgt :stack [])
+            (assoc s :target tgt :stack {(:level s) tgt})
 
-            (and (= (:event prev) :annotation) (= (:level prev) (:level s)))
+            (and ann-prev? (= (:level prev) (:level s)))
             (assoc s :target (:target prev) :stack (:stack prev))
 
-            (= (:event prev) :annotation)
-            (assoc s :target tgt :stack [(:target prev)])
+            (and ann-prev? (= (:level prev) (- (:level s) 1)))
+            (assoc s :target tgt :stack (assoc (:stack prev) (:level s) tgt))
+
+            (and ann-prev? (get (:stack prev) (:level s)))
+            (assoc s :target (get (:stack prev) (:level s)) :stack (:stack prev))
 
             :else
             (util/error :no-annotation-target (->> s :input :parse))))

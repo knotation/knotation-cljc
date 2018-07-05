@@ -102,20 +102,36 @@ ex:label: Foo Bar
 ex:p: ex:o
 > ex:a: ex:b"))
   (testing "Annotations can refer to other annotations"
-    (test-roundtrip "@prefix ex: <http://example.com/>
+    (let [chained "@prefix ex: <http://example.com/>
 
 : ex:s
 ex:p: ex:o
 > ex:a: ex:b
->> ex:c: ex:d"))
+>> ex:c: ex:d"
+          res (->> chained util/split-lines
+                   (fm/read-lines :kn en/blank-env))]
+      ;;(test-roundtrip chained)
+      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "ex:o"}
+             (:target (nth res 5))))
+      (is (= {:si "http://example.com/s", :pi "http://example.com/a", :ol "ex:b"}
+             (:target (nth res 6))))))
   (testing "Non-adjacent annotations can refer to previous annotation targets"
-    (test-roundtrip "@prefix ex: <http://example.com/>
+    (let [deep-chain "@prefix ex: <http://example.com/>
 
 : ex:s
 ex:p: A
 > ex:p: B is an annotation on A
 >> ex:p: C is an annotation on B
-> ex:p: D is an annotation on A"))
+> ex:p: D is an annotation on A"
+          res (->> deep-chain util/split-lines
+                   (fm/read-lines :kn en/blank-env))]
+      (test-roundtrip deep-chain)
+      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
+             (:target (nth res 5))))
+      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "B is an annotation on A"}
+             (:target (nth res 6))))
+      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
+             (:target (nth res 7))))))
   (testing "Annotations can have multi-line strings"
     (test-roundtrip "@prefix ex: <http://example.com/>
 
