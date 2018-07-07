@@ -486,31 +486,3 @@
   :kn
   [fmt env state]
   (render-state env state))
-
-
-;; (->> "@prefix ex: <http://example.com/>
-
-;; : ex:s
-;; ex:p: A
-;; > ex:p: B is an annotation on A
-;;   that includes a multi-line string
-;; >> ex:p: C is an annotation on B
-;;    that likewise includes a multi-line string
-;; > ex:p: D is an annotation on A"
-;;      util/split-lines
-;;      (fmt/read-lines :kn env/blank-env)
-;;      (fmt/render-states :kn env/blank-env)
-;;      ;;(map #(dissoc % :org.knotation.environment/env))
-;;      fmt/render-output println
-;;      )
-
-
-;; (->> "@prefix ex: <http://example.com/>
-
-;; : ex:s
-;; ex:p: ex:o
-;; > ex:a: ex:b
-;; >> ex:c: ex:d"
-;;      util/split-lines
-;;      (fmt/read-lines :kn env/blank-env)
-;;      (map #(dissoc % :org.knotation.environment/env)))

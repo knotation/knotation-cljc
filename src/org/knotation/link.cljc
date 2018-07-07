@@ -75,25 +75,6 @@
       (curie->iri env input)
       (http-url->iri env input)))
 
-; TODO: Eliminate these
-;;; Eliminated the various *->iri functions (they were trivially equivalent)
-;;; It looks like we don't call graph->node or subject->node anywhere
-
-(defn graph->node
-  [env input]
-  (when input
-    (or (when-let [iri (->iri env input)]
-          {::rdf/iri iri})
-        (when (re-matches #"_:\S+" input)
-          {::rdf/bnode input}))))
-
-(defn subject->node
-  [env input]
-  (or (when-let [iri (->iri env input)]
-        {::rdf/iri iri})
-      (when (re-matches #"_:\S+" input)
-        {::rdf/bnode input})))
-
 (defn object->node
   [env input]
   (or (when-let [iri (->iri env input)]
