@@ -1,9 +1,11 @@
 (ns org.knotation.kn
   (:require [clojure.string :as string]
             [org.knotation.util :as util]
+            [instaparse.core :as insta]
             #?(:clj [org.knotation.util :as util :refer [handler-case]]
                :cljs [org.knotation.util :as util])
             #?(:cljs [org.knotation.util-macros-cljs :refer-macros [handler-case]])
+            [org.knotation.rdf :as rdf :refer [owl rdf]]
             [org.knotation.environment :as en]
             [org.knotation.link :as ln]
             [org.knotation.format :as fm]))
@@ -238,6 +240,87 @@
             %))
         (map second)
         string/join)))
+
+;; A manchester expression is a comlpex, recursive expression
+;; managed by instaparse
+(def manchester-grammar "
+CLASS_EXPRESSION = '(' SPACE? CLASS_EXPRESSION SPACE? ')' SPACE?
+                 | DISJUNCTION
+                 | CONJUNCTION
+                 | NEGATION
+                 | RESTRICTION
+                 | LABEL
+
+DISJUNCTION = CLASS_EXPRESSION SPACE 'or'  SPACE CLASS_EXPRESSION
+CONJUNCTION = CLASS_EXPRESSION SPACE 'and' SPACE CLASS_EXPRESSION
+NEGATION = 'not' SPACE (RESTRICTION | LABEL)
+
+<RESTRICTION> = SOME | ONLY
+SOME = OBJECT_PROPERTY_EXPRESSION SPACE 'some' SPACE CLASS_EXPRESSION
+ONLY = OBJECT_PROPERTY_EXPRESSION SPACE 'only' SPACE CLASS_EXPRESSION
+
+OBJECT_PROPERTY_EXPRESSION = 'inverse' SPACE LABEL | LABEL
+
+LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
+<SPACE> = #'\\s+'")
+
+(def manchester-parser (insta/parser manchester-grammar))
+
+(defn parse-manchester
+  [content]
+  (let [result (manchester-parser content)]
+    (when (insta/failure? result)
+      (println result)
+      (throw (Exception. "Manchester parser failure")))
+    result))
+
+(defn ->obj
+  [subtree]
+  (println "EXTRACTING OBJ FROM" (str subtree))
+  (let [elem (first subtree)]
+    (or (and (get subtree :sb) {:ob (get subtree :sb)})
+        (select-keys subtree [:ob :ol :oi])
+        (and (string? (first elem)) {:ob (first elem)})
+        (and (= :LABEL (first elem)) {:ol (nth elem 2)})
+        (util/error :invalid-object-extraction subtree))))
+
+(declare read-manchester-expression)
+
+(defn read-restriction
+  [env parse restriction]
+  {:status :todo})
+(defn read-combination
+  [env parse combination]
+  {:status :todo})
+
+(defn read-negation
+  [env parse]
+  (let [b (rdf/random-blank-node)
+        target (read-manchester-expression env (last parse))
+        ms [{:sb b :pi (rdf "type") :oi (owl "Class")}
+            (merge
+             {:sb b :pi (owl "complementOf")}
+             (->obj target))]]
+    (if (map? target) ms (concat ms target))))
+
+(defn read-manchester-expression
+  [env parse]
+  (case (first parse)
+    (:MANCHESTER_EXPRESSION :OBJECT_PROPERTY_EXPRESSION) (read-manchester-expression env (second parse))
+    :LABEL {:ol (nth parse 2)}
+    :CLASS_EXPRESSION (mapcat #(read-manchester-expression env %) (rest parse))
+    :SOME (read-restriction env parse (owl "someValuesFrom"))
+    :ONLY (read-restriction env parse (owl "allValuesFrom"))
+    :CONJUNCTION (read-combination env parse (rdf "intersectionOf"))
+    :DISJUNCTION (read-combination env parse (rdf "unionOf"))
+    :NEGATION (read-negation env parse)
+    (util/error :unsupported-manchester-form parse)))
+
+(defn read-manchester
+  [env parse]
+  {:event :manchester-expression
+   :zn :TODO-subject
+   :expression-maps (read-manchester-expression env parse)})
 
 (defn read-statement
   [env parse]
