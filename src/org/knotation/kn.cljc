@@ -276,22 +276,47 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 
 (defn ->obj
   [subtree]
-  (println "EXTRACTING OBJ FROM" (str subtree))
+  (println "EXTRACTING OBJ FROM" (str (vec subtree)))
   (let [elem (first subtree)]
-    (or (and (get subtree :sb) {:ob (get subtree :sb)})
-        (select-keys subtree [:ob :ol :oi])
+    (println " ===>" (str elem))
+    (or (and (= :LABEL elem) {:ol (nth subtree 2)})
+        (and (get subtree :sb) {:ob (get subtree :sb)})
+        (and (map? subtree) (select-keys subtree [:ob :ol :oi]))
         (and (string? (first elem)) {:ob (first elem)})
-        (and (= :LABEL (first elem)) {:ol (nth elem 2)})
         (util/error :invalid-object-extraction subtree))))
 
 (declare read-manchester-expression)
 
 (defn read-restriction
   [env parse restriction]
-  {:status :todo})
+  (let [[_ left right] parse
+        b (rdf/random-blank-node)
+        left (read-manchester-expression env left)
+        right (read-manchester-expression env right)]
+    (concat
+     [{:sb b :pi (rdf "type") :oi (owl "Restriction")}
+      (merge {:sb b :pi (owl "onProperty")} (->obj left))
+      (merge {:sb b :pi restriction} (->obj right))]
+     (when (map? (first left)) left)
+     (when (map? (first right)) right))))
+
 (defn read-combination
   [env parse combination]
-  {:status :todo})
+  (let [[_ left _ _ _ right] parse
+        b1 (rdf/random-blank-node)
+        b2 (rdf/random-blank-node)
+        b3 (rdf/random-blank-node)
+        left (read-manchester-expression env left)
+        right (read-manchester-expression env right)]
+    (concat
+     [{:sb b1 :pi (rdf "type") :oi (owl "Class")}
+      {:sb b1 :pi combination :ob b2}
+      (merge {:sb b2 :pi (rdf "first")} (->obj left))
+      {:sb b2 :pi (rdf "rest") :ob b3}
+      (merge {:sb b3 :pi (rdf "first")} (->obj right))
+      {:sb b3 :pi (rdf "rest") :oi (rdf "nil")}]
+     (when (map? (first left)) left)
+     (when (map? (first right)) right))))
 
 (defn read-negation
   [env parse]
@@ -301,13 +326,14 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
             (merge
              {:sb b :pi (owl "complementOf")}
              (->obj target))]]
-    (if (map? target) ms (concat ms target))))
+    (concat ms (when (map? (first target)) target))))
 
 (defn read-manchester-expression
   [env parse]
+  (println "READING MANCH EXPRESSION" (str [parse]))
   (case (first parse)
     (:MANCHESTER_EXPRESSION :OBJECT_PROPERTY_EXPRESSION) (read-manchester-expression env (second parse))
-    :LABEL {:ol (nth parse 2)}
+    :LABEL parse
     :CLASS_EXPRESSION (mapcat #(read-manchester-expression env %) (rest parse))
     :SOME (read-restriction env parse (owl "someValuesFrom"))
     :ONLY (read-restriction env parse (owl "allValuesFrom"))
@@ -320,7 +346,7 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
   [env parse]
   {:event :manchester-expression
    :zn :TODO-subject
-   :expression-maps (read-manchester-expression env parse)})
+   :expression-maps (vec (read-manchester-expression env parse))})
 
 (defn read-statement
   [env parse]
