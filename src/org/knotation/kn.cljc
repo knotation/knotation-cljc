@@ -271,14 +271,12 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
   (let [result (manchester-parser content)]
     (when (insta/failure? result)
       (println result)
-      (throw (Exception. "Manchester parser failure")))
+      (util/throw-exception "Manchester parser failure"))
     result))
 
 (defn ->obj
   [subtree]
-  (println "EXTRACTING OBJ FROM" (str (vec subtree)))
   (let [elem (first subtree)]
-    (println " ===>" (str elem))
     (or (and (= :LABEL elem) {:ol (nth subtree 2)})
         (and (get subtree :sb) {:ob (get subtree :sb)})
         (and (map? subtree) (select-keys subtree [:ob :ol :oi]))
@@ -330,7 +328,6 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 
 (defn read-manchester-expression
   [env parse]
-  (println "READING MANCH EXPRESSION" (str [parse]))
   (case (first parse)
     (:MANCHESTER_EXPRESSION :OBJECT_PROPERTY_EXPRESSION) (read-manchester-expression env (second parse))
     :LABEL parse
