@@ -502,7 +502,8 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
   [parses]
   (->> parses
        (util/partition-with #(not= ::indented-line (first %)))
-       (map merge-parses)))
+       (map merge-parses)
+       (map vec)))
 
 (defn read-parse
   "Given an environment and a parse,
