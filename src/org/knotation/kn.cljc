@@ -352,19 +352,20 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 ;;;   (fm/process-states :kn (map #(kn/read-parse (en/add-prefix en/default-env "ex" "http://www.example.com/") %) (kn/process-parses (map kn/parse-line [": ex:subject" "ex:foo: bar and baz" " or not mumble"]))))
 ;; but this doesn't do what we want on label states.
 ;; Is process-state event the right place to hook this in? Might it fit better over with process-parses?
+;; (defn process-manchester
+;;   [states]
+;;   (when (not (empty? states))
+;;     (let [head (first states)]
+;;       (or (and (= :statement (:event head))
+;;                (get head :ol)
+;;                (if-let [manc (parse-manchester (:ol head))]
+;;                  (lazy-seq
+;;                   (concat
+;;                    (read-manchester-expression {} manc)
+;;                    (process-manchester (rest states))))))
+;;           (lazy-seq (cons head (process-manchester (rest states))))))))
 
-(defn process-manchester
-  [states]
-  (when (not (empty? states))
-    (let [head (first states)]
-      (or (and (= :statement (:event head))
-               (get head :ol)
-               (if-let [manc (parse-manchester (:ol head))]
-                 (lazy-seq
-                  (concat
-                   (read-manchester-expression {} manc)
-                   (process-manchester (rest states))))))
-          (lazy-seq (cons head (process-manchester (rest states))))))))
+(def process-manchester identity)
 
 (defn read-statement
   [env parse]
