@@ -280,6 +280,8 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
     (or (and (= :LABEL elem) {:ol (nth subtree 2)})
         (and (get subtree :sb) {:ob (get subtree :sb)})
         (and (map? subtree) (select-keys subtree [:ob :ol :oi]))
+        (and (get elem :sb) {:ob (get elem :sb)})
+        (and (map? elem) (select-keys elem [:ob :ol :oi]))
         (and (string? (first elem)) {:ob (first elem)})
         (util/error :invalid-object-extraction subtree))))
 
@@ -328,6 +330,7 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 
 (defn read-manchester-expression
   [env parse]
+  (println "READING EXPRESSION" (str parse))
   (case (first parse)
     (:MANCHESTER_EXPRESSION :OBJECT_PROPERTY_EXPRESSION) (read-manchester-expression env (second parse))
     :LABEL parse
