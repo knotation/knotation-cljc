@@ -110,11 +110,11 @@ ex:p: ex:o
 >> ex:c: ex:d"
           res (->> chained util/split-lines
                    (fm/read-lines :kn en/blank-env))]
-      ;;(test-roundtrip chained)
+      (test-roundtrip chained)
       (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "ex:o"}
              (:target (nth res 5))))
       (is (= {:si "http://example.com/s", :pi "http://example.com/a", :ol "ex:b"}
-             (:target (nth res 6))))))
+             (:target (nth res 11))))))
   (testing "Non-adjacent annotations can refer to previous annotation targets"
     (let [deep-chain "@prefix ex: <http://example.com/>
 
@@ -129,9 +129,9 @@ ex:p: A
       (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
              (:target (nth res 5))))
       (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "B is an annotation on A"}
-             (:target (nth res 6))))
+             (:target (nth res 11))))
       (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
-             (:target (nth res 7))))))
+             (:target (nth res 17))))))
   (testing "Annotations can have multi-line strings"
     (test-roundtrip "@prefix ex: <http://example.com/>
 

@@ -495,11 +495,22 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 
 (defn process-annotations
   [states]
-  ((fn rec [ss]
-     (when (not (empty? (rest ss)))
-       (let [res (process-annotation (first ss) (second ss))]
-         (lazy-seq (cons res (rec (cons res (rest (rest ss)))))))))
-   (cons nil states)))
+  (mapcat
+   (fn [state]
+     (if (= :annotation (:event state))
+       (let [b1 (rdf/random-blank-node)]
+         [(dissoc state :stack :level)
+          {:sb b1 :pi (rdf "type") :oi (owl "Annotation")}
+          (merge {:sb b1 :pi (owl "annotatedSource")} (select-keys state [:si :sb]))
+          {:sb b1 :pi (owl "annotatedProperty") :oi (:pi state)}
+          (merge {:sb b1 :pi (owl "annotatedTarget")} (select-keys state [:oi :ob :ol]))
+          (merge {:sb b1} (select-keys state [:pi :oi :ob :ol]))])
+       [state]))
+   ((fn rec [ss]
+      (when (not (empty? (rest ss)))
+        (let [res (process-annotation (first ss) (second ss))]
+          (lazy-seq (cons res (rec (cons res (rest (rest ss)))))))))
+    (cons nil states))))
 
 ; Primary interface: step-by-step
 
