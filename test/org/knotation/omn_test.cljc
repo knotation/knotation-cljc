@@ -8,65 +8,6 @@
 
 (stest/instrument)
 
-(def ex-list-branch
-  [{::rdf/subject {::rdf/bnode "_:1"}
-    ::rdf/predicate {::rdf/iri (rdf/rdf "first")}
-    ::rdf/object {::rdf/literal "1"}}
-   {::rdf/subject {::rdf/bnode "_:1"}
-    ::rdf/predicate {::rdf/iri (rdf/rdf "rest")}
-    ::rdf/object
-    {::rdf/bnode "_:2"
-     ::rdf/pairs
-     [{::rdf/predicate {::rdf/iri (rdf/rdf "first")}
-       ::rdf/object {::rdf/literal "2"}}
-      {::rdf/predicate {::rdf/iri (rdf/rdf "rest")}
-       ::rdf/object
-       {::rdf/bnode "_:3"
-        ::rdf/pairs
-        [{::rdf/predicate {::rdf/iri (rdf/rdf "first")}
-          ::rdf/object {::rdf/literal "3"}}
-         {::rdf/predicate {::rdf/iri (rdf/rdf "rest")}
-          ::rdf/object {::rdf/iri (rdf/rdf "nil")}}]}}]}}])
-
-(def ex-list
-  (->> [1 2 3]
-       (map str)
-       (map (fn [x] {::rdf/literal x}))))
-
-(def ex-long-list
-  (->> (range 1 10000)
-       (map str)
-       (map (fn [x] {::rdf/literal x}))))
-
-(deftest test-branch->list
-  (is (=  ex-list
-          (->> ex-list-branch
-               omn/branch->list))))
-
-(deftest test-list->branch
-  (is (= ex-list
-         (->> ex-list
-              omn/list->branch
-              ::rdf/pairs
-              omn/branch->list)))
-  (is (= ex-list
-         (->> ex-list-branch
-              (mapcat rdf/unbranch-quad)
-              (map ::rdf/object)
-              (filter ::rdf/literal))))
-  (is (= ex-long-list
-         (->> ex-long-list
-              omn/list->branch
-              ::rdf/pairs
-              omn/branch->list)))
-  (is (= ex-long-list
-         (->> ex-long-list
-              omn/list->branch
-              (assoc {} ::rdf/object)
-              rdf/unbranch-quad
-              (map ::rdf/object)
-              (filter ::rdf/literal)))))
-
 (def env-1
   (-> en/blank-env
       (en/add-label "foo" (rdf/ex "foo"))
@@ -80,26 +21,250 @@
       (en/add-label "has role" (rdf/ex "has-role"))
       (en/add-label "evaluant role" (rdf/ex "evaluant-role"))))
 
-(defn test-round-trip
-  [content]
-  (->> content
-       omn/parse-class-expression
-       (omn/convert-class-expression env-1)
-       (omn/render-class-expression env-1)
-       omn/write-class-expression
-       (= content)
-       is))
+(defn blank=
+  "Tests whether two states or state sequences are equal up to blank-node renaming"
+  [a b]
+  (cond
+    (and (map? a) (map? b))
+    (and (= (:gi a) (:gi b))
+         (or (and (:sb a) (:sb b))
+             (= (:si a) (:si b)))
+         (= (:pi a) (:pi b))
+         (or (and (:ob a) (:ob b))
+             (= (:oi a) (:oi b))
+             (= (:ol a) (:ol b)))
+         (= (:di a) (:di b))
+         (= (:ln a) (:ln b)))
 
-(deftest test-round-trips
-  (test-round-trip "foo")
-  (test-round-trip "'foo bar'")
-  (test-round-trip "not foo")
-  (test-round-trip "foo or bar")
-  (test-round-trip "foo or foo or foo")
-  (test-round-trip "foo and bar")
-  (test-round-trip "'has part' some foo")
-  (test-round-trip "'has part' only foo")
-  (test-round-trip "'has part' some (foo or bar)")
-  ; TODO: handle brackets and indentation better
-  (test-round-trip "'is about' some ('material entity' and 'has role' some 'evaluant role')")
-  (test-round-trip "has_specified_output some ('information content entity' and 'is about' some ('material entity' and 'has role' some 'evaluant role'))"))
+    :else (and (= (count a) (count b))
+               (every? identity (map blank= a b)))))
+
+(defn reads-to?
+  [string maps]
+  (blank= maps (omn/read-class-string env-1 string)))
+
+;; (deftest test-class-expression-readers
+;;   (is (reads-to?
+;;        "not foo"
+;;        [{:sb "_:0", :pi "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", :oi "http://www.w3.org/2002/07/owl#Class"}
+;;         {:sb "_:0", :pi "http://www.w3.org/2002/07/owl#complementOf", :ol "foo"}]))
+;;   (is (reads-to?
+;;        "foo or bar"
+;;        )))
+
+
+(deftest test-manchester-parsing
+  (testing "Simple label"
+    (is (= (omn/parse-class-expression "foo")
+           [:CLASS_EXPRESSION [:LABEL "" "foo" ""]])))
+
+  (testing "Quoted label"
+    (is (= (omn/parse-class-expression "'foo'")
+           [:CLASS_EXPRESSION [:LABEL "'" "foo" "'"]])))
+
+  (testing "Parens"
+    (is (= (omn/parse-class-expression "(foo )")
+           [:CLASS_EXPRESSION
+            "(" [:CLASS_EXPRESSION [:LABEL "" "foo" ""]] " " ")"])))
+
+  (testing "Disjunction"
+    (is (= (omn/parse-class-expression "foo or bar")
+           [:CLASS_EXPRESSION
+            [:DISJUNCTION
+             [:CLASS_EXPRESSION [:LABEL "" "foo" ""]]
+             " " "or" " "
+             [:CLASS_EXPRESSION [:LABEL "" "bar" ""]]]])))
+
+  (testing "Conjunction"
+    (is (= (omn/parse-class-expression "foo and bar")
+           [:CLASS_EXPRESSION
+            [:CONJUNCTION [:CLASS_EXPRESSION [:LABEL "" "foo" ""]]
+             " " "and" " "
+             [:CLASS_EXPRESSION [:LABEL "" "bar" ""]]]])))
+
+  (testing "Negation"
+    (is (= (omn/parse-class-expression "not foo")
+           [:CLASS_EXPRESSION
+            [:NEGATION
+             "not" " "
+             [:LABEL "" "foo" ""]]])))
+
+  (testing "Some"
+    (is (= (omn/parse-class-expression "'has part' some foo")
+           [:CLASS_EXPRESSION
+            [:SOME
+             [:OBJECT_PROPERTY_EXPRESSION
+              [:LABEL "'" "has part" "'"]]
+             " " "some" " "
+             [:CLASS_EXPRESSION [:LABEL "" "foo" ""]]]])))
+
+  (testing "Some not"
+    (is (= (omn/parse-class-expression "'has part' some not foo")
+           [:CLASS_EXPRESSION
+            [:SOME
+             [:OBJECT_PROPERTY_EXPRESSION
+              [:LABEL "'" "has part" "'"]]
+             " " "some" " "
+             [:CLASS_EXPRESSION
+              [:NEGATION
+               "not" " "
+               [:LABEL "" "foo" ""]]]]])))
+
+  (testing "Complex axiom"
+    (is (= (omn/parse-class-expression "'is about' some
+    ('material entity'
+     and ('has role' some 'evaluant role'))")
+           [:CLASS_EXPRESSION
+            [:SOME
+             [:OBJECT_PROPERTY_EXPRESSION [:LABEL "'" "is about" "'"]]
+             " " "some" "\n    "
+             [:CLASS_EXPRESSION
+              "("
+              [:CLASS_EXPRESSION
+               [:CONJUNCTION
+                [:CLASS_EXPRESSION
+                 [:LABEL "'" "material entity" "'"]]
+                "\n     " "and" " "
+                [:CLASS_EXPRESSION
+                 "("
+                 [:CLASS_EXPRESSION
+                  [:SOME
+                   [:OBJECT_PROPERTY_EXPRESSION
+                    [:LABEL "'" "has role" "'"]]
+                   " " "some" " "
+                   [:CLASS_EXPRESSION
+                    [:LABEL "'" "evaluant role" "'"]]]]
+                 ")"]]]
+              ")"]]])))
+
+  (testing "Another complex axiom"
+    (is (= (omn/parse-class-expression
+            "has_specified_output some
+('information content entity'
+ and ('is about' some
+    ('material entity'
+     and ('has role' some 'evaluant role'))))")
+           [:CLASS_EXPRESSION
+            [:SOME
+             [:OBJECT_PROPERTY_EXPRESSION
+              [:LABEL "" "has_specified_output" ""]]
+             " " "some" "\n"
+             [:CLASS_EXPRESSION
+              "("
+              [:CLASS_EXPRESSION
+               [:CONJUNCTION
+                [:CLASS_EXPRESSION
+                 [:LABEL "'" "information content entity" "'"]]
+                "\n " "and" " "
+                [:CLASS_EXPRESSION
+                 "("
+                 [:CLASS_EXPRESSION
+                  [:SOME
+                   [:OBJECT_PROPERTY_EXPRESSION
+                    [:LABEL "'" "is about" "'"]]
+                   " " "some" "\n    "
+                   [:CLASS_EXPRESSION
+                    "("
+                    [:CLASS_EXPRESSION
+                     [:CONJUNCTION
+                      [:CLASS_EXPRESSION
+                       [:LABEL
+                        "'" "material entity" "'"]]
+                      "\n     " "and" " "
+                      [:CLASS_EXPRESSION
+                       "("
+                       [:CLASS_EXPRESSION
+                        [:SOME
+                         [:OBJECT_PROPERTY_EXPRESSION
+                          [:LABEL
+                           "'" "has role" "'"]]
+                         " " "some" " "
+                         [:CLASS_EXPRESSION
+                          [:LABEL "'" "evaluant role" "'"]]]]
+                       ")"]]]
+                    ")"]]]
+                 ")"]]]
+              ")"]]]))))
+
+;; (def ex-list-branch
+;;   [{::rdf/subject {::rdf/bnode "_:1"}
+;;     ::rdf/predicate {::rdf/iri (rdf/rdf "first")}
+;;     ::rdf/object {::rdf/literal "1"}}
+;;    {::rdf/subject {::rdf/bnode "_:1"}
+;;     ::rdf/predicate {::rdf/iri (rdf/rdf "rest")}
+;;     ::rdf/object
+;;     {::rdf/bnode "_:2"
+;;      ::rdf/pairs
+;;      [{::rdf/predicate {::rdf/iri (rdf/rdf "first")}
+;;        ::rdf/object {::rdf/literal "2"}}
+;;       {::rdf/predicate {::rdf/iri (rdf/rdf "rest")}
+;;        ::rdf/object
+;;        {::rdf/bnode "_:3"
+;;         ::rdf/pairs
+;;         [{::rdf/predicate {::rdf/iri (rdf/rdf "first")}
+;;           ::rdf/object {::rdf/literal "3"}}
+;;          {::rdf/predicate {::rdf/iri (rdf/rdf "rest")}
+;;           ::rdf/object {::rdf/iri (rdf/rdf "nil")}}]}}]}}])
+
+;; (def ex-list
+;;   (->> [1 2 3]
+;;        (map str)
+;;        (map (fn [x] {::rdf/literal x}))))
+
+;; (def ex-long-list
+;;   (->> (range 1 10000)
+;;        (map str)
+;;        (map (fn [x] {::rdf/literal x}))))
+
+;; (deftest test-branch->list
+;;   (is (=  ex-list
+;;           (->> ex-list-branch
+;;                omn/branch->list))))
+
+;; (deftest test-list->branch
+;;   (is (= ex-list
+;;          (->> ex-list
+;;               omn/list->branch
+;;               ::rdf/pairs
+;;               omn/branch->list)))
+;;   (is (= ex-list
+;;          (->> ex-list-branch
+;;               ;; (mapcat rdf/unbranch-quad)
+;;               (map ::rdf/object)
+;;               (filter ::rdf/literal))))
+;;   (is (= ex-long-list
+;;          (->> ex-long-list
+;;               omn/list->branch
+;;               ::rdf/pairs
+;;               omn/branch->list)))
+;;   (is (= ex-long-list
+;;          (->> ex-long-list
+;;               omn/list->branch
+;;               (assoc {} ::rdf/object)
+;;               ;; rdf/unbranch-quad
+;;               (map ::rdf/object)
+;;               (filter ::rdf/literal)))))
+
+;; (defn test-round-trip
+;;   [content]
+;;   (->> content
+;;        omn/parse-class-expression
+;;        (omn/convert-class-expression env-1)
+;;        (omn/render-class-expression env-1)
+;;        omn/write-class-expression
+;;        (= content)
+;;        is))
+
+;; (deftest test-round-trips
+;;   (test-round-trip "foo")
+;;   (test-round-trip "'foo bar'")
+;;   (test-round-trip "not foo")
+;;   (test-round-trip "foo or bar")
+;;   (test-round-trip "foo or foo or foo")
+;;   (test-round-trip "foo and bar")
+;;   (test-round-trip "'has part' some foo")
+;;   (test-round-trip "'has part' only foo")
+;;   (test-round-trip "'has part' some (foo or bar)")
+;;   ; TODO: handle brackets and indentation better
+;;   (test-round-trip "'is about' some ('material entity' and 'has role' some 'evaluant role')")
+;;   (test-round-trip "has_specified_output some ('information content entity' and 'is about' some ('material entity' and 'has role' some 'evaluant role'))"))

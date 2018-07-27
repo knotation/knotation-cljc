@@ -212,10 +212,11 @@
       (ln/object->node env content)
 
       ; TODO: reimplement
-      ;"https://knotation.org/datatype/omn"
-      ;(assoc
-      ; (om/read-class-expression env content)
-      ; :di datatype)
+      "https://knotation.org/datatype/omn"
+      (let [res (omn/read-class-expression env content)]
+        {:ob (omn/->obj res)
+         :states (map #(assoc % datatype) res)
+         :di datatype})
 
       ; TODO: warn on unrecognized Knotation datatype
       ;(string/starts-with? datatype "https://knotation.org/datatype/")
@@ -242,113 +243,6 @@
         (map second)
         string/join)))
 
-;; A manchester expression is a comlpex, recursive expression
-;; managed by instaparse
-(def manchester-grammar "
-CLASS_EXPRESSION = '(' SPACE? CLASS_EXPRESSION SPACE? ')' SPACE?
-                 | DISJUNCTION
-                 | CONJUNCTION
-                 | NEGATION
-                 | RESTRICTION
-                 | LABEL
-
-DISJUNCTION = CLASS_EXPRESSION SPACE 'or'  SPACE CLASS_EXPRESSION
-CONJUNCTION = CLASS_EXPRESSION SPACE 'and' SPACE CLASS_EXPRESSION
-NEGATION = 'not' SPACE (RESTRICTION | LABEL)
-
-<RESTRICTION> = SOME | ONLY
-SOME = OBJECT_PROPERTY_EXPRESSION SPACE 'some' SPACE CLASS_EXPRESSION
-ONLY = OBJECT_PROPERTY_EXPRESSION SPACE 'only' SPACE CLASS_EXPRESSION
-
-OBJECT_PROPERTY_EXPRESSION = 'inverse' SPACE LABEL | LABEL
-
-LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
-<SPACE> = #'\\s+'")
-
-(def manchester-parser (insta/parser manchester-grammar))
-
-(defn parse-manchester
-  [content]
-  (let [result (manchester-parser content)]
-    (when (insta/failure? result)
-      (println result)
-      (util/throw-exception "Manchester parser failure"))
-    result))
-
-(defn ->obj
-  [subtree]
-  (let [elem (first subtree)]
-    (or (and (get subtree :sb) {:ob (get subtree :sb)})
-        (and (map? subtree) (select-keys subtree [:ob :ol :oi]))
-        (and (get elem :sb) {:ob (get elem :sb)})
-        (and (map? elem) (select-keys elem [:ob :ol :oi]))
-        (and (string? (first elem)) {:ob (first elem)})
-        (util/error :invalid-object-extraction subtree))))
-
-(declare read-manchester-expression)
-
-(defn read-restriction
-  [env parse restriction]
-  (let [[_ left right] parse
-        b (rdf/random-blank-node)
-        left (read-manchester-expression env left)
-        right (read-manchester-expression env right)]
-    (concat
-     [{:sb b :pi (rdf "type") :oi (owl "Restriction")}
-      (merge {:sb b :pi (owl "onProperty")} (->obj left))
-      (merge {:sb b :pi restriction} (->obj right))]
-     (when (map? (first left)) left)
-     (when (map? (first right)) right))))
-
-(defn read-combination
-  [env parse combination]
-  (let [[_ left _ _ _ right] parse
-        b1 (rdf/random-blank-node)
-        b2 (rdf/random-blank-node)
-        b3 (rdf/random-blank-node)
-        left (read-manchester-expression env left)
-        right (read-manchester-expression env right)]
-    (concat
-     [{:sb b1 :pi (rdf "type") :oi (owl "Class")}
-      {:sb b1 :pi combination :ob b2}
-      (merge {:sb b2 :pi (rdf "first")} (->obj left))
-      {:sb b2 :pi (rdf "rest") :ob b3}
-      (merge {:sb b3 :pi (rdf "first")} (->obj right))
-      {:sb b3 :pi (rdf "rest") :oi (rdf "nil")}]
-     (when (map? (first left)) left)
-     (when (map? (first right)) right))))
-
-(defn read-negation
-  [env parse]
-  (let [b (rdf/random-blank-node)
-        target (read-manchester-expression env (last parse))
-        ms [{:sb b :pi (rdf "type") :oi (owl "Class")}
-            (merge
-             {:sb b :pi (owl "complementOf")}
-             (->obj target))]]
-    (concat ms (when (map? (first target)) target))))
-
-(defn read-manchester-expression
-  [env parse]
-  (println "READING EXPRESSION" (str parse))
-  (when (not (string? parse))
-    (case (first parse)
-      (:MANCHESTER_EXPRESSION :OBJECT_PROPERTY_EXPRESSION) (read-manchester-expression env (second parse))
-      :LABEL {:ol (nth parse 2)}
-      :CLASS_EXPRESSION (mapcat #(read-manchester-expression env %) (rest parse))
-      :SOME (read-restriction env parse (owl "someValuesFrom"))
-      :ONLY (read-restriction env parse (owl "allValuesFrom"))
-      :CONJUNCTION (read-combination env parse (rdf "intersectionOf"))
-      :DISJUNCTION (read-combination env parse (rdf "unionOf"))
-      :NEGATION (read-negation env parse)
-      (util/error :unsupported-manchester-form parse))))
-
-(defn read-manchester
-  [env parse]
-  {:event :manchester-expression
-   :zn :TODO-subject
-   :expression-maps (vec (read-manchester-expression env parse))})
-
 ;; FIXME - tested against
 ;;;   (fm/process-states :kn (map #(kn/read-parse (en/add-prefix en/default-env "ex" "http://www.example.com/") %) (kn/process-parses (map kn/parse-line [": ex:subject" "ex:foo: bar and baz" " or not mumble"]))))
 ;; but this doesn't do what we want on label states.
@@ -366,8 +260,6 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 ;;                           (when (map? (first maps))
 ;;                             (concat maps (process-manchester (rest states)))))))))
 ;;           (lazy-seq (cons head (process-manchester (rest states))))))))
-
-(def process-manchester identity)
 
 (defn read-statement
   [env parse]
@@ -514,6 +406,17 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
           (lazy-seq (cons res (rec (cons res (rest (rest ss)))))))))
     (cons nil states))))
 
+(defn process-class-expressions
+  [states]
+  (mapcat
+   (fn [state]
+     (if (and (= :statement (:event state))
+              (= "https://knotation.org/datatype/omn" (:di state)))
+       (cons (dissoc state :states)
+             (:states state))
+       [state]))
+   states))
+
 ; Primary interface: step-by-step
 
 (defn parse-line
@@ -613,7 +516,8 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
   :kn
   [fmt states]
   (->> states
-       process-annotations))
+       process-annotations
+       process-class-expressions))
 
 (defmethod fm/read-parse
   :kn
