@@ -8,7 +8,8 @@
             [org.knotation.rdf :as rdf :refer [owl rdf]]
             [org.knotation.environment :as en]
             [org.knotation.link :as ln]
-            [org.knotation.format :as fm]))
+            [org.knotation.format :as fm]
+            [org.knotation.omn :as omn]))
 
 ; A blank line contains nothing except an optional line ending.
 
