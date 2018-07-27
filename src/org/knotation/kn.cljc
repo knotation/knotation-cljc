@@ -277,8 +277,7 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 (defn ->obj
   [subtree]
   (let [elem (first subtree)]
-    (or (and (= :LABEL elem) {:ol (nth subtree 2)})
-        (and (get subtree :sb) {:ob (get subtree :sb)})
+    (or (and (get subtree :sb) {:ob (get subtree :sb)})
         (and (map? subtree) (select-keys subtree [:ob :ol :oi]))
         (and (get elem :sb) {:ob (get elem :sb)})
         (and (map? elem) (select-keys elem [:ob :ol :oi]))
@@ -331,16 +330,17 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 (defn read-manchester-expression
   [env parse]
   (println "READING EXPRESSION" (str parse))
-  (case (first parse)
-    (:MANCHESTER_EXPRESSION :OBJECT_PROPERTY_EXPRESSION) (read-manchester-expression env (second parse))
-    :LABEL parse
-    :CLASS_EXPRESSION (mapcat #(read-manchester-expression env %) (rest parse))
-    :SOME (read-restriction env parse (owl "someValuesFrom"))
-    :ONLY (read-restriction env parse (owl "allValuesFrom"))
-    :CONJUNCTION (read-combination env parse (rdf "intersectionOf"))
-    :DISJUNCTION (read-combination env parse (rdf "unionOf"))
-    :NEGATION (read-negation env parse)
-    (util/error :unsupported-manchester-form parse)))
+  (when (not (string? parse))
+    (case (first parse)
+      (:MANCHESTER_EXPRESSION :OBJECT_PROPERTY_EXPRESSION) (read-manchester-expression env (second parse))
+      :LABEL {:ol (nth parse 2)}
+      :CLASS_EXPRESSION (mapcat #(read-manchester-expression env %) (rest parse))
+      :SOME (read-restriction env parse (owl "someValuesFrom"))
+      :ONLY (read-restriction env parse (owl "allValuesFrom"))
+      :CONJUNCTION (read-combination env parse (rdf "intersectionOf"))
+      :DISJUNCTION (read-combination env parse (rdf "unionOf"))
+      :NEGATION (read-negation env parse)
+      (util/error :unsupported-manchester-form parse))))
 
 (defn read-manchester
   [env parse]
@@ -358,11 +358,12 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 ;;     (let [head (first states)]
 ;;       (or (and (= :statement (:event head))
 ;;                (get head :ol)
-;;                (if-let [manc (parse-manchester (:ol head))]
-;;                  (lazy-seq
-;;                   (concat
-;;                    (read-manchester-expression {} manc)
-;;                    (process-manchester (rest states))))))
+;;                (if-let [manc (try (parse-manchester (:ol head)) (catch Exception e nil))]
+;;                  (let [maps (read-manchester-expression {} manc)]
+;;                    (lazy-seq
+;;                     (cons (merge (dissoc head :ol) (->obj maps))
+;;                           (when (map? (first maps))
+;;                             (concat maps (process-manchester (rest states)))))))))
 ;;           (lazy-seq (cons head (process-manchester (rest states))))))))
 
 (def process-manchester identity)
@@ -611,8 +612,7 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
   :kn
   [fmt states]
   (->> states
-       process-annotations
-       process-manchester))
+       process-annotations))
 
 (defmethod fm/read-parse
   :kn
