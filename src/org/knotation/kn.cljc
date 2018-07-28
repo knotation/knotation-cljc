@@ -439,6 +439,18 @@
        (map merge-parses)
        (map vec)))
 
+(defn process-stanza-labels
+  [states]
+  (let [top-subject (atom nil)]
+    (map
+     (fn [s]
+       (case (:event s)
+         :subject-start (do (reset! top-subject (or (:si s) (:sb s)))
+                            s)
+         :subject-end (do (reset! top-subject nil))
+         (if-let [zi @top-subject] (assoc s :zi zi) s)))
+     states)))
+
 (defn read-parse
   "Given an environment and a parse,
    return the resulting state."
@@ -516,7 +528,8 @@
   [fmt states]
   (->> states
        process-annotations
-       process-class-expressions))
+       process-class-expressions
+       process-stanza-labels))
 
 (defmethod fm/read-parse
   :kn
