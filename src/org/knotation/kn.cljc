@@ -211,7 +211,6 @@
       "https://knotation.org/datatype/link"
       (ln/object->node env content)
 
-      ; TODO: reimplement
       "https://knotation.org/datatype/omn"
       (let [res (omn/read-class-expression env content)]
         {:ob (omn/->obj res)

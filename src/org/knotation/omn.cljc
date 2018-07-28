@@ -51,7 +51,7 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 
 (defn read-restriction
   [env parse restriction]
-  (let [[_ left right] parse
+  (let [[_ left _ _ _ right] parse
         b (rdf/random-blank-node)
         left (read-class-expression env left)
         right (read-class-expression env right)]
@@ -93,7 +93,9 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
 (defn read-class-expression
   [env parse]
   (case (first parse)
-    (:CLASS_EXPRESSION :OBJECT_PROPERTY_EXPRESSION) (read-class-expression env (second parse))
+    (:CLASS_EXPRESSION :OBJECT_PROPERTY_EXPRESSION)
+    (read-class-expression env (->> parse (remove string?) (remove keyword?) first))
+    
     :LABEL {:ol (nth parse 2)}
     ;; :CLASS_EXPRESSION (mapcat #(read-class-expression env %) (rest parse))
     :SOME (read-restriction env parse (owl "someValuesFrom"))

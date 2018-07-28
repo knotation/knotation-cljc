@@ -21,38 +21,6 @@
       (en/add-label "has role" (rdf/ex "has-role"))
       (en/add-label "evaluant role" (rdf/ex "evaluant-role"))))
 
-(defn blank=
-  "Tests whether two states or state sequences are equal up to blank-node renaming"
-  [a b]
-  (cond
-    (and (map? a) (map? b))
-    (and (= (:gi a) (:gi b))
-         (or (and (:sb a) (:sb b))
-             (= (:si a) (:si b)))
-         (= (:pi a) (:pi b))
-         (or (and (:ob a) (:ob b))
-             (= (:oi a) (:oi b))
-             (= (:ol a) (:ol b)))
-         (= (:di a) (:di b))
-         (= (:ln a) (:ln b)))
-
-    :else (and (= (count a) (count b))
-               (every? identity (map blank= a b)))))
-
-(defn reads-to?
-  [string maps]
-  (blank= maps (omn/read-class-string env-1 string)))
-
-;; (deftest test-class-expression-readers
-;;   (is (reads-to?
-;;        "not foo"
-;;        [{:sb "_:0", :pi "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", :oi "http://www.w3.org/2002/07/owl#Class"}
-;;         {:sb "_:0", :pi "http://www.w3.org/2002/07/owl#complementOf", :ol "foo"}]))
-;;   (is (reads-to?
-;;        "foo or bar"
-;;        )))
-
-
 (deftest test-manchester-parsing
   (testing "Simple label"
     (is (= (omn/parse-class-expression "foo")
@@ -185,6 +153,58 @@
                     ")"]]]
                  ")"]]]
               ")"]]]))))
+
+(defn -intern-slot!
+  [atm state key]
+  (let [blank (get state key)]
+    (assoc
+     state key
+     (or (get @atm blank)
+         (get (swap! atm #(assoc % blank (str (count %)))) blank)))))
+
+(defn replace-blanks
+  [states]
+  (map
+   (let [bs (atom {})]
+     (fn [s]
+       (let [o (if (:ob s) (-intern-slot! bs s :ob) s)]
+         (if (:sb o) (-intern-slot! bs o :sb) o))))
+   states))
+
+(defn reads-to?
+  [string maps]
+  (= (replace-blanks maps)
+     (replace-blanks (omn/read-class-string env-1 string))))
+
+(deftest test-class-expression-readers
+  (is (reads-to?
+       "not foo"
+       [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
+        {:sb "a" :pi (rdf/owl "complementOf") :ol "foo"}]))
+  (is (reads-to?
+       "foo or bar"
+       [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
+        {:sb "a" :pi (rdf/rdf "unionOf") :ob "b"}
+        {:sb "b" :pi (rdf/rdf "first") :ol "foo"}
+        {:sb "b" :pi (rdf/rdf "rest") :ob "c"}
+        {:sb "c" :pi (rdf/rdf "first") :ol "bar"}
+        {:sb "c" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}]))
+  (is (reads-to?
+       "'has part' some foo"
+       [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
+        {:sb "a" :pi (rdf/owl "onProperty") :ol "has part"}
+        {:sb "a" :pi (rdf/owl "someValuesFrom") :ol "foo"}]))
+  (is (reads-to?
+       "'has part' some (foo or bar)"
+       [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
+        {:sb "a" :pi (rdf/owl "onProperty") :ol "has part"}
+        {:sb "a" :pi (rdf/owl "someValuesFrom") :ob "b"}
+        {:sb "b" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
+        {:sb "b" :pi (rdf/rdf "unionOf") :ob "c"}
+        {:sb "c" :pi (rdf/rdf "first") :ol "foo"}
+        {:sb "c" :pi (rdf/rdf "rest") :ob "d"}
+        {:sb "d" :pi (rdf/rdf "first") :ol "bar"}
+        {:sb "d" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}])))
 
 ;; (def ex-list-branch
 ;;   [{::rdf/subject {::rdf/bnode "_:1"}
