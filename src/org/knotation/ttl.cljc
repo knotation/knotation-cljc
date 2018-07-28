@@ -30,7 +30,7 @@
   "Given an environment, a sequence of triple maps, and an object node,
    return a (possibly nested) sequence of strings representing the object,
    including nested lists and anonymous subjects."
-  [env triples {:keys [oi ob ol dt ln]}]
+  [env triples {:keys [oi ob ol di ln]}]
   (cond
     oi (render-iri env oi)
 
@@ -49,8 +49,8 @@
 
     ob ob
 
-    (and dt (not= dt (rdf/xsd "string")))
-    (str (render-lexical ol) "^^" (render-iri env dt))
+    (and di (not= di (rdf/xsd "string")))
+    (str (render-lexical ol) "^^" (render-iri env di))
 
     ln (str (render-lexical ol) "@" ln)
 
