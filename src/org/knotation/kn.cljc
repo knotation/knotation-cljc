@@ -214,7 +214,7 @@
       "https://knotation.org/datatype/omn"
       (let [res (omn/read-class-expression env content)]
         {:ob (omn/->obj res)
-         :states (map #(assoc % datatype) res)
+         :states (map #(assoc % :di datatype) res)
          :di datatype})
 
       ; TODO: warn on unrecognized Knotation datatype
