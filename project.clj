@@ -1,4 +1,4 @@
-(defproject org.knotation/knotation-cljc "0.3.0-SNAPSHOT"
+(defproject org.knotation/knotation-cljc "0.4.0-SNAPSHOT"
   :description "A library for working with Knotation format."
   :url "https://github.com/knotation/knotation-cljc"
   :license {:name "BSD 3-Clause License"
@@ -12,7 +12,7 @@
                  [org.apache.jena/jena-arq "3.6.0"]
                  [org.slf4j/slf4j-nop "1.7.12"]
 
-                 [com.lucasbradstreet/instaparse-cljs "1.4.1.1"]]
+                 [instaparse "1.4.9"]]
   :cljsbuild {:builds [{:source-paths ["src/org/knotation"]
                         :compiler {:output-to "resources/knotation.js"
                                    :optimizations :whitespace
