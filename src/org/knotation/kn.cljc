@@ -167,7 +167,7 @@
 (defn parse-statement
   [line]
   (if-let [[_ pd lexical] (re-matches #"(.*?): (.*)\n?" line)]
-    (if-let [[predicate datatype] (string/split pd #"; ")]
+    (if-let [[predicate datatype] (string/split pd #"; " 2)]
       (if datatype
         [::statement-line
          [:name predicate]
