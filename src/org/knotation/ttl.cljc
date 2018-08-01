@@ -1,6 +1,7 @@
 (ns org.knotation.ttl
   (:require [org.knotation.rdf :as rdf]
-            [org.knotation.link :as ln]))
+            [org.knotation.link :as ln]
+            [org.knotation.format :as fm]))
 
 (defn render-iri
   "Given an environment and an IRI string,
@@ -125,3 +126,10 @@
        (map (partial render-stanza env))
        (interpose "\n")
        flatten))
+
+(defmethod fm/render-states
+  :ttl
+  [fmt env states]
+  (->> states
+       (render-stanzas env)
+       (map (fn [s] {:output {:parse [s]}}))))
