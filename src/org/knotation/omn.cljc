@@ -97,7 +97,6 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
     (read-class-expression env (->> parse (remove string?) (remove keyword?) first))
     
     :LABEL {:ol (nth parse 2)}
-    ;; :CLASS_EXPRESSION (mapcat #(read-class-expression env %) (rest parse))
     :SOME (read-restriction env parse (owl "someValuesFrom"))
     :ONLY (read-restriction env parse (owl "allValuesFrom"))
     :CONJUNCTION (read-combination env parse (rdf "intersectionOf"))
