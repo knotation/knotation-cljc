@@ -213,9 +213,10 @@
 
       "https://knotation.org/datatype/omn"
       (let [res (omn/read-class-string env content)]
-        {:ob (omn/->obj res)
-         :states (map #(assoc % :di datatype) res)
-         :di datatype})
+        (merge
+         {:states (map #(assoc % :di datatype) res)
+          :di datatype}
+         (omn/->obj res)))
 
       ; TODO: warn on unrecognized Knotation datatype
       ;(string/starts-with? datatype "https://knotation.org/datatype/")
@@ -433,6 +434,24 @@
          (if-let [zi @top-subject] (assoc s :zi zi) s)))
      states)))
 
+(defn number-input-lines
+  [states]
+  (reductions
+   (fn [prev cur]
+     (let [ln (get-in prev [:input :line-number] 1)]
+       (assoc-in
+        cur [:input :line-number]
+        (case (:event prev)
+          (:blank :comment :prefix) (inc ln)
+
+          (:statement :annotation)
+          (+ ln (->> prev :input :parse
+                     (filter #(and (vector? %) (= :eol (first %))))
+                     count))
+
+          ln))))
+   states))
+
 (defn read-parse
   "Given an environment and a parse,
    return the resulting state."
@@ -511,7 +530,9 @@
   (->> states
        process-annotations
        process-class-expressions
-       process-stanza-labels))
+       process-stanza-labels
+       (remove nil?)
+       number-input-lines))
 
 (defmethod fm/read-parse
   :kn
@@ -527,3 +548,85 @@
   :kn
   [fmt env state]
   (render-state env state))
+
+
+(def inp "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+@prefix owl: <http://www.w3.org/2002/07/owl#>
+@prefix obo: <http://purl.obolibrary.org/obo/>
+@prefix knd: <https://knotation.org/datatype/>
+@prefix knp: <https://knotation.org/predicate/>
+@prefix ex: <https://example.com/>
+
+: rdfs:label
+rdfs:label: label
+
+: knd:link
+label: link
+
+: knd:omn
+label: OWL Manchester Syntax
+
+: knp:default-datatype
+label: default datatype
+default datatype; link: link
+
+: rdf:type
+label: type
+default datatype: link
+
+: rdfs:subClassOf
+label: subclass of
+default datatype: OWL Manchester Syntax
+
+: obo:IAO_0000115
+label: definition
+
+: obo:IAO_0000118
+label: alternative term
+
+: obo:BFO_0000050
+label: part of
+default datatype: link
+
+: obo:RO_0002162
+label: in taxon
+default datatype: link
+
+: obo:NCBITaxon_56313
+label: Tyto alba
+
+: obo:UBERON_0011796
+label: primary remex feather
+definition: A remex feather that is connected to the manus
+
+: ex:0000001
+label: birth date
+default datatype: xsd:date
+
+: ex:0000002
+label: length (cm)
+default datatype: xsd:real
+
+: ex:0000003
+label: coloration: ex:0000111
+label: barn owl primary remex feather
+type: owl:Class
+definition: A primary remex feather of a barn owl
+subclass of: 'primary remex feather' and
+ ('in taxon' some 'Tyto alba')
+alternative term; @fr: grange hibou primaire remex plume
+
+: ex:0002222
+label: barn owl 2222
+type: Tyto alba
+birth date: 2016-05-04
+
+: ex:0033333
+label: sample feather 33333
+type: barn owl primary remex feather
+part of: barn owl 2222
+length (cm): 25.0
+coloration: light brown with darker bands")
+(->> inp (ap/read-from :kn) (map #(dissoc % :org.knotation.environment/env)) (drop 20) (take 5))
