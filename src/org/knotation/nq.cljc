@@ -6,7 +6,11 @@
 (defn render-object
   [env {:keys [:oi :ob :ol :di :ln] :as state}]
   ;; FIXME - add datatype and language annotations
-  (or ob (and ol (str "\"" ol "\"")) (and oi (str "<" oi ">"))))
+  (let [o (or ob (and ol (str "\"" ol "\"")) (and oi (str "<" oi ">")))]
+    (cond
+      ln (str o "@" ln)
+      di (str o "^^<" di ">")
+      :else o)))
 
 (defmethod fm/render-state
   :nq [fmt env {:keys [:gi :si :sb :pi :oi :ob :ol :di :ln] :as state}]
