@@ -9,6 +9,7 @@
 
             org.knotation.kn
             org.knotation.ttl
+            org.knotation.nq
             org.knotation.tsv))
 
 ;; Environments
