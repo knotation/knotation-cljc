@@ -105,31 +105,52 @@
            (map (partial render-subject env triples))
            (concat [(render-subject env triples zi)])
            (map #(concat % [" ."]))
-           (interpose "\n\n")
-           flatten)
+           (interpose "\n\n"))
       (->> triples
            (map render-declaration)
            (remove nil?)
-           (interpose "\n")
-           flatten))))
+           (interpose "\n")))))
 
 (defn render-stanzas
   "Given an environment and a sequence of triple maps for zero or more stanza,
    return a (possibly nested) sequence of strings representing the stanzas."
   [env triples]
   (->> triples
-       (remove
-        #(contains?
-          #{:blank :comment :subject-start :subject-end :graph-start :graph-end}
-          (:event %)))
+       ;; (remove
+       ;;  #(contains?
+       ;;    #{:blank :comment :subject-start :subject-end :graph-start :graph-end}
+       ;;    (:event %)))
        (partition-by :zi)
-       (map (partial render-stanza env))
-       (interpose "\n\n")
-       flatten))
+       (map (partial render-stanza env))))
+
+(defn number-output-lines
+  [states]
+  (reductions
+   (fn [prev next]
+     (let [ln (get-in prev [:output :line-number] 1)]
+       (assoc-in next [:output :line-number]
+                 (if-let [parse (get-in prev [:output :parse])]
+                   (+ ln (->> parse flatten (filter #(clojure.string/starts-with? % "\n")) (map count) (reduce +)))
+                   ln))))
+   states))
+
+(defn merge-stanzas
+  [triples stanzas]
+  (println "COUNTS" (count (partition-by :zi triples)) (count stanzas))
+  (flatten
+   (map
+    (fn [ts s newline]
+      (cons
+       (merge (first ts) {:output {:parse [s newline] :line-number 1}})
+       (rest ts)))
+    (partition-by :zi triples)
+    stanzas
+    (concat (repeat (- (count stanzas) 1) "\n") [""]))))
 
 (defmethod fm/render-states
   :ttl
   [fmt env states]
   (->> states
        (render-stanzas env)
-       (map (fn [s] {:output {:parse [s]}}))))
+       (merge-stanzas states)
+       number-output-lines))
