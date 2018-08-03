@@ -124,7 +124,7 @@
           (:event %)))
        (partition-by :zi)
        (map (partial render-stanza env))
-       (interpose "\n")
+       (interpose "\n\n")
        flatten))
 
 (defmethod fm/render-states

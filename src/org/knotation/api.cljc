@@ -80,9 +80,9 @@
 
      (coll? thing)
      (reduce
-      (fn [hub s]
-        (concat hub (read-lines format env (util/split-lines s))))
-      thing)
+      (fn [prev s]
+        (concat prev (read-lines format (or (env-of prev) env) (util/split-lines s))))
+      nil thing)
 
      :else (util/throw-exception "Can't read from a thing of type" (type thing)))))
 
