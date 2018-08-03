@@ -136,7 +136,6 @@
 
 (defn merge-stanzas
   [triples stanzas]
-  (println "COUNTS" (count (partition-by :zi triples)) (count stanzas))
   (flatten
    (map
     (fn [ts s newline]
