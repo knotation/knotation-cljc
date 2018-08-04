@@ -1,5 +1,7 @@
 (ns org.knotation.ttl
-  (:require [org.knotation.rdf :as rdf]
+  (:require [clojure.string :as string]
+
+            [org.knotation.rdf :as rdf]
             [org.knotation.link :as ln]
             [org.knotation.format :as fm]))
 
@@ -15,7 +17,7 @@
    replace indentation strings with longer indentation strings."
   [xs]
   (for [x xs]
-    (if (and (clojure.string/blank? x) (> (count x) 1))
+    (if (and (string/blank? x) (> (count x) 1))
       (str x "  ")
       x)))
 
@@ -123,16 +125,9 @@
        (partition-by :zi)
        (map (partial render-stanza env))))
 
-(defn number-output-lines
-  [states]
-  (reductions
-   (fn [prev next]
-     (let [ln (get-in prev [:output :line-number] 1)]
-       (assoc-in next [:output :line-number]
-                 (if-let [parse (get-in prev [:output :parse])]
-                   (+ ln (->> parse flatten (filter #(clojure.string/starts-with? % "\n")) (map count) (reduce +)))
-                   ln))))
-   states))
+(defn stanza-line-count
+  [stanza-tree]
+  (->> stanza-tree flatten (filter #(string/starts-with? % "\n")) (map count) (reduce +)))
 
 (defn merge-stanzas
   [triples stanzas]
@@ -140,11 +135,21 @@
    (map
     (fn [ts s newline]
       (cons
-       (merge (first ts) {:output {:parse [s newline] :line-number 1}})
+       (merge (first ts) {:output {:parse [s newline] :line-number 0}})
        (rest ts)))
     (partition-by :zi triples)
     stanzas
     (concat (repeat (- (count stanzas) 1) "\n") [""]))))
+
+(defn number-output-lines
+  [states]
+  (reductions
+   (fn [prev cur]
+     (let [ln (get-in prev [:output :line-number])
+           out (:output cur)
+           ct (stanza-line-count (get-in prev [:output :parse]))]
+       (assoc cur :output (assoc out :line-count ct :line-number (+ ln ct)))))
+   states))
 
 (defmethod fm/render-states
   :ttl

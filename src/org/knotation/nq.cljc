@@ -18,11 +18,13 @@
   [states]
   (reductions
    (fn [prev cur]
-     (let [ln (get-in prev [:output :line-number] 1)]
-       (assoc-in cur [:output :line-number]
-                 (if (get-in prev [:output :parse])
-                   (inc ln)
-                   ln))))
+     (let [ln (get-in prev [:output :line-number] 0)]
+       (assoc cur :output
+              (assoc (:output cur)
+                     :line-count 1
+                     :line-number (if (get-in prev [:output :parse])
+                                    (inc ln)
+                                    ln)))))
    states))
 
 (defmethod fm/process-states
