@@ -438,18 +438,16 @@
   [states]
   (reductions
    (fn [prev cur]
-     (let [ln (get-in prev [:input :line-number] 1)]
-       (assoc-in
-        cur [:input :line-number]
-        (case (:event prev)
-          (:blank :comment :prefix) (inc ln)
-
-          (:statement :annotation)
-          (+ ln (->> prev :input :parse
-                     (filter #(and (vector? %) (= :eol (first %))))
-                     count))
-
-          ln))))
+     (let [ln (get-in prev [:input :line-number] 1)
+           ct (->> prev :input :parse
+                   (filter #(and (vector? %) (= :eol (first %))))
+                   count)]
+       (assoc cur :input
+              (assoc (:input cur)
+                     :line-count 1
+                     :line-number (if (contains? #{:blank :comment :prefix :statement :annotation} (:event prev))
+                                    (+ ln ct)
+                                    ln)))))
    states))
 
 (defn read-parse
