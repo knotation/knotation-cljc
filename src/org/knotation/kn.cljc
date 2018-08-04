@@ -438,7 +438,7 @@
   [states]
   (reductions
    (fn [prev cur]
-     (let [ln (get-in prev [:input :line-number] 0)]
+     (let [ln (get-in prev [:input :line-number] 1)]
        (assoc-in
         cur [:input :line-number]
         (case (:event prev)
