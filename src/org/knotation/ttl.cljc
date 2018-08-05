@@ -127,16 +127,23 @@
 
 (defn stanza-line-count
   [stanza-tree]
-  (->> stanza-tree flatten (filter #(string/starts-with? % "\n")) (map count) (reduce +)))
+  (->> stanza-tree flatten
+       (filter #(string/starts-with? % "\n"))
+       (map count) (reduce +)))
 
 (defn merge-stanzas
   [triples stanzas]
   (flatten
    (map
     (fn [ts s newline]
-      (cons
-       (merge (first ts) {:output {:parse [s newline] :line-number 0}})
-       (rest ts)))
+      (let [s [s newline]
+            ct (stanza-line-count s)]
+        (map
+         (fn [t]
+           (assoc-in t [:output :line-count] ct))
+         (cons
+          (merge (first ts) {:output {:parse s}})
+          (rest ts)))))
     (partition-by :zi triples)
     stanzas
     (concat (repeat (- (count stanzas) 1) "\n") [""]))))
@@ -145,10 +152,11 @@
   [states]
   (reductions
    (fn [prev cur]
-     (let [ln (get-in prev [:output :line-number])
+     (let [ln (get-in prev [:output :line-number] 0)
            out (:output cur)
-           ct (stanza-line-count (get-in prev [:output :parse]))]
-       (assoc cur :output (assoc out :line-count ct :line-number (+ ln ct)))))
+           ct (get-in prev [:output :line-count])
+           cct (stanza-line-count (:parse out))]
+       (assoc cur :output (assoc out :line-number (if (zero? cct) ln (+ ln ct)) :line-count (if (zero? cct) ct cct)))))
    states))
 
 (defmethod fm/render-states

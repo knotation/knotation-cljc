@@ -16,20 +16,20 @@
 
 (defn number-output-lines
   [states]
-  (reductions
-   (fn [prev cur]
-     (let [ln (get-in prev [:output :line-number] 0)]
-       (assoc cur :output
-              (assoc (:output cur)
-                     :line-count 1
-                     :line-number (if (get-in prev [:output :parse])
-                                    (inc ln)
-                                    ln)))))
-   states))
+  (let [vt (volatile! 0)]
+    (reductions
+     (fn [prev cur]
+       (let [ln (get-in prev [:output :line-number] 0)]
+         (assoc cur :output
+                (assoc (:output cur)
+                       :line-count (if (get-in cur [:output :parse]) 1 0)
+                       :line-number (if (get-in prev [:output :parse])
+                                      (inc ln)
+                                      ln)))))
+     states)))
 
 (defmethod fm/process-states
   :nq [fmt states]
-  (println "PROCESSING NQ STATES!")
   (->> states
        number-output-lines))
 

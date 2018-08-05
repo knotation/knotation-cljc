@@ -434,20 +434,23 @@
          (if-let [zi @top-subject] (assoc s :zi zi) s)))
      states)))
 
+(defn state-line-count
+  [s]
+  (->> s :input :parse
+       (filter #(and (vector? %) (= :eol (first %))))
+       count))
+
 (defn number-input-lines
   [states]
   (reductions
    (fn [prev cur]
-     (let [ln (get-in prev [:input :line-number] 1)
-           ct (->> prev :input :parse
-                   (filter #(and (vector? %) (= :eol (first %))))
-                   count)]
+     (let [ln (get-in prev [:input :line-number] 0)
+           ct (get-in prev [:input :line-count] 0)
+           cct (state-line-count cur)]
        (assoc cur :input
               (assoc (:input cur)
-                     :line-count 1
-                     :line-number (if (contains? #{:blank :comment :prefix :statement :annotation} (:event prev))
-                                    (+ ln ct)
-                                    ln)))))
+                     :line-count (if (zero? cct) ct cct)
+                     :line-number (if (zero? cct) ln (+ ln ct))))))
    states))
 
 (defn read-parse
