@@ -44,10 +44,10 @@
 (defn error-type [s] (->> s :error :error-type))
 
 (defn line-num-in [s] (->> s :input :line-number))
-(defn lines-in [s] (->> s :input :lines))
+(defn line-ct-in [s] (->> s :input :line-count))
 
 (defn line-num-out [s] (->> s :output :line-number))
-(defn lines-out [s] (->> s :output :lines))
+(defn line-ct-out [s] (->> s :output :line-count))
 
 ;; Hub collection queries
 (defn env-of
@@ -91,17 +91,20 @@
   ([format env h]
    (fmt/render-output (fmt/render-states format env h))))
 
+(defn collect-line-map
+  [hub]
+  (->> hub
+       (map (fn [s]
+              [[(get-in s [:input :line-number] 0) (get-in s [:input :line-count] 0)]
+               [(get-in s [:output :line-number] 0) (get-in s [:output :line-count] 0)]]))
+       (map (fn [[[ln-in ct-in] [ln-out ct-out]]]
+              (let [out (set (take ct-out (drop ln-out (range))))]
+                (map
+                 (fn [in] [in out])
+                 (take ct-in (drop ln-in (range)))))))
+       dedupe
+       (apply concat)))
+
 (defn line-map-of
   ([format h] (line-map-of format (env-of h) h))
-  ([format env h]
-   (->> (fmt/render-states format env h)
-        (map (fn [s]
-               [[(get-in s [:input :line-number] 0) (get-in s [:input :line-count] 0)]
-                [(get-in s [:output :line-number] 0) (get-in s [:output :line-count] 0)]]))
-        (map (fn [[[ln-in ct-in] [ln-out ct-out]]]
-               (let [out (set (take ct-out (drop ln-out (range))))]
-                 (map
-                  (fn [in] [in out])
-                  (take ct-in (drop ln-in (range)))))))
-        dedupe
-        (apply concat))))
+  ([format env h] (collect-line-map (fmt/render-states format env h))))
