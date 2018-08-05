@@ -90,3 +90,18 @@
   ([format h] (render-to format (env-of h) h))
   ([format env h]
    (fmt/render-output (fmt/render-states format env h))))
+
+(defn line-map-of
+  ([format h] (line-map-of format (env-of h) h))
+  ([format env h]
+   (->> (fmt/render-states format env h)
+        (map (fn [s]
+               [[(get-in s [:input :line-number] 0) (get-in s [:input :line-count] 0)]
+                [(get-in s [:output :line-number] 0) (get-in s [:output :line-count] 0)]]))
+        (map (fn [[[ln-in ct-in] [ln-out ct-out]]]
+               (let [out (set (take ct-out (drop ln-out (range))))]
+                 (map
+                  (fn [in] [in out])
+                  (take ct-in (drop ln-in (range)))))))
+        dedupe
+        (apply concat))))
