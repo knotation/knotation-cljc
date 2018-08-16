@@ -118,12 +118,13 @@
    return a (possibly nested) sequence of strings representing the stanzas."
   [env triples]
   (->> triples
-       ;; (remove
-       ;;  #(contains?
-       ;;    #{:blank :comment :subject-start :subject-end :graph-start :graph-end}
-       ;;    (:event %)))
+       (remove
+        #(contains?
+          #{:blank :comment :subject-start :subject-end :graph-start :graph-end}
+          (:event %)))
        (partition-by :zi)
-       (map (partial render-stanza env))))
+       (map (partial render-stanza env))
+       (map #(concat % ["\n\n"]))))
 
 (defn stanza-line-count
   [stanza-tree]
