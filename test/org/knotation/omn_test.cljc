@@ -180,30 +180,30 @@
   (is (reads-to?
        "not foo"
        [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
-        {:sb "a" :pi (rdf/owl "complementOf") :ol "foo"}]))
+        {:sb "a" :pi (rdf/owl "complementOf") :oi "http://example.com/foo"}]))
   (is (reads-to?
        "foo or bar"
        [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
         {:sb "a" :pi (rdf/rdf "unionOf") :ob "b"}
-        {:sb "b" :pi (rdf/rdf "first") :ol "foo"}
+        {:sb "b" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
         {:sb "b" :pi (rdf/rdf "rest") :ob "c"}
-        {:sb "c" :pi (rdf/rdf "first") :ol "bar"}
+        {:sb "c" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
         {:sb "c" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}]))
   (is (reads-to?
        "'has part' some foo"
        [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
-        {:sb "a" :pi (rdf/owl "onProperty") :ol "has part"}
-        {:sb "a" :pi (rdf/owl "someValuesFrom") :ol "foo"}]))
+        {:sb "a" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
+        {:sb "a" :pi (rdf/owl "someValuesFrom") :oi "http://example.com/foo"}]))
   (is (reads-to?
        "'has part' some (foo or bar)"
        [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
-        {:sb "a" :pi (rdf/owl "onProperty") :ol "has part"}
+        {:sb "a" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
         {:sb "a" :pi (rdf/owl "someValuesFrom") :ob "b"}
         {:sb "b" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
         {:sb "b" :pi (rdf/rdf "unionOf") :ob "c"}
-        {:sb "c" :pi (rdf/rdf "first") :ol "foo"}
+        {:sb "c" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
         {:sb "c" :pi (rdf/rdf "rest") :ob "d"}
-        {:sb "d" :pi (rdf/rdf "first") :ol "bar"}
+        {:sb "d" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
         {:sb "d" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}])))
 
 ;; (def ex-list-branch
