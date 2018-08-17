@@ -216,7 +216,7 @@
         (merge
          {:states (map #(assoc % :di datatype) res)
           :di datatype}
-         (omn/->obj res)))
+         (omn/->obj env res)))
 
       ; TODO: warn on unrecognized Knotation datatype
       ;(string/starts-with? datatype "https://knotation.org/datatype/")

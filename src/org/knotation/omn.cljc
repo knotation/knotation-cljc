@@ -38,14 +38,17 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
     result))
 
 (defn ->obj
-  [subtree]
-  (let [elem (first subtree)]
-    (or (and (get subtree :sb) {:ob (get subtree :sb)})
-        (and (map? subtree) (select-keys subtree [:ob :ol :oi]))
-        (and (get elem :sb) {:ob (get elem :sb)})
-        (and (map? elem) (select-keys elem [:ob :ol :oi]))
-        (and (string? (first elem)) {:ob (first elem)})
-        (util/error :invalid-object-extraction subtree))))
+  [env subtree]
+  (let [elem (first subtree)
+        obj (or (and (get subtree :sb) {:ob (get subtree :sb)})
+                (and (map? subtree) (select-keys subtree [:ob :ol :oi]))
+                (and (get elem :sb) {:ob (get elem :sb)})
+                (and (map? elem) (select-keys elem [:ob :ol :oi]))
+                (and (string? (first elem)) {:ob (first elem)})
+                (util/error :invalid-object-extraction subtree))]
+    (if (contains? obj :ol)
+      {:oi (ln/->iri env (:ol obj))}
+      obj)))
 
 (declare read-class-expression)
 
@@ -57,8 +60,8 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
         right (read-class-expression env right)]
     (concat
      [{:sb b :pi (rdf "type") :oi (owl "Restriction")}
-      (merge {:sb b :pi (owl "onProperty")} (->obj left))
-      (merge {:sb b :pi restriction} (->obj right))]
+      (merge {:sb b :pi (owl "onProperty")} (->obj env left))
+      (merge {:sb b :pi restriction} (->obj env right))]
      (when (map? (first left)) left)
      (when (map? (first right)) right))))
 
@@ -73,9 +76,9 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
     (concat
      [{:sb b1 :pi (rdf "type") :oi (owl "Class")}
       {:sb b1 :pi combination :ob b2}
-      (merge {:sb b2 :pi (rdf "first")} (->obj left))
+      (merge {:sb b2 :pi (rdf "first")} (->obj env left))
       {:sb b2 :pi (rdf "rest") :ob b3}
-      (merge {:sb b3 :pi (rdf "first")} (->obj right))
+      (merge {:sb b3 :pi (rdf "first")} (->obj env right))
       {:sb b3 :pi (rdf "rest") :oi (rdf "nil")}]
      (when (map? (first left)) left)
      (when (map? (first right)) right))))
@@ -87,7 +90,7 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
         ms [{:sb b :pi (rdf "type") :oi (owl "Class")}
             (merge
              {:sb b :pi (owl "complementOf")}
-             (->obj target))]]
+             (->obj env target))]]
     (concat ms (when (map? (first target)) target))))
 
 (defn read-class-expression
