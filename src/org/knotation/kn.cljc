@@ -428,9 +428,10 @@
     (map
      (fn [s]
        (case (:event s)
-         :subject-start (do (reset! top-subject (or (:si s) (:sb s)))
-                            s)
-         :subject-end (do (reset! top-subject nil))
+         :subject-start (assoc s :zi (reset! top-subject (or (:si s) (:sb s))))
+         :subject-end (let [res (assoc s :zi @top-subject)]
+                        (reset! top-subject nil)
+                        res)
          (if-let [zi @top-subject] (assoc s :zi zi) s)))
      states)))
 
