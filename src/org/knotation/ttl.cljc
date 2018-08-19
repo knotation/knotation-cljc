@@ -5,54 +5,6 @@
             [org.knotation.link :as ln]
             [org.knotation.format :as fm]))
 
-(def txt "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-@prefix owl: <http://www.w3.org/2002/07/owl#>
-@prefix obo: <http://purl.obolibrary.org/obo/>
-@prefix knd: <https://knotation.org/datatype/>
-@prefix knp: <https://knotation.org/predicate/>
-@prefix ex: <https://example.com/>
-
-: rdfs:label
-rdfs:label: label
-
-: knd:link
-label: link
-
-: knd:omn
-label: OWL Manchester Syntax
-
-: knp:default-datatype
-label: default datatype
-default datatype; link: link
-
-: rdf:type
-label: type
-default datatype: link
-
-: rdfs:subClassOf
-label: subclass of
-default datatype: OWL Manchester Syntax
-
-: obo:RO_0002162
-label: in taxon
-
-: obo:NCBITaxon_56313
-label: Tyto alba
-
-: obo:UBERON_0000033
-label: head
-
-: ex:owl-head
-label: owl head
-type: owl:Class
-subclass of: head and ('in taxon' some 'Tyto alba')")
-(require '[org.knotation.api :as ap])
-(require '[org.knotation.format :as fmt])
-(let [res (->> txt (ap/read-from :kn))]
-  (->> res (fmt/render-states :ttl (ap/env-of res))
-       (map #(dissoc % :org.knotation.environment/env))))
-
 (defn render-iri
   "Given an environment and an IRI string,
    return a CURIE or a wrapped IRI string."
