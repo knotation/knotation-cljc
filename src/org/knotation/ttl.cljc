@@ -5,6 +5,12 @@
             [org.knotation.link :as ln]
             [org.knotation.format :as fm]))
 
+(defn deep-line-count
+  [tree]
+  (->> tree flatten
+       (filter #(string/starts-with? % "\n"))
+       (map count) (reduce +)))
+
 (defn render-iri
   "Given an environment and an IRI string,
    return a CURIE or a wrapped IRI string."
@@ -87,12 +93,10 @@
 
 (defn render-declaration
   [{:keys [prefix iri base] :as triple}]
-  (dissoc
-   (cond
-     (and prefix iri) (assoc triple :output {:parse ["@prefix " prefix ": <" iri "> ." "\n"]})
-     base (assoc triple :output {:parse ["@base <" base "> ." "\n"]})
-     :else triple)
-   :org.knotation.environment/env))
+  (cond
+    (and prefix iri) (assoc triple :output {:parse ["@prefix " prefix ": <" iri "> ." "\n"] :line-count 1})
+    base (assoc triple :output {:parse ["@base <" base "> ." "\n"] :line-count 1})
+    :else triple))
 
 (defn render-stanza
   "Given an environment and a sequence of triple maps for a single stanza,
@@ -108,13 +112,15 @@
                      (remove #(= zi %))
                      (map (partial render-subject env triples))
                      (concat [(render-subject env triples zi)])
-                     (map #(concat % [" ." "\n"])))]
-        (map #(dissoc % :org.knotation.environment/env)
-             (cons (assoc (first triples) :output {:parse res})
-                   (rest triples))))
-      (->> triples
-           (map render-declaration)
-           (remove nil?)))))
+                     (map #(concat % [" ." "\n"]))
+                     (interpose "\n\n"))]
+        (cons
+         (assoc (first triples) :output {:parse res :line-count (deep-line-count res)})
+         (rest triples)))
+      (let [res (map render-declaration triples)]
+        (concat
+         (butlast res)
+         (list (update-in (last res) [:output :parse] #(concat % ["\n"]))))))))
 
 (defn render-stanzas
   "Given an environment and a sequence of triple maps for zero or more stanza,
@@ -124,34 +130,20 @@
        (partition-by :zi)
        (map (partial render-stanza env))))
 
-(defn propagate-newlines
-  [states]
-  (map
-   (fn [state]
-     (if (= :blank (:event state))
-       (assoc state :output (dissoc (:input state) :line-number))
-       state))
-   states))
-
-(defn deep-line-count
-  [stanza-tree]
-  (->> stanza-tree flatten
-       (filter #(string/starts-with? % "\n"))
-       (map count) (reduce +)))
-
 (defn number-output-lines
   [states]
   (reductions
    (fn [prev cur]
      (let [ln (get-in prev [:output :line-number] 0)
            out (:output cur)
-           ct (get-in prev [:output :line-count] 0)
+           ct (get-in prev [:output :line-count])
            cct (deep-line-count (:parse out))]
-       (assoc cur :output
-              (assoc
-               out
-               :line-number (if (zero? cct) ln (+ ln ct))
-               :line-count (if (zero? cct) ct cct)))))
+       (assoc
+        cur :output
+        (assoc
+         out
+         :line-number (if (zero? cct) ln (+ ln ct))
+         :line-count (if (zero? cct) ct cct)))))
    states))
 
 (defmethod fm/render-states
@@ -159,6 +151,4 @@
   [fmt env states]
   (->> states
        (render-stanzas env)
-       flatten
-       propagate-newlines
-       number-output-lines))
+       flatten))

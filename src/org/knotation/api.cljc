@@ -23,6 +23,12 @@
 
 (defn labels [env] (::env/label-seq env))
 (defn prefixes [env] (::env/prefix-seq env))
+(defn prefix-states [env]
+  (map (fn [[prefix iri]]
+         {:event :prefix
+          :prefix prefix
+          :iri iri})
+       (::env/prefix-iri env)))
 
 (def find-prefix ln/find-prefix)
 (def ->iri ln/->iri)
