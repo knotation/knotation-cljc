@@ -224,7 +224,9 @@
       {:ol content :di datatype})
 
     :else
-    {:ol content}))
+    (if-let [iri (ln/->iri env content)]
+      {:oi iri}
+      {:ol content})))
 
 (defn read-object
   "Read the object part of a statement, with its language or datatype,
@@ -372,12 +374,13 @@
 (defn process-annotations
   [states]
   (mapcat
-   (fn [state]
+   (fn [{:keys [:si :sb] :as state}]
      (if (= :annotation (:event state))
-       (let [b1 (rdf/random-blank-node)]
+       (let [b1 (rdf/random-blank-node)
+             source (if si {:oi si} {:ob sb})]
          [(dissoc state :stack :level)
           {:sb b1 :pi (rdf "type") :oi (owl "Annotation")}
-          (merge {:sb b1 :pi (owl "annotatedSource")} (select-keys state [:si :sb]))
+          (merge {:sb b1 :pi (owl "annotatedSource")} source)
           {:sb b1 :pi (owl "annotatedProperty") :oi (:pi state)}
           (merge {:sb b1 :pi (owl "annotatedTarget")} (select-keys state [:oi :ob :ol]))
           (merge {:sb b1} (select-keys state [:pi :oi :ob :ol]))])
