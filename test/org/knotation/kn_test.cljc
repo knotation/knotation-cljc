@@ -22,10 +22,8 @@
 (defn test-before-after
   [before after]
   (->> before
-       util/split-lines
-       (fm/read-lines :kn en/blank-env)
-       (fm/render-states :kn en/blank-env)
-       fm/render-output
+       (api/read-from :kn)
+       (api/render-to :kn)
        normalize-trailing-newlines
        (= (normalize-trailing-newlines after))
        is))
@@ -111,9 +109,9 @@ ex:p: ex:o
           res (->> chained util/split-lines
                    (fm/read-lines :kn en/blank-env))]
       (test-roundtrip chained)
-      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "ex:o"}
+      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :oi "http://example.com/o"}
              (:target (nth res 5))))
-      (is (= {:si "http://example.com/s", :pi "http://example.com/a", :ol "ex:b"}
+      (is (= {:si "http://example.com/s", :pi "http://example.com/a", :oi "http://example.com/b"}
              (:target (nth res 11))))))
   (testing "Non-adjacent annotations can refer to previous annotation targets"
     (let [deep-chain "@prefix ex: <http://example.com/>
