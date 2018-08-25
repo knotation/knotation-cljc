@@ -8,6 +8,7 @@
 (defn deep-line-count
   [tree]
   (->> tree flatten
+       (filter string?)
        (filter #(string/starts-with? % "\n"))
        (map count) (reduce +)))
 
@@ -77,18 +78,22 @@
      [" "])
    [(render-object env triples triple)]))
 
+(defn -inner-render-subject
+  [env triples s]
+  (->> triples
+       (filter #(= s (or (:si %) (:sb %))))
+       (filter :pi)
+       (map (partial render-statement env triples))
+       (interpose [" ;" "\n" "  "])
+       flatten))
+
 (defn render-subject
   "Given an environment, a sequence of triple maps, and a subject node,
    return a sequence of strings representing the subject."
   [env triples s]
   (concat
    (if (rdf/blank? s) ["[ "] [(render-iri env s) "\n" "  "])
-   (->> triples
-        (filter #(= s (or (:si %) (:sb %))))
-        (filter :pi)
-        (map (partial render-statement env triples))
-        (interpose [" ;" "\n" "  "])
-        flatten)
+   (-inner-render-subject env triples s)
    (if (rdf/blank? s) [" ]"] [])))
 
 (defn render-declaration
@@ -98,6 +103,44 @@
     base (assoc triple :output {:parse ["@base <" base "> ." "\n"] :line-count 1})
     :else triple))
 
+(defn annotation-subjects
+  [triples]
+  (->> triples
+       (filter #(= (rdf/owl "Annotation") (:oi %)))
+       (map :sb)
+       set))
+
+(defn remove-annotations
+  [triples]
+  (let [subjects (annotation-subjects triples)]
+    (->> triples
+         (remove #(contains? subjects (:sb %)))
+         (remove #(= :annotation (:event %))))))
+
+(defn select-annotations
+  [triples]
+  (let [subjects (annotation-subjects triples)]
+    (->> triples
+         (filter #(contains? subjects (:sb %))))))
+
+(defn render-annotation
+  [env triples zi]
+  (->> triples
+       (filter #(= (:pi %) (rdf/rdf "type")))
+       (filter #(= (:oi %) (rdf/owl "Axiom")))
+       (map :sb)
+       (concat [(-inner-render-subject env triples zi)])
+       (map #(concat % [" ." "\n"]))
+       (map #(concat [zi "\n" "  "] %))))
+
+(defn render-stanza-annotations
+  [env triples]
+  (mapcat
+   (fn [s]
+     (let [trips (->> triples (filter #(= s (:sb %))))]
+       (render-annotation env trips s)))
+   (annotation-subjects triples)))
+
 (defn render-stanza
   "Given an environment and a sequence of triple maps for a single stanza,
    return a sequence of strings representing the stanza,
@@ -105,17 +148,18 @@
   [env triples]
   (let [{:keys [zi]} (first triples)]
     (if zi
-      (let [res (->> triples
-                     (filter #(= (:pi %) (rdf/rdf "type")))
-                     (filter #(= (:oi %) (rdf/owl "Axiom")))
-                     (map :sb)
-                     (remove #(= zi %))
-                     (map (partial render-subject env triples))
-                     (concat [(render-subject env triples zi)])
-                     (map #(concat % [" ." "\n"]))
-                     (interpose "\n\n"))]
+      (let [stanza (->> triples
+                        (filter #(= (:pi %) (rdf/rdf "type")))
+                        (filter #(= (:oi %) (rdf/owl "Axiom")))
+                        (map :sb)
+                        (remove #(= zi %))
+                        (map (partial render-subject env triples))
+                        (concat [(render-subject env triples zi)])
+                        (map #(concat % [" ." "\n"]))
+                        (#(concat % (render-stanza-annotations env triples)))
+                        (interpose "\n"))]
         (cons
-         (assoc (first triples) :output {:parse res :line-count (deep-line-count res)})
+         (assoc (first triples) :output {:parse stanza :line-count (deep-line-count stanza)})
          (rest triples)))
       (let [res (map render-declaration triples)]
         (concat
