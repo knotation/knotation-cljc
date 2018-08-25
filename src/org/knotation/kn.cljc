@@ -281,18 +281,17 @@
   "Render the datatype part of a statement.
    Handles default dataypes and languages."
   [env predicate-iri {:keys [oi ob ol di ln] :as object}]
-  (let [di (if oi "https://knotation.org/datatype/link" di)]
-    (cond
-      (and ln (not= ln (get-in env [::en/predicate-language predicate-iri])))
-      [[:symbol ";"]
-       [:space " "]
-       [:name (str "@" ln)]]
-      (and di (not= di (get-in env [::en/predicate-datatype predicate-iri])))
-      [[:symbol ";"]
-       [:space " "]
-       [:name (ln/iri->name env di)]]
-      :else
-      [])))
+  (cond
+    (and ln (not= ln (get-in env [::en/predicate-language predicate-iri])))
+    [[:symbol ";"]
+     [:space " "]
+     [:name (str "@" ln)]]
+    (and di (not= di (get-in env [::en/predicate-datatype predicate-iri])))
+    [[:symbol ";"]
+     [:space " "]
+     [:name (ln/iri->name env di)]]
+    :else
+    []))
 
 (defn render-object
   "Render the lexical part of a statement."
@@ -379,7 +378,6 @@
        (let [{:keys [:si :sb] :as target} (:target state)
              b1 (rdf/random-blank-node)
              source (if si {:oi si} {:ob sb})]
-         ;; (println "PROCESSING ANNOTATION" (dissoc state :org.knotation.environment/env))
          [(dissoc state :stack :level)
           {:sb b1 :pi (rdf "type") :oi (owl "Annotation")}
           (merge {:sb b1 :pi (owl "annotatedSource")} source)
