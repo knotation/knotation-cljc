@@ -374,15 +374,17 @@
 (defn process-annotations
   [states]
   (mapcat
-   (fn [{:keys [:si :sb] :as state}]
+   (fn [state]
      (if (= :annotation (:event state))
-       (let [b1 (rdf/random-blank-node)
+       (let [{:keys [:si :sb] :as target} (:target state)
+             b1 (rdf/random-blank-node)
              source (if si {:oi si} {:ob sb})]
+         ;; (println "PROCESSING ANNOTATION" (dissoc state :org.knotation.environment/env))
          [(dissoc state :stack :level)
           {:sb b1 :pi (rdf "type") :oi (owl "Annotation")}
           (merge {:sb b1 :pi (owl "annotatedSource")} source)
-          {:sb b1 :pi (owl "annotatedProperty") :oi (:pi state)}
-          (merge {:sb b1 :pi (owl "annotatedTarget")} (select-keys state [:oi :ob :ol]))
+          {:sb b1 :pi (owl "annotatedProperty") :oi (:pi target)}
+          (merge {:sb b1 :pi (owl "annotatedTarget")} (select-keys target [:oi :ob :ol]))
           (merge {:sb b1} (select-keys state [:pi :oi :ob :ol]))])
        [state]))
    ((fn rec [ss]
