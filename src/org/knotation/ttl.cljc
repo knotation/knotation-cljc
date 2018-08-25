@@ -148,13 +148,14 @@
   [env triples]
   (let [{:keys [zi]} (first triples)]
     (if zi
-      (let [stanza (->> triples
+      (let [un-annotated (remove-annotations triples)
+            stanza (->> triples
                         (filter #(= (:pi %) (rdf/rdf "type")))
                         (filter #(= (:oi %) (rdf/owl "Axiom")))
                         (map :sb)
                         (remove #(= zi %))
-                        (map (partial render-subject env triples))
-                        (concat [(render-subject env triples zi)])
+                        (map (partial render-subject env un-annotated))
+                        (concat [(render-subject env un-annotated zi)])
                         (map #(concat % [" ." "\n"]))
                         (#(concat % (render-stanza-annotations env triples)))
                         (interpose "\n"))]
