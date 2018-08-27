@@ -234,8 +234,8 @@
   [env parse predicate-iri language datatype-iri]
   (inner-read-object
    env
-   (or language (get-in env [::en/predicate-language predicate-iri]))
-   (or datatype-iri (get-in env [::en/predicate-datatype predicate-iri]))
+   (or language (en/get-language env predicate-iri))
+   (or datatype-iri (en/get-datatype env predicate-iri))
    (->> parse
         rest
         (filter #(contains? #{:lexical :eol} (first %)))
@@ -282,11 +282,11 @@
    Handles default dataypes and languages."
   [env predicate-iri {:keys [oi ob ol di ln] :as object}]
   (cond
-    (and ln (not= ln (get-in env [::en/predicate-language predicate-iri])))
+    (and ln (not= ln (en/get-language env predicate-iri)))
     [[:symbol ";"]
      [:space " "]
      [:name (str "@" ln)]]
-    (and di (not= di (get-in env [::en/predicate-datatype predicate-iri])))
+    (and di (not= di (en/get-datatype env predicate-iri)))
     [[:symbol ";"]
      [:space " "]
      [:name (ln/iri->name env di)]]
@@ -492,7 +492,7 @@
                        (into {}))]
        [(assoc state :pi "https://knotation.org/predicate/applied-template")
         (->> (string/replace
-              (get-in env [::en/template-content template-iri])
+              (en/get-template-content env template-iri)
               #"\{(.*?)\}"
               (fn [[_ x]] (get values x)))
              util/split-lines

@@ -24,15 +24,27 @@
   (-> env
       (assoc-in [::predicate-datatype predicate] datatype)))
 
+(defn get-datatype
+  [env predicate]
+  (get-in env [::predicate-datatype predicate]))
+
 (defn set-language
   [env predicate language]
   (-> env
       (assoc-in [::predicate-language predicate] language)))
 
+(defn get-language
+  [env predicate]
+  (get-in env [::predicate-language predicate]))
+
 (defn set-template-content
   [env template content]
   (-> env
       (assoc-in [::template-content template] content)))
+
+(defn get-template-content
+  [env template]
+  (get-in env [::template-content template]))
 
 (def blank-env {})
 
