@@ -55,7 +55,7 @@
      ["\n" "  " ")"])
 
     (and ob (rdf/rdf-anonymous-subject? triples ob))
-    (indent (render-subject env triples ob))
+    (concat ["[ "] (render-subject env triples ob) [" ]"])
 
     ob ob
 
@@ -78,7 +78,9 @@
      [" "])
    [(render-object env triples triple)]))
 
-(defn -inner-render-subject
+(defn render-subject
+  "Given an environment, a sequence of triple maps, and a subject node,
+   return a sequence of strings representing the subject."
   [env triples s]
   (->> triples
        (filter #(= s (or (:si %) (:sb %))))
@@ -86,15 +88,6 @@
        (map (partial render-statement env triples))
        (interpose [" ;" "\n" "  "])
        flatten))
-
-(defn render-subject
-  "Given an environment, a sequence of triple maps, and a subject node,
-   return a sequence of strings representing the subject."
-  [env triples s]
-  (concat
-   (if (rdf/blank? s) ["[ "] [(render-iri env s) "\n" "  "])
-   (-inner-render-subject env triples s)
-   (if (rdf/blank? s) [" ]"] [])))
 
 (defn render-declaration
   [{:keys [prefix iri base] :as triple}]
@@ -117,19 +110,13 @@
          (remove #(contains? subjects (:sb %)))
          (remove #(= :annotation (:event %))))))
 
-(defn select-annotations
-  [triples]
-  (let [subjects (annotation-subjects triples)]
-    (->> triples
-         (filter #(contains? subjects (:sb %))))))
-
 (defn render-annotation
   [env triples zi]
   (->> triples
        (filter #(= (:pi %) (rdf/rdf "type")))
        (filter #(= (:oi %) (rdf/owl "Axiom")))
        (map :sb)
-       (concat [(-inner-render-subject env triples zi)])
+       (concat [(render-subject env triples zi)])
        (map #(concat % [" ." "\n"]))
        (map #(concat [zi "\n" "  "] %))))
 
@@ -156,7 +143,9 @@
                         (remove #(= zi %))
                         (map (partial render-subject env un-annotated))
                         (concat [(render-subject env un-annotated zi)])
-                        (map #(concat % [" ." "\n"]))
+                        (map #(concat
+                               [(render-iri env zi) "\n" "  "]
+                               % [" ." "\n"]))
                         (#(concat % (render-stanza-annotations env triples)))
                         (interpose "\n"))]
         (cons
