@@ -12,6 +12,10 @@
        (filter #(string/starts-with? % "\n"))
        (map count) (reduce +)))
 
+(defn add-to-output
+  [triple parse]
+  (assoc triple :output {:parse parse :line-count (deep-line-count parse)}))
+
 (defn render-iri
   "Given an environment and an IRI string,
    return a CURIE or a wrapped IRI string."
@@ -92,8 +96,8 @@
 (defn render-declaration
   [{:keys [prefix iri base] :as triple}]
   (cond
-    (and prefix iri) (assoc triple :output {:parse ["@prefix " prefix ": <" iri "> ." "\n"] :line-count 1})
-    base (assoc triple :output {:parse ["@base <" base "> ." "\n"] :line-count 1})
+    (and prefix iri) (add-to-output triple ["@prefix " prefix ": <" iri "> ." "\n"])
+    base (add-to-output triple ["@base <" base "> ." "\n"])
     :else triple))
 
 (defn annotation-subjects
@@ -148,9 +152,7 @@
                                % [" ." "\n"]))
                         (#(concat % (render-stanza-annotations env triples)))
                         (interpose "\n"))]
-        (cons
-         (assoc (first triples) :output {:parse stanza :line-count (deep-line-count stanza)})
-         (rest triples)))
+        (cons (add-to-output (first triples) stanza) (rest triples)))
       (let [res (map render-declaration triples)]
         (concat
          (butlast res)
