@@ -63,7 +63,7 @@
 
     ob ob
 
-    (and di (not= di (rdf/xsd "string")))
+    (and di (not (contains? #{(rdf/xsd "string") (rdf/kn "link")} di)))
     (str (render-lexical ol) "^^" (render-iri env di))
 
     ln (str (render-lexical ol) "@" ln)
@@ -172,7 +172,7 @@
    (fn [prev cur]
      (let [ln (get-in prev [:output :line-number] 0)
            out (:output cur)
-           ct (get-in prev [:output :line-count])
+           ct (get-in prev [:output :line-count] 0)
            cct (deep-line-count (:parse out))]
        (assoc
         cur :output
@@ -187,4 +187,5 @@
   [fmt env states]
   (->> states
        (render-stanzas env)
-       flatten))
+       flatten
+       number-output-lines))

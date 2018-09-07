@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :refer [parse-opts]]
+            [org.knotation.api :as ap]
             [org.knotation.clj-api :as api])
   (:gen-class))
 
@@ -53,18 +54,17 @@ Options:
       errors (exit 1 (error-msg errors))
       (= 0 (count arguments)) (exit 1 (error-msg ["Specify at least one FILE"]))
       :else
-      (api/render-file
-       (or (keyword (:to options))
-           (keyword (:write options))
-           (api/path-format (:output options)))
-       nil
-       (api/read-paths
-        (or (:from options) (:read options))
-        nil
-        arguments)
-       (if (:output options)
-         (io/file (:output options))
-         System/out)))))
+      (let [fmt (or (keyword (:to options))
+                    (keyword (:write options))
+                    (api/path-format (:output options)))
+            in (api/read-paths
+                (or (:from options) (:read options))
+                nil
+                arguments)
+            out (if (:output options)
+                  (io/file (:output options))
+                  System/out)]
+        (api/render-file fmt (ap/env-of in) in out)))))
 
 (defn -main [& args]
   (run args))

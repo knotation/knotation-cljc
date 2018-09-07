@@ -6,7 +6,7 @@
 (def rdfs (partial apply str "http://www.w3.org/2000/01/rdf-schema#"))
 (def xsd (partial apply str "http://www.w3.org/2001/XMLSchema#"))
 (def owl (partial apply str "http://www.w3.org/2002/07/owl#"))
-(def kn (partial apply str "https://knotation.org/"))
+(def kn (partial apply str "https://knotation.org/kn/"))
 (def ex (partial apply str "http://example.com/"))
 
 ; # Blank Nodes

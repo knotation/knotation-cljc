@@ -10,7 +10,8 @@
             [org.knotation.format :as fm]
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
-            [org.knotation.ttl :as ttl]))
+            [org.knotation.ttl :as ttl]
+            [org.knotation.api :as api]))
 
 ; For Apache Jena's preferred file extnesions see
 ; https://jena.apache.org/documentation/io/#command-line-tools
@@ -59,7 +60,7 @@
   [fmt env input]
   (case fmt
     (:nt :ttl :rdfxml) (jena/read-triples (name fmt) input)
-    (:kn :tsv)  (fm/read-lines fmt env (line-seq (io/reader input)))
+    (:kn :tsv)  (api/read-lines fmt env (line-seq (io/reader input)))
     (throw (Exception. (format "Unsupported read format '%s'" fmt)))))
 
 (defn read-path
@@ -78,7 +79,7 @@
        (reductions
         (fn [[env _] path]
           (let [states (read-path fmt env path)]
-            [(::en/env (last states)) states]))
+            [(api/env-of states) states]))
         [nil []])
        rest
        (mapcat second)))
@@ -87,17 +88,7 @@
   "Given a format keyword, an initial environment (or nil), and a content string
    return a lazy sequence of state maps."
   [fmt env content]
-  (try
-    (read-input fmt env (java.io.ByteArrayInputStream. (.getBytes content "UTF-8")))
-    (catch Exception e
-      (throw
-       (Exception.
-        (format
-         "Failed to read from string '%s'"
-         (if (< (count content) 100)
-           content
-           (str (subs content 0 100) " ...")))
-        e)))))
+  (api/read-from fmt env content))
 
 ; Render Output
 
@@ -113,27 +104,15 @@
         (.println w (pr-str state))))
     :ttl
     (with-open [w (java.io.PrintWriter. output)]
-      (doseq [o (->> states
-                     rdf/assign-stanzas
-                     (ttl/render-stanzas (collect-prefixes states))
-                     flatten)]
-        (.print w o))
-      (.print w "\n"))
+      (.print w (api/render-to :ttl env states)))
     ;else
     (throw (Exception. (format "Unsupported write format '%s'" fmt)))))
 
-(defn render-string
+(def render-string
   "Given a format keyword, an initial environment (or nil),
    and a sequence of state maps,
    return a string."
-  [fmt env states]
-  (let [fmt (or fmt :ttl)
-        output (java.io.ByteArrayOutputStream.)]
-    (try
-      (render-output fmt env states output)
-      (str output)
-      (catch Exception e
-        (throw (Exception. (format "Failed to render to string") e))))))
+  api/render-to)
 
 (defn render-file
   "Given a format keyword, an initial environment (or nil),

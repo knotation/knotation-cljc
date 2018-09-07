@@ -223,10 +223,7 @@
 
       {:ol content :di datatype})
 
-    :else
-    (if-let [iri (ln/->iri env content)]
-      {:oi iri}
-      {:ol content})))
+    :else {:ol content}))
 
 (defn read-object
   "Read the object part of a statement, with its language or datatype,
