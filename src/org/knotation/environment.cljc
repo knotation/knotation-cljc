@@ -55,8 +55,6 @@
       (add-prefix "xsd" (rdf/xsd))
       (add-prefix "owl" (rdf/owl))
       (add-prefix "kn" (rdf/kn))
-      (add-prefix "knd" (rdf/kn "datatype/"))
-      (add-prefix "knp" (rdf/kn "predicate/"))
       (add-label "label" (rdf/rdfs "label"))
       (add-label "type" (rdf/rdf "type"))
       (add-label "link" (rdf/kn "datatype/link"))

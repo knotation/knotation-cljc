@@ -195,7 +195,7 @@
        "https://knotation.org/predicate/default-datatype"
        [:p
         "The "
-        [:code "knp:default-datatype"]
+        [:code "kn:default-datatype"]
         " predicate is used to declare a datatype "
         "that will be used in all following statements "
         "with that predicate, "
@@ -204,7 +204,7 @@
        "https://knotation.org/predicate/default-language"
        [:p
         "The "
-        [:code "knp:default-language"]
+        [:code "kn:default-language"]
         " predicate is used to declare a language "
         "that will be used in all following statements "
         "with that predicate, "
@@ -217,14 +217,14 @@
        "https://knotation.org/datatype/link"
        [:p
         "The "
-        [:code "knd:link"]
+        [:code "kn:link"]
         " datatype declares that the object is an IRI. "
         "The object can be an IRI string, prefixed name, or label."]
 
        "https://knotation.org/datatype/omn"
        [:p
         "The "
-        [:code "knd:omn"]
+        [:code "kn:omn"]
         " datatype declares that the object is an OWL class expression "
         "written in Manchester syntax."]
 
