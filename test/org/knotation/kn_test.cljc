@@ -59,27 +59,27 @@ ex:p; ex:d: Multiline
 
 (deftest test-templates
   (test-before-after
-   "@prefix knp: <https://knotation.org/predicate/>
+   "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:template
-knp:template-content: 
+kn:template-content: 
  ex:label: Foo {label}
 
 : ex:1
 ex:foo: bar
-knp:apply-template: ex:template
+kn:apply-template: ex:template
  label: Bar"
-   "@prefix knp: <https://knotation.org/predicate/>
+   "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:template
-knp:template-content: 
+kn:template-content: 
  ex:label: Foo {label}
 
 : ex:1
 ex:foo: bar
-knp:applied-template: ex:template
+kn:applied-template: ex:template
  label: Bar
 ex:label: Foo Bar
 "))
