@@ -192,7 +192,7 @@
         " predicate is used to declare labels "
         "for use as identifiers."]
 
-       "https://knotation.org/predicate/default-datatype"
+       "https://knotation.org/kn/default-datatype"
        [:p
         "The "
         [:code "kn:default-datatype"]
@@ -201,7 +201,7 @@
         "with that predicate, "
         "unless the statement specifies another datatype."]
 
-       "https://knotation.org/predicate/default-language"
+       "https://knotation.org/kn/default-language"
        [:p
         "The "
         [:code "kn:default-language"]
@@ -214,14 +214,14 @@
 
      ; Datatype
      (case (get-in state [::rdf/object ::rdf/datatype])
-       "https://knotation.org/datatype/link"
+       "https://knotation.org/kn/link"
        [:p
         "The "
         [:code "kn:link"]
         " datatype declares that the object is an IRI. "
         "The object can be an IRI string, prefixed name, or label."]
 
-       "https://knotation.org/datatype/omn"
+       "https://knotation.org/kn/omn"
        [:p
         "The "
         [:code "kn:omn"]

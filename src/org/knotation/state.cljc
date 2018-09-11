@@ -36,13 +36,13 @@
       "http://www.w3.org/2000/01/rdf-schema#label"
       (en/add-label env ol si)
 
-      "https://knotation.org/predicate/default-datatype"
+      "https://knotation.org/kn/default-datatype"
       (en/set-datatype env si oi)
 
-      "https://knotation.org/predicate/default-language"
+      "https://knotation.org/kn/default-language"
       (en/set-language env si ol)
 
-      "https://knotation.org/predicate/template-content"
+      "https://knotation.org/kn/template-content"
       (en/set-template-content env si ol)
 
       ;else

@@ -208,10 +208,10 @@
 
     (string? datatype)
     (case datatype
-      "https://knotation.org/datatype/link"
+      "https://knotation.org/kn/link"
       (ln/object->node env content)
 
-      "https://knotation.org/datatype/omn"
+      "https://knotation.org/kn/omn"
       (let [res (omn/read-class-string env content)]
         (merge
          {:states (map #(assoc % :di datatype) res)
@@ -219,7 +219,7 @@
          (omn/->obj env res)))
 
       ; TODO: warn on unrecognized Knotation datatype
-      ;(string/starts-with? datatype "https://knotation.org/datatype/")
+      ;(string/starts-with? datatype "https://knotation.org/kn/")
 
       {:ol content :di datatype})
 
@@ -393,7 +393,7 @@
   (mapcat
    (fn [state]
      (if (and (= :statement (:event state))
-              (= "https://knotation.org/datatype/omn" (:di state)))
+              (= "https://knotation.org/kn/omn" (:di state)))
        (cons (dissoc state :states)
              (:states state))
        [state]))
@@ -475,7 +475,7 @@
    returning the pair of the updated state and a sequence of new parses
    (empty if this is not a template statement)."
   [env {:keys [pi ol] :as state}]
-  (if (= pi "https://knotation.org/predicate/apply-template")
+  (if (= pi "https://knotation.org/kn/apply-template")
     (handler-case
      (let [template-iri (->> ol
                              util/split-lines
@@ -487,7 +487,7 @@
                        rest
                        (map #(string/split % #": " 2))
                        (into {}))]
-       [(assoc state :pi "https://knotation.org/predicate/applied-template")
+       [(assoc state :pi "https://knotation.org/kn/applied-template")
         (->> (string/replace
               (en/get-template-content env template-iri)
               #"\{(.*?)\}"
