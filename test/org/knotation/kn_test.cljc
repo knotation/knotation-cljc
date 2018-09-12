@@ -101,19 +101,20 @@ ex:label: Foo Bar
 ex:p; kn:link: ex:o
 > ex:a; kn:link: ex:b"))
   (testing "Annotations can refer to other annotations"
-    (let [chained "@prefix ex: <http://example.com/>
+    (let [chained "@prefix kn: <http://knotation.org/kn/>
+@prefix ex: <http://example.com/>
 
 : ex:s
-ex:p: ex:o
-> ex:a: ex:b
->> ex:c: ex:d"
+ex:p; kn:link: ex:o
+> ex:a; kn:link: ex:b
+>> ex:c; kn:link: ex:d"
           res (->> chained util/split-lines
                    (fm/read-lines :kn en/blank-env))]
       (test-roundtrip chained)
-      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :oi "http://example.com/o"}
-             (:target (nth res 5))))
-      (is (= {:si "http://example.com/s", :pi "http://example.com/a", :oi "http://example.com/b"}
-             (:target (nth res 11))))))
+      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "ex:o", :di "http://knotation.org/kn/link"}
+             (:target (nth res 6))))
+      (is (= {:si "http://example.com/s", :pi "http://example.com/a", :ol "ex:b", :di "http://knotation.org/kn/link"}
+             (:target (nth res 12))))))
   (testing "Non-adjacent annotations can refer to previous annotation targets"
     (let [deep-chain "@prefix ex: <http://example.com/>
 
