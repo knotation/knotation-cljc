@@ -84,11 +84,22 @@
        rest
        (mapcat second)))
 
+
 (defn read-string
   "Given a format keyword, an initial environment (or nil), and a content string
    return a lazy sequence of state maps."
   [fmt env content]
-  (api/read-from fmt env content))
+  (try
+    (read-input fmt env (java.io.ByteArrayInputStream. (.getBytes content "UTF-8")))
+    (catch Exception e
+      (throw
+       (Exception.
+        (format
+         "Failed to read from string '%s'"
+         (if (< (count content) 100)
+           content
+           (str (subs content 0 100) " ...")))
+        e)))))
 
 ; Render Output
 
