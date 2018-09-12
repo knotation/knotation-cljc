@@ -94,11 +94,12 @@ ex:label: Foo Bar
       (is (api/any-errors? res))
       (is (->> (nth res 3) api/error-type (= :no-annotation-target)))))
   (testing "Annotations start with pointies"
-    (test-roundtrip "@prefix ex: <http://example.com/>
+    (test-roundtrip "@prefix kn: <http://knotation.org/kn/>
+@prefix ex: <http://example.com/>
 
 : ex:s
-ex:p: ex:o
-> ex:a: ex:b"))
+ex:p; kn:link: ex:o
+> ex:a; kn:link: ex:b"))
   (testing "Annotations can refer to other annotations"
     (let [chained "@prefix ex: <http://example.com/>
 
