@@ -21,7 +21,8 @@
 : ex:s
 ex:p; kn:link: ex:o
 > ex:a; kn:link: ex:b"
-     "@prefix ex: <http://example.com/> .
+     "@prefix kn: <https://knotation.org/kn/> .
+@prefix ex: <http://example.com/> .
 
 ex:s
   ex:p ex:o .
