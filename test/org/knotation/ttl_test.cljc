@@ -39,9 +39,9 @@ _:b0
      "@prefix ex: <http://example.com/>
 
 : ex:s
-ex:p: ex:o
-> ex:a: ex:b
->> ex:c: ex:d"
+ex:p; kn:link: ex:o
+> ex:a; kn:link: ex:b
+>> ex:c; kn:link: ex:d"
      "@prefix ex: <http://example.com/> .
 
 ex:s
