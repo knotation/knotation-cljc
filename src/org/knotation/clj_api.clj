@@ -116,6 +116,9 @@
     :ttl
     (with-open [w (java.io.PrintWriter. output)]
       (.print w (api/render-to :ttl env states)))
+    :kn
+    (with-open [w (java.io.PrintWriter. output)]
+      (.print w (api/render-to :kn env states)))
     ;else
     (throw (Exception. (format "Unsupported write format '%s'" fmt)))))
 

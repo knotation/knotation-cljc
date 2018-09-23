@@ -5,6 +5,9 @@
             [org.knotation.link :as ln]
             [org.knotation.format :as fm]))
 
+(defn -trips [seq]
+  (str (vec (map #(dissoc % :org.knotation.environment/env) seq))))
+
 (defn deep-line-count
   [tree]
   (->> tree flatten
@@ -44,7 +47,7 @@
   "Given an environment, a sequence of triple maps, and an object node,
    return a (possibly nested) sequence of strings representing the object,
    including nested lists and anonymous subjects."
-  [env triples {:keys [oi ob ol di ln]}]
+  [env triples {:keys [oi ob ol di ln] :as trip}]
   (cond
     oi (render-iri env oi)
 
@@ -77,7 +80,7 @@
   [env triples {:keys [pi ob] :as triple}]
   (concat
    [(render-iri env pi)]
-   (if (and ob (not (rdf/rdf-list? triples ob)))
+   (if (and ob (rdf/rdf-anonymous-subject? triples ob))
      ["\n" "  "]
      [" "])
    [(render-object env triples triple)]))
@@ -132,6 +135,18 @@
        (render-annotation env trips s)))
    (annotation-subjects triples)))
 
+(defn ensure-ending-newline
+  [states]
+  (if (= "\n" (->> states last :output :parse last))
+    states
+    (concat
+     (butlast states)
+     (list
+      (update-in
+       (last states)
+       [:output :parse]
+       #(concat % ["\n"]))))))
+
 (defn render-stanza
   "Given an environment and a sequence of triple maps for a single stanza,
    return a sequence of strings representing the stanza,
@@ -151,15 +166,16 @@
                                [(render-iri env zi) "\n" "  "]
                                % [" ." "\n"]))
                         (#(concat % (render-stanza-annotations env triples)))
+                        
                         (interpose "\n"))]
         (cons (add-to-output (first triples) stanza) (rest triples)))
       (let [res (map render-declaration triples)]
-        (concat
-         (butlast res)
-         (list (update-in (last res) [:output :parse] #(concat % ["\n"]))))))))
+        (if (empty? (remove #(contains? #{:graph-start :graph-end :comment :blank} (:event %)) res))
+          res
+          (ensure-ending-newline res))))))
 
 (defn render-stanzas
-  "Given an environment and a sequence of triple maps for zero or more stanza,
+  "Given an environment and a sequence of triple maps for zero or more stanzas,
    return a (possibly nested) sequence of strings representing the stanzas."
   [env triples]
   (->> triples
@@ -188,4 +204,5 @@
   (->> states
        (render-stanzas env)
        flatten
+       ensure-ending-newline
        number-output-lines))
