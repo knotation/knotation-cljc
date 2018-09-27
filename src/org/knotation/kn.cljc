@@ -454,6 +454,15 @@
                      :line-number (if (zero? cct) ln (+ ln ct))))))
    states))
 
+(defn process-states
+  [states]
+  (->> states
+       process-annotations
+       process-class-expressions
+       process-stanza-labels
+       (remove nil?)
+       number-input-lines))
+
 (defn read-parse
   "Given an environment and a parse,
    return the resulting state."
@@ -529,12 +538,7 @@
 (defmethod fm/process-states
   :kn
   [fmt states]
-  (->> states
-       process-annotations
-       process-class-expressions
-       process-stanza-labels
-       (remove nil?)
-       number-input-lines))
+  (process-states states))
 
 (defmethod fm/read-parse
   :kn
