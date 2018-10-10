@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :refer [parse-opts]]
+            [org.knotation.rdf :as rdf]
             [org.knotation.api :as ap]
             [org.knotation.clj-api :as api])
   (:gen-class))
@@ -15,6 +16,7 @@ Options:
   -t FORMAT, -w FORMAT  --to=FORMAT, --write=FORMAT
   -o FILENAME           --output=FILENAME
   -v                    --version
+  -s                    --sequential-blank-nodes
   -h                    --help")
 
 (defn version
@@ -32,6 +34,7 @@ Options:
    ["-t" "--to FORMAT" "Format for output"]
    ["-w" "--write FORMAT" "Same as --to"]
    ["-o" "--output FILENAME" "File for output"]
+   ["-s" "--sequential-blank-nodes" "Outputs sequential blank nodes instead of random ones. Useful for testing purposes."]
    ["-v" "--version"]
    ["-h" "--help"]])
 
@@ -57,10 +60,13 @@ Options:
       (let [fmt (or (keyword (:to options))
                     (keyword (:write options))
                     (api/path-format (:output options)))
-            in (api/read-paths
-                (or (:from options) (:read options))
-                nil
-                arguments)
+            in-raw (api/read-paths
+                    (or (:from options) (:read options))
+                    nil
+                    arguments)
+            in (if (:sequential-blank-nodes options)
+                 (rdf/sequential-blank-nodes in-raw)
+                 in-raw)
             out (if (:output options)
                   (io/file (:output options))
                   System/out)]
