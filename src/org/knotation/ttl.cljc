@@ -107,12 +107,11 @@
   [triples]
   (->> triples
        (filter #(= (rdf/owl "Annotation") (:oi %)))
-       (map :sb)
-       set))
+       (map :sb)))
 
 (defn remove-annotations
   [triples]
-  (let [subjects (annotation-subjects triples)]
+  (let [subjects (set (annotation-subjects triples))]
     (->> triples
          (remove #(contains? subjects (:sb %)))
          (remove #(= :annotation (:event %))))))
@@ -166,7 +165,7 @@
                                [(render-iri env zi) "\n" "  "]
                                % [" ." "\n"]))
                         (#(concat % (render-stanza-annotations env triples)))
-                        
+
                         (interpose "\n"))]
         (cons (add-to-output (first triples) stanza) (rest triples)))
       (let [res (map render-declaration triples)]
