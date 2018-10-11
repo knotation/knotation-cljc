@@ -367,14 +367,26 @@
             (util/error :no-annotation-target (->> s :input :parse))))
     s))
 
+(def -blank-node-table (atom {}))
+(defn blank-node-of [target]
+  (let [target (select-keys target [:rt :gi :si :sb :pi :oi :ob :ol :di :ln])]
+    (get @-blank-node-table target)))
+(defn blank-node-of! [target]
+  (let [target (select-keys target [:rt :gi :si :sb :pi :oi :ob :ol :di :ln])]
+    (if (not (get @-blank-node-table target))
+      (swap! -blank-node-table #(assoc % target (rdf/random-blank-node))))
+    (get @-blank-node-table target)))
+
 (defn process-annotations
   [states]
   (mapcat
    (fn [state]
      (if (= :annotation (:event state))
        (let [{:keys [:si :sb] :as target} (:target state)
-             b1 (rdf/random-blank-node)
-             source (if si {:oi si} {:ob sb})]
+             b1 (blank-node-of! state)
+             source (if-let [bnode (blank-node-of target)]
+                      {:ob bnode}
+                      (if si {:oi si} {:ob sb}))]
          [(dissoc state :stack :level)
           {:sb b1 :pi (rdf "type") :oi (owl "Annotation")}
           (merge {:sb b1 :pi (owl "annotatedSource")} source)
