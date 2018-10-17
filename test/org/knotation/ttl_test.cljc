@@ -48,19 +48,19 @@ ex:p; kn:link: ex:o
 ex:s
   ex:p ex:o .
 
-_:b1
-  rdf:type owl:Annotation ;
-  owl:annotatedSource ex:s ;
-  owl:annotatedProperty ex:a ;
-  owl:annotatedTarget ex:b ;
-  ex:c ex:d .
-
 _:b0
   rdf:type owl:Annotation ;
   owl:annotatedSource ex:s ;
   owl:annotatedProperty ex:p ;
   owl:annotatedTarget ex:o ;
   ex:a ex:b .
+
+_:b1
+  rdf:type owl:Annotation ;
+  owl:annotatedSource _:b0 ;
+  owl:annotatedProperty ex:a ;
+  owl:annotatedTarget ex:b ;
+  ex:c ex:d .
 
 "))
   (testing "Deeply chained annotations work"
@@ -77,19 +77,19 @@ ex:p: A
 ex:s
   ex:p \"A\" .
 
-_:b1
-  rdf:type owl:Annotation ;
-  owl:annotatedSource ex:s ;
-  owl:annotatedProperty ex:p ;
-  owl:annotatedTarget \"B is an annotation on A\" ;
-  ex:p \"C is an annotation on B\" .
-
 _:b0
   rdf:type owl:Annotation ;
   owl:annotatedSource ex:s ;
   owl:annotatedProperty ex:p ;
   owl:annotatedTarget \"A\" ;
   ex:p \"B is an annotation on A\" .
+
+_:b1
+  rdf:type owl:Annotation ;
+  owl:annotatedSource _:b0 ;
+  owl:annotatedProperty ex:p ;
+  owl:annotatedTarget \"B is an annotation on A\" ;
+  ex:p \"C is an annotation on B\" .
 
 _:b2
   rdf:type owl:Annotation ;
