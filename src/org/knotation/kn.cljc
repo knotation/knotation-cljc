@@ -5,7 +5,7 @@
             #?(:clj [org.knotation.util :as util :refer [handler-case]]
                :cljs [org.knotation.util :as util])
             #?(:cljs [org.knotation.util-macros-cljs :refer-macros [handler-case]])
-            [org.knotation.rdf :as rdf :refer [owl rdf]]
+            [org.knotation.rdf :as rdf :refer [owl rdf kn]]
             [org.knotation.environment :as en]
             [org.knotation.link :as ln]
             [org.knotation.format :as fm]
@@ -447,6 +447,24 @@
          (if-let [zi @top-subject] (assoc s :zi zi) s)))
      states)))
 
+(defn process-default-datatypes
+  [states]
+  (let [new-states
+        ((fn rec [ss default-datatypes]
+           (when (not (empty? ss))
+             (let [s (first ss)
+                   new-dds (if (and (:si s) (:oi s) (= (:pi s) (kn "default-datatype")))
+                             (assoc default-datatypes (:si s) (:oi s))
+                             default-datatypes)
+                   new-env (assoc
+                            (::en/env s) ::en/predicate-datatype
+                            (merge
+                             (::en/predicate-datatype (::en/env s))
+                             default-datatypes))]
+               (lazy-seq (cons (assoc s ::en/env new-env) (rec (rest ss) new-dds))))))
+         states {})]
+    new-states))
+
 (defn state-line-count
   [s]
   (->> s :input :parse
@@ -472,6 +490,7 @@
        process-annotations
        process-class-expressions
        process-stanza-labels
+       process-default-datatypes
        (remove nil?)
        number-input-lines))
 

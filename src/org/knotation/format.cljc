@@ -36,9 +36,9 @@
 ;
 ; Formats may optionally provide:
 ; - (process-parses parses) :: [{:env :input ...}] -> [{:env :input ...}]
-; - (expand-state env state) :: Env -> {:env :input ...} -> ({:env :input ...} ParseVector) 
+; - (expand-state env state) :: Env -> {:env :input ...} -> ({:env :input ...} ParseVector)
 ; - (process-states states) :: [{:env :input ...}] -> [{:env :input ...}]
-; - (render-states env states) :: Env -> [{:env :input ...}] -> [{:env :input (:output :: {:parse...}) ...}] 
+; - (render-states env states) :: Env -> [{:env :input ...}] -> [{:env :input (:output :: {:parse...}) ...}]
 
 ; Parse handling functions
 
@@ -296,7 +296,7 @@
        (map (fn [[env parse state]] (assoc state ::en/env env :input {:parse parse})))
        insert-graph-events
        insert-subject-events
-       (#(process-states fmt %))))
+       (process-states fmt)))
 
 (defmulti read-lines
   "Given an initial environment, a format keyword, and a sequence of lines,

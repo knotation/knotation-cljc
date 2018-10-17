@@ -1,12 +1,13 @@
 (ns org.knotation.ttl
   (:require [clojure.string :as string]
 
+            [org.knotation.environment :as en]
             [org.knotation.rdf :as rdf]
             [org.knotation.link :as ln]
             [org.knotation.format :as fm]))
 
 (defn -trips [seq]
-  (str (vec (map #(dissoc % :org.knotation.environment/env) seq))))
+  (str (vec (map #(dissoc % ::en/env) seq))))
 
 (defn deep-line-count
   [tree]
@@ -47,7 +48,7 @@
   "Given an environment, a sequence of triple maps, and an object node,
    return a (possibly nested) sequence of strings representing the object,
    including nested lists and anonymous subjects."
-  [env triples {:keys [oi ob ol di ln] :as trip}]
+  [env triples {:keys [si pi oi ob ol di ln] :as trip}]
   (cond
     oi (render-iri env oi)
 
