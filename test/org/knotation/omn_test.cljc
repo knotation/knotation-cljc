@@ -1,7 +1,7 @@
 (ns org.knotation.omn-test
   (:require [clojure.test :refer [deftest is testing]]
             [#?(:clj clojure.spec.alpha :cljs cljs.spec.alpha) :as s]
-            [#?(:clj clojure.spec.test.alpha :cljs cljs.spec.test.alpha) :as stest]
+            [#?(:clj orchestra.spec.test :cljs cljs.spec.test.alpha) :as stest]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.omn :as omn]))

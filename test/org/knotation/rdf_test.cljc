@@ -1,7 +1,7 @@
 (ns org.knotation.rdf-test
   (:require [clojure.test :refer :all]
-            [clojure.spec.alpha :as s]
-            [clojure.spec.test.alpha :as stest]
+            [orchestra.spec.test :as stest]
+
             [org.knotation.rdf :as rdf]
             [org.knotation.rdf-spec]))
 

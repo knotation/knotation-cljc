@@ -1,7 +1,7 @@
 (ns org.knotation.clj-api-test
   (:require [clojure.test :refer :all]
-            [clojure.spec.test.alpha :as stest]
             [clojure.string :as string]
+            [orchestra.spec.test :as stest]
 
             [org.knotation.rdf :as rdf]
             [org.knotation.rdf-spec]

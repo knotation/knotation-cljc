@@ -1,6 +1,6 @@
 (ns org.knotation.ttl-test
   (:require [clojure.test :refer [deftest is testing]]
-            [clojure.spec.test.alpha :as stest]
+            [orchestra.spec.test :as stest]
 
             [org.knotation.rdf :as rdf]
             [org.knotation.state-spec]

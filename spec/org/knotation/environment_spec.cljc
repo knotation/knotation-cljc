@@ -49,7 +49,7 @@
 
 (s/fdef en/get-datatype
         :args (s/cat :env ::en/env :predicate ::rdf/predicate)
-        :ret ::rdf/datatype)
+        :ret (s/nilable ::rdf/datatype))
 
 (s/fdef en/set-language
         :args (s/cat :env ::en/env :predicate ::rdf/predicate :language ::rdf/language)
@@ -57,7 +57,7 @@
 
 (s/fdef en/get-language
         :args (s/cat :env ::en/env :predicate ::rdf/predicate)
-        :ret ::rdf/language)
+        :ret (s/nilable ::rdf/language))
 
 (s/fdef en/set-template-content
         :args (s/cat :env ::en/env :template ::rdf/subject :content string?)
@@ -65,7 +65,7 @@
 
 (s/fdef en/get-template-content
         :args (s/cat :env ::en/env :template ::rdf/subject)
-        :ret string?)
+        :ret (s/nilable string?))
 
 ;; # Conversions
 
@@ -95,11 +95,11 @@
 
 (s/fdef en/find-prefix
         :args (s/cat :env ::en/env :prefix ::en/prefix)
-        :ret (s/nilable ::rdf/iri))
+        :ret (s/nilable (s/tuple ::rdf/iri ::en/prefix)))
 
 (s/fdef en/iri->curie
         :args (s/cat :env ::en/env :iri ::rdf/iri)
-        :ret (s/nilable ::rdf/curie))
+        :ret (s/nilable ::en/curie))
 
 (s/fdef en/iri->http-url
         :args (s/cat :env ::en/env :iri ::rdf/iri)
@@ -115,7 +115,7 @@
 
 (s/fdef en/iri->label
         :args (s/cat :env ::en/env :iri ::rdf/iri)
-        :ret (s/nilable ::rdf/label))
+        :ret (s/nilable ::en/label))
 
 (s/fdef en/iri->name
         :args (s/cat :env ::en/env :iri ::rdf/iri)

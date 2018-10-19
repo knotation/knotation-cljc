@@ -12,7 +12,8 @@
                  [org.apache.jena/jena-arq "3.6.0"]
                  [org.slf4j/slf4j-nop "1.7.12"]
 
-                 [instaparse "1.4.9"]]
+                 [instaparse "1.4.9"]
+                 [orchestra "2018.09.10-1"]]
   :cljsbuild {:builds [{:source-paths ["src/org/knotation"]
                         :compiler {:output-to "resources/knotation.js"
                                    :optimizations :whitespace

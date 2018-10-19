@@ -104,6 +104,9 @@
       (when (http-url? input) input)))
 
 (defn find-prefix
+  "Given an environment and an IRI,
+   return the pair of a matching prefix IRI and prefix name,
+   or nil."
   [env iri]
   (->> env
        ::iri-prefix
