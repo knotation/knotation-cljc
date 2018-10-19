@@ -1,16 +1,17 @@
 (ns org.knotation.rdf-spec
   (:require [clojure.spec.alpha :as s]
+            [clojure.string :as string]
 
             [org.knotation.rdf :as rdf]))
 
-(s/def ::rdf/iri (s/and string?  #(re-matches #"\S+" %)))
+(s/def ::rdf/iri (s/and string?  #(re-matches #"\S+" %) #(not (string/starts-with? % "_:"))))
 (s/def ::rdf/bnode (s/and string? #(re-matches #"_:\S+" %)))
 (s/def ::rdf/lexical string?)
 (s/def ::rdf/language-tag (s/and string? #(re-matches #"@\S+" %)))
-(s/def ::rdf/datatype ::rdf/iri)
 
 (s/def ::rdf/subject (s/or :iri ::rdf/iri :bnode ::rdf/bnode))
 (s/def ::rdf/predicate ::rdf/iri)
+(s/def ::rdf/datatype ::rdf/iri)
 (s/def ::rdf/language string?) ; TODO: could be tighter
 
 (s/def ::rdf/zn (s/or :iri ::rdf/iri :bnode ::rdf/bnode))
