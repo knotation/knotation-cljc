@@ -27,38 +27,38 @@
                               ::en/predicate-datatype ::en/predicate-language
                               ::en/template-content]))
 
-(s/fdef env/add-base
+(s/fdef en/add-base
         :args (s/cat :env ::en/env :base ::rdf/iri)
         :ret ::en/env)
 
-(s/fdef env/add-prefix
+(s/fdef en/add-prefix
         :args (s/cat :env ::en/env :prefix ::en/prefix :iri ::rdf/iri)
         :ret ::en/env)
 
-(s/fdef env/add-label
+(s/fdef en/add-label
         :args (s/cat :env ::en/env :label ::en/label :iri ::rdf/iri)
         :ret ::en/env)
 
-(s/fdef env/set-datatype
+(s/fdef en/set-datatype
         :args (s/cat :env ::en/env :predicate ::rdf/predicate :datatype ::rdf/datatype)
         :ret ::en/env)
 
-(s/fdef env/get-datatype
+(s/fdef en/get-datatype
         :args (s/cat :env ::en/env :predicate ::rdf/predicate)
         :ret ::rdf/datatype)
 
-(s/fdef env/set-language
+(s/fdef en/set-language
         :args (s/cat :env ::en/env :predicate ::rdf/predicate :language ::rdf/language)
         :ret ::en/env)
 
-(s/fdef env/get-language
+(s/fdef en/get-language
         :args (s/cat :env ::en/env :predicate ::rdf/predicate)
         :ret ::rdf/language)
 
-(s/fdef env/set-template-content
+(s/fdef en/set-template-content
         :args (s/cat :env ::en/env :template ::rdf/subject :content string?)
         :ret ::en/env)
 
-(s/fdef env/get-template-content
+(s/fdef en/get-template-content
         :args (s/cat :env ::en/env :template ::rdf/subject)
         :ret string?)

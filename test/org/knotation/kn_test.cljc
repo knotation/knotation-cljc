@@ -16,8 +16,8 @@
   [parse-fn read-fn render-fn line]
   (->> line
        parse-fn
-       (read-fn nil)
-       (render-fn nil)
+       (read-fn en/blank-env)
+       (render-fn en/blank-env)
        fm/render-parses
        (= line)
        is))
