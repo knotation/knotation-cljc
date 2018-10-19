@@ -1,6 +1,11 @@
 (ns org.knotation.environment-test
   (:require [clojure.test :refer [deftest is testing]]
-            [org.knotation.environment :as en]))
+            [clojure.spec.test.alpha :as stest]
+
+            [org.knotation.environment :as en]
+            [org.knotation.environment-spec]))
+
+(stest/instrument)
 
 (deftest test-add-prefix
   (is (= {::en/prefix-iri {"ex" "https://example.com/"}
