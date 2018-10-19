@@ -36,13 +36,7 @@
 (def iri->curie ln/iri->curie)
 (def iri->label ln/iri->label)
 
-;; Hub format manipulation
-;;; I'm calling it "hub", because this is the internal representation
-;;; that each of the spokes eventually comes down to. I think we can
-;;; simplify it a great deal once we figure out what we want the
-;;; external interface to look like
-
-;; Hub state queries
+;; State queries
 (defn graph-end? [s] (= :graph-end (:event s)))
 (defn error? [s] (= :error (:event s)))
 
@@ -55,7 +49,7 @@
 (defn line-num-out [s] (->> s :output :line-number))
 (defn line-ct-out [s] (->> s :output :line-count))
 
-;; Hub collection queries
+;; State collection queries
 (defn env-of
   [h]
   (::env/env (last h)))
@@ -72,7 +66,7 @@
   [h]
   (->> h errors-of (remove nil?) empty? not))
 
-;; Processing to/from hub
+;; Processing to/from state
 (defn read-lines
   ([format lines] (read-lines format default-env lines))
   ([format env lines] (fmt/read-lines format env lines)))
@@ -98,8 +92,8 @@
    (fmt/render-output (fmt/render-states format env h))))
 
 (defn collect-line-map
-  [hub]
-  (->> hub
+  [state]
+  (->> state
        (map (fn [s]
               [[(get-in s [:input :line-number] 0) (get-in s [:input :line-count] 0)]
                [(get-in s [:output :line-number] 0) (get-in s [:output :line-count] 0)]]))
