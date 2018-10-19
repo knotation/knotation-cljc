@@ -56,14 +56,3 @@
     (->> messages
          (map str)
          (string/join " ")))))
-
-#?(:clj (defmacro handler-case
-          [body & handlers]
-          `(try
-             ~body
-             ~@(map
-                (fn [[exception-type name & body]]
-                  `(catch ~(if (= :default exception-type)
-                             Exception
-                             exception-type) ~name ~@body))
-                handlers))))
