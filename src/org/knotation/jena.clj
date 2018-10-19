@@ -1,6 +1,8 @@
 (ns org.knotation.jena
   (:require [clojure.java.io :as io]
-            [clojure.string :as string])
+            [clojure.string :as string]
+
+            [org.knotation.rdf :as rdf])
   (:import (java.io InputStream ByteArrayInputStream)
            (java.util.concurrent BlockingQueue LinkedBlockingQueue TimeUnit)
            (org.apache.jena.graph Triple Node_URI Node_Blank Node_Literal)
@@ -30,23 +32,23 @@
         o (.getObject triple)]
     (merge
      (when (instance? Node_URI s)
-       {:si (.getURI s)})
+       {::rdf/si (.getURI s)})
      (when (instance? Node_Blank s)
-       {:sb (str "_:" (.getLabelString (.getBlankNodeId s)))})
+       {::rdf/sb (str "_:" (.getLabelString (.getBlankNodeId s)))})
      (when (instance? Node_URI p)
-       {:pi (.getURI p)})
+       {::rdf/pi (.getURI p)})
      (when (instance? Node_URI o)
-       {:oi (.getURI o)})
+       {::rdf/oi (.getURI o)})
      (when (instance? Node_Blank o)
-       {:ob (str "_:" (.getLabelString (.getBlankNodeId o)))})
+       {::rdf/ob (str "_:" (.getLabelString (.getBlankNodeId o)))})
      (when (instance? Node_Literal o)
        (merge
-        {:ol (.getLiteralLexicalForm o)}
+        {::rdf/ol (.getLiteralLexicalForm o)}
         (when-let [di (.getLiteralDatatypeURI o)]
           (when-not (= di "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString")
-            {:di di}))
+            {::rdf/di di}))
         (when-not (string/blank? (.getLiteralLanguage o))
-          {:ln (.getLiteralLanguage o)}))))))
+          {::rdf/lt (.getLiteralLanguage o)}))))))
 
 (defn make-stream
   "Given a BlockingQueue, return an instance of the StreamRDF interface

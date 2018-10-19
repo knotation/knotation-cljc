@@ -24,7 +24,7 @@
        (assoc state ::event ::error ::error)))
 
 (defn update-env
-  [env {:keys [prefix iri si sb pi oi ol] :as state}]
+  [env {:keys [prefix iri ::rdf/si ::rdf/sb ::rdf/pi ::rdf/oi ::rdf/ol] :as state}]
   (cond
     (and prefix iri)
     (en/add-prefix env prefix iri)
@@ -49,10 +49,10 @@
       env)
 
     si
-    (assoc env :si si)
+    (assoc env ::rdf/si si)
 
     sb
-    (assoc env :sb sb)
+    (assoc env ::rdf/sb sb)
 
     :else
     env))

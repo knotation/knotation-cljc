@@ -1,7 +1,12 @@
 (ns org.knotation.ttl-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.spec.test.alpha :as stest]
+
             [org.knotation.rdf :as rdf]
+            [org.knotation.rdf-spec]
             [org.knotation.api :as api]))
+
+(stest/instrument)
 
 (defn test-translation
   [kn ttl]

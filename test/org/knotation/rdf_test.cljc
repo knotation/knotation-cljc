@@ -1,15 +1,20 @@
 (ns org.knotation.rdf-test
   (:require [clojure.test :refer :all]
-            [org.knotation.rdf :as rdf]))
+            [clojure.spec.alpha :as s]
+            [clojure.spec.test.alpha :as stest]
+            [org.knotation.rdf :as rdf]
+            [org.knotation.rdf-spec]))
+
+(stest/instrument)
 
 (deftest test-sequential-blank-nodes
-  (->> [{:sb "a" :ob "b"}
-        {:sb "b"}
-        {:ob "c"}
-        {:si "s" :ob "c"}]
+  (->> [#::rdf{:sb "_:a" :pi "p" :ob "_:b"}
+        #::rdf{:sb "_:b" :pi "p"}
+        #::rdf{:pi "p" :ob "_:c"}
+        #::rdf{:si "s" :pi "p" :ob "_:c"}]
        rdf/sequential-blank-nodes
-       (= [{:sb "_:b0" :ob "_:b1"}
-           {:sb "_:b1"}
-           {:ob "_:b2"}
-           {:si "s" :ob "_:b2"}])
+       (= [#::rdf{:sb "_:b0" :pi "p" :ob "_:b1"}
+           #::rdf{:sb "_:b1" :pi "p"}
+           #::rdf{:pi "p" :ob "_:b2"}
+           #::rdf{:si "s" :pi "p" :ob "_:b2"}])
        is))

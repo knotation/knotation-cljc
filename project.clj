@@ -18,6 +18,6 @@
                                    :optimizations :whitespace
                                    :pretty-print true}
                         :jar true}]}
-  :source-paths ["src"]
+  :source-paths ["src" "spec"]
   :main org.knotation.cli
   :aot [org.knotation.cli])

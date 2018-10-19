@@ -1,10 +1,16 @@
 (ns org.knotation.kn-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.spec.test.alpha :as stest]
+
             [org.knotation.util :as util]
+            [org.knotation.rdf :as rdf]
+            [org.knotation.rdf-spec]
             [org.knotation.environment :as en]
             [org.knotation.format :as fm]
             [org.knotation.kn :as kn]
             [org.knotation.api :as api]))
+
+(stest/instrument)
 
 (defn test-roundtrip-line
   [parse-fn read-fn render-fn line]
@@ -111,9 +117,9 @@ ex:p; kn:link: ex:o
           res (->> chained util/split-lines
                    (fm/read-lines :kn en/blank-env))]
       (test-roundtrip chained)
-      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "ex:o", :di "http://knotation.org/kn/link"}
+      (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "ex:o", :di "http://knotation.org/kn/link"}
              (:target (nth res 6))))
-      (is (= {:si "http://example.com/s", :pi "http://example.com/a", :ol "ex:b", :di "http://knotation.org/kn/link"}
+      (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/a", :ol "ex:b", :di "http://knotation.org/kn/link"}
              (:target (nth res 12))))))
   (testing "Non-adjacent annotations can refer to previous annotation targets"
     (let [deep-chain "@prefix ex: <http://example.com/>
@@ -126,11 +132,11 @@ ex:p: A
           res (->> deep-chain util/split-lines
                    (fm/read-lines :kn en/blank-env))]
       (test-roundtrip deep-chain)
-      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
+      (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
              (:target (nth res 5))))
-      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "B is an annotation on A"}
+      (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "B is an annotation on A"}
              (:target (nth res 11))))
-      (is (= {:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
+      (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
              (:target (nth res 17))))))
   (testing "Annotations can have multi-line strings"
     (test-roundtrip "@prefix ex: <http://example.com/>

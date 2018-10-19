@@ -127,12 +127,12 @@
   (if-let [name (-> parse fm/parse-map :name)]
     (if-let [iri (ln/->iri env name)]
       {:event :subject-start
-       :si iri}
+       ::rdf/si iri}
       (util/error :unrecognized-name name))
     (util/error :not-a-subject-parse parse)))
 
 (defn render-subject
-  [env {:keys [si sb] :as state}]
+  [env {:keys [::rdf/si ::rdf/sb] :as state}]
   (cond
     sb
     [::subject-line
@@ -202,7 +202,7 @@
   [env language datatype content]
   (cond
     (string? language)
-    {:ol content :ln language}
+    #::rdf{:ol content :lt language}
 
     (string? datatype)
     (case datatype
@@ -212,16 +212,16 @@
       "https://knotation.org/kn/omn"
       (let [res (omn/read-class-string env content)]
         (merge
-         {:states (map #(assoc % :di datatype) res)
-          :di datatype}
+         {:states (map #(assoc % ::rdf/di datatype) res)
+          ::rdf/di datatype}
          (omn/->obj env res)))
 
       ; TODO: warn on unrecognized Knotation datatype
       ;(string/starts-with? datatype "https://knotation.org/kn/")
 
-      {:ol content :di datatype})
+      #::rdf{:ol content :di datatype})
 
-    :else {:ol content}))
+    :else #::rdf{:ol content}))
 
 (defn read-object
   "Read the object part of a statement, with its language or datatype,
@@ -262,7 +262,7 @@
           (assoc
            object
            :event :statement
-           :pi predicate-iri)
+           ::rdf/pi predicate-iri)
           (util/error :unrecognized-object parse))
         (util/error :unrecognized-datatype datatype-name))
       (util/error :unrecognized-predicate predicate-name))))
@@ -275,12 +275,12 @@
 (defn render-datatype
   "Render the datatype part of a statement.
    Handles default dataypes and languages."
-  [env predicate-iri {:keys [oi ob ol di ln] :as object}]
+  [env predicate-iri {:keys [::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt] :as object}]
   (cond
-    (and ln (not= ln (en/get-language env predicate-iri)))
+    (and lt (not= lt (en/get-language env predicate-iri)))
     [[:symbol ";"]
      [:space " "]
-     [:name (str "@" ln)]]
+     [:name (str "@" lt)]]
     (and di (not= di (en/get-datatype env predicate-iri)))
     [[:symbol ";"]
      [:space " "]
@@ -290,7 +290,7 @@
 
 (defn render-object
   "Render the lexical part of a statement."
-  [env {:keys [oi ob ol di ln] :as object}]
+  [env {:keys [::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt] :as object}]
   (cond
     oi
     [[:space " "]
@@ -310,7 +310,7 @@
     (util/error :not-an-object object)))
 
 (defn render-statement
-  [env {:keys [pi] :as state}]
+  [env {:keys [::rdf/pi] :as state}]
   (if pi
     (if-let [predicate-name (ln/iri->name env pi)]
       (concat
@@ -341,10 +341,12 @@
      (->> parses rest (mapcat rest)))
     (first parses)))
 
+(def rdf-keys [:rt ::rdf/gi ::rdf/si ::rdf/sb ::rdf/pi ::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt])
+
 (defn process-annotation
   [prev s]
   (if (= (:event s) :annotation)
-    (let [tgt (select-keys prev [:rt :gi :si :sb :pi :oi :ob :ol :di :ln])
+    (let [tgt (select-keys prev rdf-keys)
           ann-prev? (= (:event prev) :annotation)]
       (cond (and (not ann-prev?) (> (:level s) 1))
             (util/error :invalid-annotation-level (->> s :input :parse))
@@ -367,10 +369,10 @@
 
 (def -blank-node-table (atom {}))
 (defn blank-node-of [target]
-  (let [target (select-keys target [:rt :gi :si :sb :pi :oi :ob :ol :di :ln])]
+  (let [target (select-keys target rdf-keys)]
     (get @-blank-node-table target)))
 (defn blank-node-of! [target]
-  (let [target (select-keys target [:rt :gi :si :sb :pi :oi :ob :ol :di :ln])]
+  (let [target (select-keys target rdf-keys)]
     (if (not (get @-blank-node-table target))
       (swap! -blank-node-table #(assoc % target (rdf/random-blank-node))))
     (get @-blank-node-table target)))
@@ -380,17 +382,17 @@
   (mapcat
    (fn [state]
      (if (= :annotation (:event state))
-       (let [{:keys [:si :sb] :as target} (:target state)
+       (let [{:keys [::rdf/si ::rdf/sb] :as target} (:target state)
              b1 (blank-node-of! state)
              source (if-let [bnode (blank-node-of target)]
-                      {:ob bnode}
-                      (if si {:oi si} {:ob sb}))]
+                      {::rdf/ob bnode}
+                      (if si {::rdf/oi si} {::rdf/ob sb}))]
          [(dissoc state :stack :level)
-          {:sb b1 :pi (rdf "type") :oi (owl "Annotation")}
-          (merge {:sb b1 :pi (owl "annotatedSource")} source)
-          {:sb b1 :pi (owl "annotatedProperty") :oi (:pi target)}
-          (merge {:sb b1 :pi (owl "annotatedTarget")} (select-keys target [:oi :ob :ol]))
-          (merge {:sb b1} (select-keys state [:pi :oi :ob :ol]))])
+          #::rdf{:sb b1 :pi (rdf "type") :oi (owl "Annotation")}
+          (merge #::rdf{:sb b1 :pi (owl "annotatedSource")} source)
+          #::rdf{:sb b1 :pi (owl "annotatedProperty") :oi (::rdf/pi target)}
+          (merge #::rdf{:sb b1 :pi (owl "annotatedTarget")} (select-keys target [::rdf/oi ::rdf/ob ::rdf/ol]))
+          (merge #::rdf{:sb b1} (select-keys state [::rdf/pi ::rdf/oi ::rdf/ob ::rdf/ol]))])
        [state]))
    ((fn rec [ss]
       (when (not (empty? (rest ss)))
@@ -438,11 +440,11 @@
     (map
      (fn [s]
        (case (:event s)
-         :subject-start (assoc s :zi (reset! top-subject (or (:si s) (:sb s))))
-         :subject-end (let [res (assoc s :zi @top-subject)]
+         :subject-start (assoc s ::rdf/zn (reset! top-subject (or (::rdf/si s) (::rdf/sb s))))
+         :subject-end (let [res (assoc s ::rdf/zn @top-subject)]
                         (reset! top-subject nil)
                         res)
-         (if-let [zi @top-subject] (assoc s :zi zi) s)))
+         (if-let [zi @top-subject] (assoc s ::rdf/zn zi) s)))
      states)))
 
 (defn process-default-datatypes
@@ -451,8 +453,8 @@
         ((fn rec [ss default-datatypes]
            (when (not (empty? ss))
              (let [s (first ss)
-                   new-dds (if (and (:si s) (:oi s) (= (:pi s) (kn "default-datatype")))
-                             (assoc default-datatypes (:si s) (:oi s))
+                   new-dds (if (and (::rdf/si s) (::rdf/oi s) (= (::rdf/pi s) (kn "default-datatype")))
+                             (assoc default-datatypes (::rdf/si s) (::rdf/oi s))
                              default-datatypes)
                    new-env (assoc
                             (::en/env s) ::en/predicate-datatype
@@ -497,7 +499,7 @@
    return the resulting state."
   [env parse]
   (merge
-   (select-keys env [:gi :si :sb])
+   (select-keys env [::rdf/gi ::rdf/si ::rdf/sb])
    (case (first parse)
      ::blank-line (read-blank env parse)
      ::comment-line (read-comment env parse)
@@ -512,7 +514,7 @@
    expand any templates using string substitution,
    returning the pair of the updated state and a sequence of new parses
    (empty if this is not a template statement)."
-  [env {:keys [pi ol] :as state}]
+  [env {:keys [::rdf/pi ::rdf/ol] :as state}]
   (if (= pi "https://knotation.org/kn/apply-template")
     (try
       (let [template-iri (->> ol
@@ -525,7 +527,7 @@
                         rest
                         (map #(string/split % #": " 2))
                         (into {}))]
-        [(assoc state :pi "https://knotation.org/kn/applied-template")
+        [(assoc state ::rdf/pi "https://knotation.org/kn/applied-template")
          (->> (string/replace
                (en/get-template-content env template-iri)
                #"\{(.*?)\}"

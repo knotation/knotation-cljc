@@ -48,7 +48,7 @@
   "Given an environment, a sequence of triple maps, and an object node,
    return a (possibly nested) sequence of strings representing the object,
    including nested lists and anonymous subjects."
-  [env triples {:keys [si pi oi ob ol di ln] :as trip}]
+  [env triples {:keys [::rdf/si ::rdf/pi ::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt] :as trip}]
   (cond
     oi (render-iri env oi)
 
@@ -70,7 +70,7 @@
     (and di (not (contains? #{(rdf/xsd "string") (rdf/kn "link")} di)))
     (str (render-lexical ol) "^^" (render-iri env di))
 
-    ln (str (render-lexical ol) "@" ln)
+    lt (str (render-lexical ol) "@" lt)
 
     ol (render-lexical ol)))
 
@@ -78,7 +78,7 @@
   "Given an environment, a sequence of triple maps, and a triple to render,
    return a (possibly nested) sequence of strings representing the statement,
    including nested lists and anonymous subjects."
-  [env triples {:keys [pi ob] :as triple}]
+  [env triples {:keys [::rdf/pi ::rdf/ob] :as triple}]
   (concat
    [(render-iri env pi)]
    (if (and ob (rdf/rdf-anonymous-subject? triples ob))
@@ -91,8 +91,8 @@
    return a sequence of strings representing the subject."
   [env triples s]
   (->> triples
-       (filter #(= s (or (:si %) (:sb %))))
-       (filter :pi)
+       (filter #(= s (or (::rdf/si %) (::rdf/sb %))))
+       (filter ::rdf/pi)
        (map (partial render-statement env triples))
        (interpose [" ;" "\n" "  "])
        flatten))
@@ -107,31 +107,31 @@
 (defn annotation-subjects
   [triples]
   (->> triples
-       (filter #(= (rdf/owl "Annotation") (:oi %)))
-       (map :sb)))
+       (filter #(= (rdf/owl "Annotation") (::rdf/oi %)))
+       (map ::rdf/sb)))
 
 (defn remove-annotations
   [triples]
   (let [subjects (set (annotation-subjects triples))]
     (->> triples
-         (remove #(contains? subjects (:sb %)))
+         (remove #(contains? subjects (::rdf/sb %)))
          (remove #(= :annotation (:event %))))))
 
 (defn render-annotation
-  [env triples zi]
+  [env triples zn]
   (->> triples
-       (filter #(= (:pi %) (rdf/rdf "type")))
-       (filter #(= (:oi %) (rdf/owl "Axiom")))
-       (map :sb)
-       (concat [(render-subject env triples zi)])
+       (filter #(= (::rdf/pi %) (rdf/rdf "type")))
+       (filter #(= (::rdf/oi %) (rdf/owl "Axiom")))
+       (map ::rdf/sb)
+       (concat [(render-subject env triples zn)])
        (map #(concat % [" ." "\n"]))
-       (map #(concat [zi "\n" "  "] %))))
+       (map #(concat [zn "\n" "  "] %))))
 
 (defn render-stanza-annotations
   [env triples]
   (mapcat
    (fn [s]
-     (let [trips (->> triples (filter #(= s (:sb %))))]
+     (let [trips (->> triples (filter #(= s (::rdf/sb %))))]
        (render-annotation env trips s)))
    (annotation-subjects triples)))
 
@@ -152,18 +152,18 @@
    return a sequence of strings representing the stanza,
    including any OWL Axioms."
   [env triples]
-  (let [{:keys [zi]} (first triples)]
-    (if zi
+  (let [{:keys [::rdf/zn]} (first triples)]
+    (if zn
       (let [un-annotated (remove-annotations triples)
             stanza (->> triples
-                        (filter #(= (:pi %) (rdf/rdf "type")))
-                        (filter #(= (:oi %) (rdf/owl "Axiom")))
-                        (map :sb)
-                        (remove #(= zi %))
+                        (filter #(= (::rdf/pi %) (rdf/rdf "type")))
+                        (filter #(= (::rdf/oi %) (rdf/owl "Axiom")))
+                        (map ::rdf/sb)
+                        (remove #(= zn %))
                         (map (partial render-subject env un-annotated))
-                        (concat [(render-subject env un-annotated zi)])
+                        (concat [(render-subject env un-annotated zn)])
                         (map #(concat
-                               [(render-iri env zi) "\n" "  "]
+                               [(render-iri env zn) "\n" "  "]
                                % [" ." "\n"]))
                         (#(concat % (render-stanza-annotations env triples)))
 
@@ -179,7 +179,7 @@
    return a (possibly nested) sequence of strings representing the stanzas."
   [env triples]
   (->> triples
-       (partition-by :zi)
+       (partition-by ::rdf/zn)
        (map (partial render-stanza env))))
 
 (defn number-output-lines

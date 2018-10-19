@@ -78,6 +78,6 @@
 (defn object->node
   [env input]
   (or (when-let [iri (->iri env input)]
-        {:oi iri})
+        {::rdf/oi iri})
       (when (re-matches #"_:\S+" input)
-        {:ob input})))
+        {::rdf/ob input})))

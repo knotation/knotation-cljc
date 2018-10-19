@@ -4,7 +4,7 @@
             [org.knotation.link :as ln]))
 
 (defn render-object
-  [env {:keys [oi ob ol di ln]}]
+  [env {:keys [::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt]}]
   (cond
     oi
     {"@id" (or (ln/iri->curie env oi) oi)
@@ -12,8 +12,8 @@
      "label" (ln/iri->label env oi)}
     ob
     {"@id" ob}
-    (and ol ln)
-    {"@value" ol "@language" ln}
+    (and ol lt)
+    {"@value" ol "@language" lt}
     (and ol di)
     {"@value" ol "@type" (or (ln/iri->name env di) di)}
     ol
@@ -28,7 +28,7 @@
          (map (juxt :prefix :iri))
          (into {}))
     (->> states
-         (mapcat #(select-keys % [:si :pi :oi :di]))
+         (mapcat #(select-keys % [::rdf/si ::rdf/pi ::rdf/oi ::rdf/di]))
          vals
          (map (fn [iri]
                 (let [label (ln/iri->label env iri)]
@@ -42,9 +42,9 @@
 (defn render-stanza-edn
   [env si states]
   (->> states
-       (filter :pi)
+       (filter ::rdf/pi)
        (reduce
-        (fn [coll {:keys [pi] :as state}]
+        (fn [coll {:keys [::rdf/pi] :as state}]
           (let [plabel (ln/iri->name env pi)]
             (assoc coll plabel (render-object env state))))
         (let [curie (ln/iri->curie env si)]

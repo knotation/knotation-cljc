@@ -36,15 +36,15 @@
       [(-> coll (update ::counter inc) (assoc node new-node)) new-node])))
 
 (defn sequential-blank-nodes
-  "Given a sequence of quad maps,
-   return a lazy sequence of quad maps with sequential blank nodes."
+  "Given a sequence of maps that might be quads,
+   return a lazy sequence of maps with sequential blank nodes."
   [quads]
   (->> quads
        (reductions
-        (fn [[coll _] {:keys [:sb :ob] :as quad}]
+        (fn [[coll _] {:keys [::sb ::ob] :as quad}]
           (let [[coll sb] (replace-blank-node coll sb)
                 [coll ob] (replace-blank-node coll ob)]
-            [coll (merge quad (when sb {:sb sb}) (when ob {:ob ob}))]))
+            [coll (merge quad (when sb {::sb sb}) (when ob {::ob ob}))]))
         [{::counter 0} nil])
        rest
        (map second)))
@@ -109,7 +109,7 @@
    return a map from objects to subjects."
   [quads]
   (reduce
-   (fn [coll {:keys [si pi sb ob oi]}]
+   (fn [coll {:keys [::si ::pi ::sb ::ob ::oi] :as quad}]
      (cond
        ob (assoc coll ob (or sb si))
        (and sb (= pi (owl "annotatedSource"))) (assoc coll sb oi)
@@ -129,7 +129,7 @@
 (defn assign-stanza
   "Given a map from objects to subjects and a quad,
    return the quad with its stanza assigned."
-  [coll {:keys [si sb] :as quad}]
+  [coll {:keys [::si ::sb] :as quad}]
   (if (or si sb)
     (assoc quad :zi (if sb (find-stanza coll sb) si))
     quad))
@@ -140,5 +140,5 @@
    and return a lazy sequence of quad maps with stanza assigned."
   [quads]
   (->> quads
-       (partition-by (fn [{:keys [sb ob]}] (boolean (or sb ob))))
+       (partition-by (fn [{:keys [::sb ::ob]}] (boolean (or sb ob))))
        (mapcat #(map (partial assign-stanza (objects-subjects %)) %))))
