@@ -1,9 +1,8 @@
 (ns org.knotation.ttl
   (:require [clojure.string :as string]
 
-            [org.knotation.environment :as en]
             [org.knotation.rdf :as rdf]
-            [org.knotation.link :as ln]
+            [org.knotation.environment :as en]
             [org.knotation.format :as fm]))
 
 (defn -trips [seq]
@@ -24,8 +23,8 @@
   "Given an environment and an IRI string,
    return a CURIE or a wrapped IRI string."
   [env iri]
-  (or (ln/iri->curie env iri)
-      (ln/wrap-iri iri)))
+  (or (en/iri->curie env iri)
+      (en/iri->wrapped-iri iri)))
 
 (defn indent
   "Given a sequence of strings,

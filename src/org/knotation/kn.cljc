@@ -5,7 +5,6 @@
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf :refer [owl rdf kn]]
             [org.knotation.environment :as en]
-            [org.knotation.link :as ln]
             [org.knotation.format :as fm]
             [org.knotation.omn :as omn]))
 
@@ -125,7 +124,7 @@
 (defn read-subject
   [env parse]
   (if-let [name (-> parse fm/parse-map :name)]
-    (if-let [iri (ln/->iri env name)]
+    (if-let [iri (en/name->iri env name)]
       {:event :subject-start
        ::rdf/si iri}
       (util/error :unrecognized-name name))
@@ -141,7 +140,7 @@
      [:name sb]
      [:eol "\n"]]
     si
-    (if-let [name (ln/iri->name env si)]
+    (if-let [name (en/iri->name env si)]
       [::subject-line
        [:symbol ":"]
        [:space " "]
@@ -207,7 +206,9 @@
     (string? datatype)
     (case datatype
       "https://knotation.org/kn/link"
-      (ln/object->node env content)
+      (if (rdf/blank? content)
+        {::rdf/ob content}
+        {::rdf/oi (en/name->iri env content)})
 
       "https://knotation.org/kn/omn"
       (let [res (omn/read-class-string env content)]
@@ -246,10 +247,10 @@
         predicate-name (-> names first second)
         datatype-name (-> names second second)
         leading-at? (when datatype-name (string/starts-with? datatype-name "@"))]
-    (if-let [predicate-iri (ln/->iri env predicate-name)]
+    (if-let [predicate-iri (en/name->iri env predicate-name)]
       (if (or (nil? datatype-name)
               leading-at?
-              (ln/->iri env datatype-name))
+              (when datatype-name (en/name->iri env datatype-name)))
         (if-let [object
                  (read-object
                   env
@@ -258,7 +259,7 @@
                   (when leading-at?
                     (string/replace datatype-name #"^@" ""))
                   (when-not leading-at?
-                    (ln/->iri env datatype-name)))]
+                    (when datatype-name (en/name->iri env datatype-name))))]
           (assoc
            object
            :event :statement
@@ -284,7 +285,7 @@
     (and di (not= di (en/get-datatype env predicate-iri)))
     [[:symbol ";"]
      [:space " "]
-     [:name (ln/iri->name env di)]]
+     [:name (en/iri->name env di)]]
     :else
     []))
 
@@ -294,7 +295,7 @@
   (cond
     oi
     [[:space " "]
-     [:lexical (ln/iri->name env oi)]
+     [:lexical (en/iri->name env oi)]
      [:eol "\n"]]
 
     ob
@@ -312,7 +313,7 @@
 (defn render-statement
   [env {:keys [::rdf/pi] :as state}]
   (if pi
-    (if-let [predicate-name (ln/iri->name env pi)]
+    (if-let [predicate-name (en/iri->name env pi)]
       (concat
        [::statement-block
         [:name predicate-name]]
@@ -521,7 +522,7 @@
                               util/split-lines
                               first
                               string/trim
-                              (ln/->iri env))
+                              (en/name->iri env))
             values (->> ol
                         util/split-lines
                         rest

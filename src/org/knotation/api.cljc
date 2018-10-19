@@ -2,9 +2,8 @@
   (:require [clojure.string :as string]
 
             [org.knotation.util :as util]
-            [org.knotation.environment :as env]
+            [org.knotation.environment :as en]
             [org.knotation.state :as st]
-            [org.knotation.link :as ln]
             [org.knotation.format :as fmt]
 
             org.knotation.kn
@@ -13,28 +12,28 @@
             org.knotation.tsv))
 
 ;; Environments
-(def add-base env/add-base)
-(def add-prefix env/add-prefix)
-(def add-label env/add-label)
-(def set-datatype env/set-datatype)
-(def set-language env/set-language)
-(def set-template-content env/set-template-content)
-(def default-env env/default-env)
+(def add-base en/add-base)
+(def add-prefix en/add-prefix)
+(def add-label en/add-label)
+(def set-datatype en/set-datatype)
+(def set-language en/set-language)
+(def set-template-content en/set-template-content)
+(def default-env en/default-env)
 
-(defn labels [env] (::env/label-seq env))
-(defn prefixes [env] (::env/prefix-seq env))
+(defn labels [env] (::en/label-seq env))
+(defn prefixes [env] (::en/prefix-seq env))
 (defn prefix-states [env]
   (map (fn [[prefix iri]]
          {:event :prefix
           :prefix prefix
           :iri iri})
-       (::env/prefix-iri env)))
+       (::en/prefix-iri env)))
 
-(def find-prefix ln/find-prefix)
-(def ->iri ln/->iri)
-(def iri->name ln/iri->name)
-(def iri->curie ln/iri->curie)
-(def iri->label ln/iri->label)
+(def find-prefix en/find-prefix)
+(def name->iri en/name->iri)
+(def iri->name en/iri->name)
+(def iri->curie en/iri->curie)
+(def iri->label en/iri->label)
 
 ;; State queries
 (defn graph-end? [s] (= :graph-end (:event s)))
@@ -52,7 +51,7 @@
 ;; State collection queries
 (defn env-of
   [h]
-  (::env/env (last h)))
+  (::en/env (last h)))
 
 (defn errors-of
   [h]

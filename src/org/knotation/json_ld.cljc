@@ -1,21 +1,21 @@
 (ns org.knotation.json-ld
   (:require [clojure.data.json :as json]
             [org.knotation.rdf :as rdf]
-            [org.knotation.link :as ln]))
+            [org.knotation.environment :as en]))
 
 (defn render-object
   [env {:keys [::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt]}]
   (cond
     oi
-    {"@id" (or (ln/iri->curie env oi) oi)
+    {"@id" (or (en/iri->curie env oi) oi)
      "iri" oi
-     "label" (ln/iri->label env oi)}
+     "label" (en/iri->label env oi)}
     ob
     {"@id" ob}
     (and ol lt)
     {"@value" ol "@language" lt}
     (and ol di)
-    {"@value" ol "@type" (or (ln/iri->name env di) di)}
+    {"@value" ol "@type" (or (en/iri->name env di) di)}
     ol
     {"@value" ol}))
 
@@ -31,10 +31,10 @@
          (mapcat #(select-keys % [::rdf/si ::rdf/pi ::rdf/oi ::rdf/di]))
          vals
          (map (fn [iri]
-                (let [label (ln/iri->label env iri)]
+                (let [label (en/iri->label env iri)]
                   (when label
-                    [label (ln/iri->curie env iri)]))))
-                     ;{"@id" (ln/iri->curie env iri)
+                    [label (en/iri->curie env iri)]))))
+                     ;{"@id" (en/iri->curie env iri)
                      ; "iri" iri]))))
          (remove nil?)
          (into {})))})
@@ -45,9 +45,9 @@
        (filter ::rdf/pi)
        (reduce
         (fn [coll {:keys [::rdf/pi] :as state}]
-          (let [plabel (ln/iri->name env pi)]
+          (let [plabel (en/iri->name env pi)]
             (assoc coll plabel (render-object env state))))
-        (let [curie (ln/iri->curie env si)]
+        (let [curie (en/iri->curie env si)]
           {"@id" curie
            "iri" si
            "curie" curie}))

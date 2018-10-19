@@ -6,7 +6,9 @@
             [org.knotation.environment :as en]))
 
 (s/def ::en/label string?)
-(s/def ::en/prefix string?) ; TODO
+(s/def ::en/prefix (s/and string? #(re-matches #"\S+" %) #(not (re-matches #":" %))))
+(s/def ::en/curie (s/and string? #(re-matches #"(\S+):(\S+)" %)))
+(s/def ::en/wrapped-iri (s/and string? #(re-matches #"<(\S+)>" %)))
 
 (s/def ::en/prefix-iri (s/map-of ::en/prefix ::rdf/iri))
 (s/def ::en/iri-prefix (s/map-of ::rdf/iri ::en/prefix))
@@ -26,6 +28,8 @@
                               ::en/label-iri ::en/iri-label ::en/label-seq
                               ::en/predicate-datatype ::en/predicate-language
                               ::en/template-content]))
+
+;; # Update environment
 
 (s/fdef en/add-base
         :args (s/cat :env ::en/env :base ::rdf/iri)
@@ -61,4 +65,58 @@
 
 (s/fdef en/get-template-content
         :args (s/cat :env ::en/env :template ::rdf/subject)
+        :ret string?)
+
+;; # Conversions
+
+(s/fdef en/wrapped-iri?
+        :args (s/cat :input string?)
+        :ret boolean?)
+
+(s/fdef en/http-url?
+        :args (s/cat :input string?)
+        :ret boolean?)
+
+(s/fdef en/wrapped-iri->iri
+        :args (s/cat :wrapped-iri string?)
+        :ret (s/nilable ::rdf/iri))
+
+(s/fdef en/label->iri
+        :args (s/cat :env ::en/env :label ::en/label)
+        :ret (s/nilable ::rdf/iri))
+
+(s/fdef en/curie->iri
+        :args (s/cat :env ::en/env :curie ::en/curie)
+        :ret (s/nilable ::rdf/iri))
+
+(s/fdef en/name->iri
+        :args (s/cat :env ::en/env :input string?)
+        :ret ::rdf/iri)
+
+(s/fdef en/find-prefix
+        :args (s/cat :env ::en/env :prefix ::en/prefix)
+        :ret (s/nilable ::rdf/iri))
+
+(s/fdef en/iri->curie
+        :args (s/cat :env ::en/env :iri ::rdf/iri)
+        :ret (s/nilable ::rdf/curie))
+
+(s/fdef en/iri->http-url
+        :args (s/cat :env ::en/env :iri ::rdf/iri)
+        :ret (s/nilable ::rdf/iri))
+
+(s/fdef en/wrap-iri
+        :args (s/cat :iri ::rdf/iri)
+        :ret ::en/wrapped-iri)
+
+(s/fdef en/iri->wrapped-iri
+        :args (s/cat :iri ::rdf/iri)
+        :ret ::en/wrapped-iri)
+
+(s/fdef en/iri->label
+        :args (s/cat :env ::en/env :iri ::rdf/iri)
+        :ret (s/nilable ::rdf/label))
+
+(s/fdef en/iri->name
+        :args (s/cat :env ::en/env :iri ::rdf/iri)
         :ret string?)

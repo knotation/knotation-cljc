@@ -3,8 +3,7 @@
             [instaparse.core :as insta] ;; #?(:clj :refer :cljs :refer-macros) [defparser]
             [org.knotation.util :as util :refer [throw-exception]]
             [org.knotation.rdf :as rdf :refer [owl rdf]]
-            [org.knotation.environment :as en]
-            [org.knotation.link :as ln]))
+            [org.knotation.environment :as en]))
 
 (def manchester-grammar "
 CLASS_EXPRESSION = '(' SPACE? CLASS_EXPRESSION SPACE? ')' SPACE?
@@ -47,7 +46,7 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
                 (and (string? (first elem)) {:ob (first elem)})
                 (util/error :invalid-object-extraction subtree))]
     (if (contains? obj :ol)
-      {:oi (ln/->iri env (:ol obj))}
+      {:oi (en/name->iri env (:ol obj))}
       obj)))
 
 (declare read-class-expression)
@@ -98,7 +97,7 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
   (case (first parse)
     (:CLASS_EXPRESSION :OBJECT_PROPERTY_EXPRESSION)
     (read-class-expression env (->> parse (remove string?) (remove keyword?) first))
-    
+
     :LABEL {:ol (nth parse 2)}
     :SOME (read-restriction env parse (owl "someValuesFrom"))
     :ONLY (read-restriction env parse (owl "allValuesFrom"))
