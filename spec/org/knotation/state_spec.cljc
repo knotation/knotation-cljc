@@ -17,6 +17,7 @@
 (s/def ::st/source string?)
 (s/def ::st/line-number number?)
 (s/def ::st/lines (s/coll-of string?))
+(s/def ::st/content string?)
 
 (s/def ::st/input (s/keys :req [::st/format ::st/source ::st/line-number ::st/lines]))
 (s/def ::st/parse vector?)
@@ -32,12 +33,15 @@
     ::st/statement
     ::st/header})
 
-(s/def ::st/output (s/keys :req [::st/format ::st/line-number ::st/lines]))
+(s/def ::st/output (s/keys :req [::st/format ::st/content]
+                           :opt [::st/line-number]))
 
 (s/def ::st/state (s/keys :opt [::st/error ::en/env
                                 ::st/input ::st/parse
                                 ::st/event ::rdf/quad
                                 ::st/output]))
+(s/def ::st/states (s/coll-of ::st/state))
+
 (s/fdef st/update-env
         :args (s/cat :env ::en/env :state ::st/state)
         :ret ::en/env)
