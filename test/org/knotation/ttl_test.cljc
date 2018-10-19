@@ -3,7 +3,8 @@
             [orchestra.spec.test :as stest]
 
             [org.knotation.rdf :as rdf]
-            [org.knotation.state-spec]
+            [org.knotation.ttl :as ttl]
+            [org.knotation.ttl-spec]
             [org.knotation.api :as api]))
 
 (stest/instrument)

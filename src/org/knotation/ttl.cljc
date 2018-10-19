@@ -44,25 +44,25 @@
     (str "\"" ol "\"")))
 
 (defn render-object
-  "Given an environment, a sequence of triple maps, and an object node,
+  "Given an environment, a sequence of states, and an object node,
    return a (possibly nested) sequence of strings representing the object,
    including nested lists and anonymous subjects."
-  [env triples {:keys [::rdf/si ::rdf/pi ::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt] :as trip}]
+  [env states {::rdf/keys [si pi oi ob ol di lt] :as trip}]
   (cond
     oi (render-iri env oi)
 
-    (and ob (rdf/rdf-list? triples ob))
+    (and ob (rdf/rdf-list? states ob))
     (concat
      ["(" "\n" "    "]
-     (->> (rdf/collect-list triples ob)
-          (map (partial render-object env triples))
+     (->> (rdf/collect-list states ob)
+          (map (partial render-object env states))
           (interpose ["\n" "  "])
           flatten
           indent)
      ["\n" "  " ")"])
 
-    (and ob (rdf/rdf-anonymous-subject? triples ob))
-    (concat ["[ "] (render-subject env triples ob) [" ]"])
+    (and ob (rdf/rdf-anonymous-subject? states ob))
+    (concat ["[ "] (render-subject env states ob) [" ]"])
 
     ob ob
 
@@ -74,25 +74,25 @@
     ol (render-lexical ol)))
 
 (defn render-statement
-  "Given an environment, a sequence of triple maps, and a triple to render,
+  "Given an environment, a sequence of states, and a triple to render,
    return a (possibly nested) sequence of strings representing the statement,
    including nested lists and anonymous subjects."
-  [env triples {:keys [::rdf/pi ::rdf/ob] :as triple}]
+  [env states {::rdf/keys [pi ob] :as triple}]
   (concat
    [(render-iri env pi)]
-   (if (and ob (rdf/rdf-anonymous-subject? triples ob))
+   (if (and ob (rdf/rdf-anonymous-subject? states ob))
      ["\n" "  "]
      [" "])
-   [(render-object env triples triple)]))
+   [(render-object env states triple)]))
 
 (defn render-subject
-  "Given an environment, a sequence of triple maps, and a subject node,
+  "Given an environment, a sequence of states, and a subject node,
    return a sequence of strings representing the subject."
-  [env triples s]
-  (->> triples
+  [env states s]
+  (->> states
        (filter #(= s (or (::rdf/si %) (::rdf/sb %))))
        (filter ::rdf/pi)
-       (map (partial render-statement env triples))
+       (map (partial render-statement env states))
        (interpose [" ;" "\n" "  "])
        flatten))
 
@@ -147,14 +147,13 @@
        #(concat % ["\n"]))))))
 
 (defn render-stanza
-  "Given an environment and a sequence of triple maps for a single stanza,
-   return a sequence of strings representing the stanza,
-   including any OWL Axioms."
-  [env triples]
-  (let [{:keys [::rdf/zn]} (first triples)]
+  "Given an environment and a sequence of states for a single stanza,
+   return a sequence of states with rendered :output."
+  [env states]
+  (let [{:keys [::rdf/zn]} (first states)]
     (if zn
-      (let [un-annotated (remove-annotations triples)
-            stanza (->> triples
+      (let [un-annotated (remove-annotations states)
+            stanza (->> states
                         (filter #(= (::rdf/pi %) (rdf/rdf "type")))
                         (filter #(= (::rdf/oi %) (rdf/owl "Axiom")))
                         (map ::rdf/sb)
@@ -164,22 +163,22 @@
                         (map #(concat
                                [(render-iri env zn) "\n" "  "]
                                % [" ." "\n"]))
-                        (#(concat % (render-stanza-annotations env triples)))
+                        (#(concat % (render-stanza-annotations env states)))
 
                         (interpose "\n"))]
-        (cons (add-to-output (first triples) stanza) (rest triples)))
-      (let [res (map render-declaration triples)]
+        (cons (add-to-output (first states) stanza) (rest states)))
+      (let [res (map render-declaration states)]
         (if (empty? (remove #(contains? #{:graph-start :graph-end :comment :blank} (:event %)) res))
           res
           (ensure-ending-newline res))))))
 
 (defn render-stanzas
-  "Given an environment and a sequence of triple maps for zero or more stanzas,
-   return a (possibly nested) sequence of strings representing the stanzas."
-  [env triples]
-  (->> triples
+  "Given an environment and a sequence of states for zero or more stanzas,
+   return a lazy sequence of states with rendered output."
+  [env states]
+  (->> states
        (partition-by ::rdf/zn)
-       (map (partial render-stanza env))))
+       (mapcat (partial render-stanza env))))
 
 (defn number-output-lines
   [states]
@@ -197,11 +196,15 @@
          :line-count (if (zero? cct) ct cct)))))
    states))
 
-(defmethod fm/render-states
-  :ttl
-  [fmt env states]
+(defn render-states
+  [env states]
   (->> states
        (render-stanzas env)
        flatten
        ensure-ending-newline
        number-output-lines))
+
+(defmethod fm/render-states
+  :ttl
+  [fmt env states]
+  (render-states env states))
