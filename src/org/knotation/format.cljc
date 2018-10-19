@@ -273,6 +273,8 @@
        (reductions
         (fn [previous parse]
           (let [[previous-env _ previous-state] (last previous)
+                previous-env (or previous-env en/blank-env)
+                previous-state (or previous-state st/blank-state)
                 env (st/update-env previous-env previous-state)
                 state (read-parse fmt env parse)
                 [state expanded-parses] (expand-state fmt env state)]
@@ -315,7 +317,9 @@
   (->> states
        (reductions
         (fn [[previous-env previous-state _] state]
-          (let [env (st/update-env previous-env previous-state)]
+          (let [previous-env (or previous-env en/blank-env)
+                previous-state (or previous-state st/blank-state)
+                env (st/update-env previous-env previous-state)]
             [env state (render-state fmt env state)]))
         [env nil nil])
        rest))

@@ -3,7 +3,7 @@
             [clojure.spec.test.alpha :as stest]
 
             [org.knotation.rdf :as rdf]
-            [org.knotation.environment-spec]
+            [org.knotation.state-spec]
             [org.knotation.api :as api]))
 
 (stest/instrument)

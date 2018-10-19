@@ -24,6 +24,8 @@
        (assoc state ::event ::error ::error)))
 
 (defn update-env
+  "Given an environment and a state,
+   return an updated environment."
   [env {:keys [prefix iri ::rdf/si ::rdf/sb ::rdf/pi ::rdf/oi ::rdf/ol] :as state}]
   (cond
     (and prefix iri)

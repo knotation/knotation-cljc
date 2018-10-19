@@ -4,8 +4,8 @@
 
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
-            [org.knotation.rdf-spec]
             [org.knotation.environment :as en]
+            [org.knotation.state-spec]
             [org.knotation.format :as fm]
             [org.knotation.kn :as kn]
             [org.knotation.api :as api]))
