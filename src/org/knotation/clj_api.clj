@@ -7,7 +7,6 @@
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
-            [org.knotation.format :as fm]
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
             [org.knotation.ttl :as ttl]

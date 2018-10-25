@@ -4,20 +4,6 @@
             [org.knotation.environment :as en]
             [org.knotation.state :as st]))
 
-(defonce formats (atom {}))
-
-(def default-format
-  {::process-parses identity
-   ::expand-state (fn [x] [x])})
-
-; TODO: Check for required keys
-(defn register!
-  [{:keys [::name] :as format}]
-  (swap! formats assoc name (merge default-format format)))
-
-(defn file-format
-  [path]
-  :kn)
 
 ; The basic steps for reading are:
 ; - parse a line (string) to a parse vector

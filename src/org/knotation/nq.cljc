@@ -3,8 +3,7 @@
 
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en :refer [wrap-iri]]
-            [org.knotation.state :as st]
-            [org.knotation.format :as fm]))
+            [org.knotation.state :as st]))
 
 (defn render-quad
   [{::rdf/keys [gi si sb pi oi ob ol di lt] :as quad}]

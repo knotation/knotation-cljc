@@ -3,10 +3,7 @@
 
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
-            [org.knotation.format :as fm]))
-
-(defn -trips [seq]
-  (str (vec (map #(dissoc % ::en/env) seq))))
+            [org.knotation.format :as fmt]))
 
 (defn deep-line-count
   [tree]
@@ -166,7 +163,8 @@
                         (#(concat % (render-stanza-annotations env states)))
 
                         (interpose "\n"))]
-        (cons (add-to-output (first states) stanza) (rest states)))
+        (ensure-ending-newline
+         (cons (add-to-output (first states) stanza) (rest states))))
       (let [res (map render-declaration states)]
         (if (empty? (remove #(contains? #{:graph-start :graph-end :comment :blank} (:event %)) res))
           res
@@ -204,7 +202,7 @@
        ensure-ending-newline
        number-output-lines))
 
-(defmethod fm/render-states
+(defmethod fmt/render-states
   :ttl
   [fmt env states]
   (render-states env states))

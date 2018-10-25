@@ -5,7 +5,7 @@
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf :refer [owl rdf kn]]
             [org.knotation.environment :as en]
-            [org.knotation.format :as fm]
+            [org.knotation.format :as fmt]
             [org.knotation.omn :as omn]))
 
 ; A blank line contains nothing except an optional line ending.
@@ -39,7 +39,7 @@
 
 (defn read-comment
   [env parse]
-  (if-let [comment (-> parse fm/parse-map :comment)]
+  (if-let [comment (-> parse fmt/parse-map :comment)]
     {:event :comment
      :comment comment}
     (util/error :not-a-comment-parse parse)))
@@ -74,7 +74,7 @@
 
 (defn read-prefix
   [env parse]
-  (let [{:keys [keyword prefix iri]} (fm/parse-map parse)]
+  (let [{:keys [keyword prefix iri]} (fmt/parse-map parse)]
     (if (and (= keyword "prefix") prefix iri)
       {:event :prefix
        :prefix prefix
@@ -123,7 +123,7 @@
 
 (defn read-subject
   [env parse]
-  (if-let [name (-> parse fm/parse-map :name)]
+  (if-let [name (-> parse fmt/parse-map :name)]
     (if-let [iri (en/name->iri env name)]
       {:event :subject-start
        ::rdf/si iri}
@@ -557,32 +557,32 @@
 
 ; Implement format interface
 
-(defmethod fm/parse-line
+(defmethod fmt/parse-line
   :kn
   [fmt line]
   (parse-line line))
 
-(defmethod fm/process-parses
+(defmethod fmt/process-parses
   :kn
   [fmt parses]
   (process-parses parses))
 
-(defmethod fm/process-states
+(defmethod fmt/process-states
   :kn
   [fmt states]
   (process-states states))
 
-(defmethod fm/read-parse
+(defmethod fmt/read-parse
   :kn
   [fmt env parse]
   (read-parse env parse))
 
-(defmethod fm/expand-state
+(defmethod fmt/expand-state
   :kn
   [fmt env state]
   (expand-state env state))
 
-(defmethod fm/render-state
+(defmethod fmt/render-state
   :kn
   [fmt env state]
   (render-state env state))

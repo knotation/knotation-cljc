@@ -1,7 +1,7 @@
 (ns org.knotation.tsv
   (:require [clojure.string :as string]
             [org.knotation.state :as st]
-            [org.knotation.format :as fm]
+            [org.knotation.format :as fmt]
             [org.knotation.kn :as kn]))
 
 (defn parse-cell
@@ -31,27 +31,27 @@
 
 ; Implement format interface, mostly reusing Knotation format
 
-(defmethod fm/parse-lines
+(defmethod fmt/parse-lines
   :tsv
   [fmt lines]
   (parse-lines lines))
 
-(defmethod fm/process-parses
+(defmethod fmt/process-parses
   :tsv
   [fmt parses]
   (kn/process-parses parses))
 
-(defmethod fm/process-states
+(defmethod fmt/process-states
   :tsv
   [fmt states]
   (kn/process-states states))
 
-(defmethod fm/read-parse
+(defmethod fmt/read-parse
   :tsv
   [fmt env parse]
   (kn/read-parse env parse))
 
-(defmethod fm/expand-state
+(defmethod fmt/expand-state
   :tsv
   [fmt env state]
   (kn/expand-state env state))
