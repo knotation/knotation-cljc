@@ -28,15 +28,6 @@
 
 ; Parse handling functions
 
-(defn parse-map
-  "Transform a parse vector into a keyword-string map.
-   Beware of duplicate keys!"
-  [parse]
-  (->> parse
-       rest
-       (map (fn [[k v & xs]] [k v]))
-       (into {})))
-
 (defn flatten-parses
   "Given a parse vector (or sequence of parse vectors),
    return the content as a lazy sequence of strings."

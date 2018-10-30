@@ -8,6 +8,15 @@
             [org.knotation.format :as fmt]
             [org.knotation.omn :as omn]))
 
+(defn parse-map
+  "Transform a parse vector into a keyword-string map.
+   Beware of duplicate keys!"
+  [parse]
+  (->> parse
+       rest
+       (map (fn [[k v & xs]] [k v]))
+       (into {})))
+
 ; A blank line contains nothing except an optional line ending.
 
 (defn parse-blank
@@ -39,7 +48,7 @@
 
 (defn read-comment
   [env parse]
-  (if-let [comment (-> parse fmt/parse-map :comment)]
+  (if-let [comment (-> parse parse-map :comment)]
     {:event :comment
      :comment comment}
     (util/error :not-a-comment-parse parse)))
@@ -74,7 +83,7 @@
 
 (defn read-prefix
   [env parse]
-  (let [{:keys [keyword prefix iri]} (fmt/parse-map parse)]
+  (let [{:keys [keyword prefix iri]} (parse-map parse)]
     (if (and (= keyword "prefix") prefix iri)
       {:event :prefix
        :prefix prefix
@@ -123,7 +132,7 @@
 
 (defn read-subject
   [env parse]
-  (if-let [name (-> parse fmt/parse-map :name)]
+  (if-let [name (-> parse parse-map :name)]
     (if-let [iri (en/name->iri env name)]
       {:event :subject-start
        ::rdf/si iri}
