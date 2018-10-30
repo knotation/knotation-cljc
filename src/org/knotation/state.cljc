@@ -59,6 +59,56 @@
     :else
     env))
 
+(defn sequential-blank-nodes
+  "Given a sequence of states, some of which have ::rdf/quads,
+   return a lazy sequence of states with sequential blank nodes."
+  [states]
+  (->> states
+       (reductions
+        (fn [[coll _] {:keys [::rdf/quad] :as state}]
+          (if quad
+            (let [[coll sb] (rdf/replace-blank-node coll (::rdf/sb quad))
+                  [coll ob] (rdf/replace-blank-node coll (::rdf/ob quad))
+                  [coll zn] (rdf/replace-blank-node coll (when (rdf/blank? (::rdf/zn quad))
+                                                           (::rdf/zn quad)))]
+              [coll
+               (assoc
+                state
+                ::rdf/quad
+                (merge quad
+                       (when zn {::rdf/zn zn})
+                       (when sb {::rdf/sb sb})
+                       (when ob {::rdf/ob ob})))])
+            [coll state]))
+        [{::rdf/counter 0} nil])
+       rest
+       (map second)))
+
+(defn objects-subjects
+  [states]
+  (->> states
+       ::rdf/quad
+       (remove nil?)
+       (rdf/objects-subjects)))
+
+(defn assign-stanza
+  [coll {:keys [::rdf/quad] :as state}]
+  (if quad
+    (assoc state ::rdf/quad (rdf/assign-stanza coll quad))
+    state))
+
+(defn assign-stanzas
+  "Given a sequence of state maps,
+   assume that blank node constructs are consecutive,
+   and return a lazy sequence of quad maps with stanza assigned."
+  [states]
+  (->> states
+       (partition-by (fn [state]
+                       (boolean
+                        (or (get-in state [::rdf/quad ::rdf/sb])
+                            (get-in state [::rdf/quad ::rdf/ob])))))
+       (mapcat #(map (partial assign-stanza (objects-subjects %)) %))))
+
 (def blank-state
   {::event ::blank
    ::en/env {}})

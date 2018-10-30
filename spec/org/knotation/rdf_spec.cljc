@@ -51,7 +51,7 @@
 
 (s/fdef rdf/replace-blank-node
         :args (s/cat :coll map? :node (s/nilable ::rdf/subject))
-        :ret (s/tuple map? string?))
+        :ret (s/tuple map? (s/nilable string?)))
 
 (s/fdef rdf/sequential-blank-nodes
         :args (s/cat :maps (s/coll-of map?))

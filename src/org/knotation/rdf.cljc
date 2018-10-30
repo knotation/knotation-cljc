@@ -13,7 +13,7 @@
 
 (defn blank?
   [s]
-  (= "_:" (when (string? s) (subs s 0 2))))
+  (and (string? s) (clojure.string/starts-with? s "_:")))
 
 (defn random-blank-node
   "Return a random blank node (UUID)."
@@ -41,10 +41,15 @@
   [quads]
   (->> quads
        (reductions
-        (fn [[coll _] {:keys [::sb ::ob] :as quad}]
+        (fn [[coll _] {:keys [::zn ::sb ::ob] :as quad}]
           (let [[coll sb] (replace-blank-node coll sb)
-                [coll ob] (replace-blank-node coll ob)]
-            [coll (merge quad (when sb {::sb sb}) (when ob {::ob ob}))]))
+                [coll ob] (replace-blank-node coll ob)
+                [coll zn] (replace-blank-node coll (when (blank? zn) zn))]
+            [coll
+             (merge quad
+                    (when zn {::zn zn})
+                    (when sb {::sb sb})
+                    (when ob {::ob ob}))]))
         [{::counter 0} nil])
        rest
        (map second)))
@@ -121,17 +126,17 @@
   "Given a map from objects to subjects and an subject,
    return it's highest subject or itself."
   [coll sb]
-  (loop [zi sb]
-    (if (find coll zi)
-      (recur (get coll zi))
-      zi)))
+  (loop [zn sb]
+    (if (find coll zn)
+      (recur (get coll zn))
+      zn)))
 
 (defn assign-stanza
   "Given a map from objects to subjects and a quad,
    return the quad with its stanza assigned."
   [coll {:keys [::si ::sb] :as quad}]
   (if (or si sb)
-    (assoc quad :zi (if sb (find-stanza coll sb) si))
+    (assoc quad ::zn (if sb (find-stanza coll sb) si))
     quad))
 
 (defn assign-stanzas

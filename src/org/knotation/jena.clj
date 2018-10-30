@@ -1,8 +1,12 @@
 (ns org.knotation.jena
+  (:refer-clojure :exclude [read-string])
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
 
-            [org.knotation.rdf :as rdf])
+            [org.knotation.rdf :as rdf]
+            [org.knotation.environment :as en]
+            [org.knotation.state :as st]
+            [org.knotation.format :as fmt])
   (:import (java.io InputStream ByteArrayInputStream)
            (java.util.concurrent BlockingQueue LinkedBlockingQueue TimeUnit)
            (org.apache.jena.graph Triple Node_URI Node_Blank Node_Literal)
@@ -18,11 +22,13 @@
    try to return an RDF Lang (file format)."
   ^Lang
   [format]
-  (or (when (instance? Lang format) format)
-      (when (string? format) (RDFLanguages/nameToLang format))
-      (when (string? format) (RDFLanguages/contentTypeToLang ^String format))
-      (when (string? format) (RDFLanguages/filenameToLang format))
-      (throw (Exception. (str "Could not determine format: " format)))))
+  (let [format (if (keyword? format) (name format) format)]
+    (or (when (instance? Lang format) format)
+        (when (string? format) (RDFLanguages/nameToLang format))
+        (when (string? format) (RDFLanguages/nameToLang (string/upper-case format)))
+        (when (string? format) (RDFLanguages/contentTypeToLang ^String format))
+        (when (string? format) (RDFLanguages/filenameToLang format))
+        (throw (Exception. (str "Could not determine format: " format))))))
 
 (defn read-triple
   "Given a Triple, return an RDF map with just the required values."
@@ -60,14 +66,14 @@
     (^void start  [_]
       (.put queue :start))
     (^void triple [_ ^Triple triple]
-      (.put queue (read-triple triple)))
+      (.put queue {::st/event ::st/statement ::rdf/quad (read-triple triple)}))
     (^void quad   [_ ^Quad quad])
       ; TODO: read-quad
       ;(.put queue quad))
     (^void base   [_ ^String base]
-      (.put queue {:base base}))
+      (.put queue {::st/event ::st/base :base base}))
     (^void prefix [_ ^String prefix ^String iri]
-      (.put queue {:prefix prefix :iri iri}))
+      (.put queue {::st/event ::st/prefix :prefix prefix :iri iri}))
     (^void finish [_]
       (.put queue :finish))))
 
@@ -88,9 +94,18 @@
        :start (queue->lazy-seq queue)
        (cons item (queue->lazy-seq queue))))))
 
-(defn read-triples
-  "Given a path to an RDF/OWL file, return a lazy sequence of RDF maps."
+(defn read-input
+  "Given a format string and an input stream for RDF data,
+   return a lazy sequence of RDF triple maps."
   [^String fmt ^InputStream input]
   (let [^BlockingQueue queue (LinkedBlockingQueue. 10000)]
     (.start (Thread. #(RDFDataMgr/parse (make-stream queue) input (get-format fmt))))
-    (queue->lazy-seq queue)))
+    (->> queue
+         queue->lazy-seq
+         st/assign-stanzas)))
+
+(defn read-string
+  "Given a format string and an input string of RDF data,
+   return a lazy sequence of RDF triple maps."
+  [^String fmt ^String input]
+  (read-input fmt (java.io.ByteArrayInputStream. (.getBytes input "UTF-8"))))

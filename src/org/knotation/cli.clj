@@ -2,7 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :refer [parse-opts]]
-            [org.knotation.rdf :as rdf]
+            [org.knotation.state :as st]
             [org.knotation.api :as ap]
             [org.knotation.clj-api :as api])
   (:gen-class))
@@ -65,7 +65,7 @@ Options:
                     nil
                     arguments)
             in (if (:sequential-blank-nodes options)
-                 (rdf/sequential-blank-nodes in-raw)
+                 (st/sequential-blank-nodes in-raw)
                  in-raw)
             out (if (:output options)
                   (io/file (:output options))

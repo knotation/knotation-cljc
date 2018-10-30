@@ -58,7 +58,7 @@
    return a lazy sequence of state maps."
   [fmt env input]
   (case fmt
-    (:nt :ttl :rdfxml) (jena/read-triples (name fmt) input)
+    (:nt :ttl :rdfxml) (jena/read-input (name fmt) input)
     (:kn :tsv)  (api/read-lines fmt env (line-seq (io/reader input)))
     (throw (Exception. (format "Unsupported read format '%s'" fmt)))))
 
@@ -82,7 +82,6 @@
         [nil []])
        rest
        (mapcat second)))
-
 
 (defn read-string
   "Given a format keyword, an initial environment (or nil), and a content string

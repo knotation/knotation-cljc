@@ -28,6 +28,7 @@
     ::st/comment
     ::st/space
     ::st/prefix
+    ::st/base
     ::st/graph-start ::st/graph-end
     ::st/subject-start ::st/subject-end
     ::st/statement
