@@ -8,6 +8,7 @@
             [org.knotation.state-spec]
             [org.knotation.format :as fm]
             [org.knotation.kn :as kn]
+            [org.knotation.kn-spec]
             [org.knotation.api :as api]))
 
 (stest/instrument)

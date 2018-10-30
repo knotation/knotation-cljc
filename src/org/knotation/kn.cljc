@@ -398,11 +398,11 @@
                       {::rdf/ob bnode}
                       (if si {::rdf/oi si} {::rdf/ob sb}))]
          [(dissoc state :stack :level)
-          #::rdf{:sb b1 :pi (rdf "type") :oi (owl "Annotation")}
-          (merge #::rdf{:sb b1 :pi (owl "annotatedSource")} source)
-          #::rdf{:sb b1 :pi (owl "annotatedProperty") :oi (::rdf/pi target)}
-          (merge #::rdf{:sb b1 :pi (owl "annotatedTarget")} (select-keys target [::rdf/oi ::rdf/ob ::rdf/ol]))
-          (merge #::rdf{:sb b1} (select-keys state [::rdf/pi ::rdf/oi ::rdf/ob ::rdf/ol]))])
+          {:event :annotation ::rdf/sb b1 ::rdf/pi (rdf "type") ::rdf/oi (owl "Annotation")}
+          (merge {:event :annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedSource")} source)
+          {:event :annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedProperty") ::rdf/oi (::rdf/pi target)}
+          (merge {:event :annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedTarget")} (select-keys target [::rdf/oi ::rdf/ob ::rdf/ol]))
+          (merge {:event :annotation ::rdf/sb b1} (select-keys state [::rdf/pi ::rdf/oi ::rdf/ob ::rdf/ol]))])
        [state]))
    ((fn rec [ss]
       (when (not (empty? (rest ss)))
@@ -552,7 +552,6 @@
 (defn render-state
   [env {:keys [:event] :as state}]
   (case event
-    nil nil
     :blank (render-blank env state)
     :comment (render-comment env state)
     :prefix (render-prefix env state)
