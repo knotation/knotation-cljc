@@ -3,7 +3,7 @@
             [clojure.data.json :as json]
             [org.knotation.util :as util]
             [org.knotation.environment :as en]
-            [org.knotation.format :as fm]
+            [org.knotation.api :as api]
             [org.knotation.kn :as kn]
             [org.knotation.json-ld :as json-ld]))
 
@@ -46,6 +46,6 @@ obsolete; boolean: true")
 (deftest test-json-ld
   (is (= (->> example-kn
               clojure.string/split-lines
-              (fm/read-lines :kn env)
+              (api/read-lines :kn env)
               (json-ld/render-stanza-edn env "http://ex.com/foo"))
          example-json-ld)))

@@ -67,8 +67,10 @@
 
 ;; Processing to/from state
 (defn read-lines
-  ([format lines] (read-lines format default-env lines))
-  ([format env lines] (fmt/read-lines format env lines)))
+  ([format lines]
+   (read-lines format default-env lines))
+  ([format env lines]
+   (fmt/read-parses format env (fmt/parse-lines format lines))))
 
 (defn read-from
   ([format thing] (read-from format default-env thing))

@@ -96,7 +96,7 @@ ex:label: Foo Bar
 
 > ex:p: This annotation has no target and should therefore error"
                    util/split-lines
-                   (fm/read-lines :kn en/blank-env))]
+                   (api/read-lines :kn en/blank-env))]
       (is (api/any-errors? res))
       (is (->> (nth res 3) api/error-type (= :no-annotation-target)))))
   (testing "Annotations start with pointies"
@@ -115,7 +115,7 @@ ex:p; kn:link: ex:o
 > ex:a; kn:link: ex:b
 >> ex:c; kn:link: ex:d"
           res (->> chained util/split-lines
-                   (fm/read-lines :kn en/blank-env))]
+                   (api/read-lines :kn en/blank-env))]
       (test-roundtrip chained)
       (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "ex:o", :di "http://knotation.org/kn/link"}
              (:target (nth res 6))))
@@ -130,7 +130,7 @@ ex:p: A
 >> ex:p: C is an annotation on B
 > ex:p: D is an annotation on A"
           res (->> deep-chain util/split-lines
-                   (fm/read-lines :kn en/blank-env))]
+                   (api/read-lines :kn en/blank-env))]
       (test-roundtrip deep-chain)
       (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
              (:target (nth res 5))))

@@ -277,16 +277,6 @@
        insert-subject-events
        (process-states fmt)))
 
-(defmulti read-lines
-  "Given an initial environment, a format keyword, and a sequence of lines,
-   return a lazy sequence of states."
-  (fn [fmt env lines] fmt))
-
-(defmethod read-lines
-  :default
-  [fmt env lines]
-  (read-parses fmt env (parse-lines fmt lines)))
-
 (defn inner-render-states
   "Given an initial environment, a format keyword, and a sequence of states,
    return a lazy sequence of [env state parse] triples."
