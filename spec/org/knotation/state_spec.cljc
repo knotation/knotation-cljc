@@ -31,6 +31,7 @@
     ::st/graph-start ::st/graph-end
     ::st/subject-start ::st/subject-end
     ::st/statement
+    ::st/annotation
     ::st/header})
 
 (s/def ::st/output (s/keys :req [::st/format ::st/content]

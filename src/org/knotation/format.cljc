@@ -1,9 +1,9 @@
 (ns org.knotation.format
   (:require [clojure.string :as string]
             [org.knotation.util :as util]
+            [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]))
-
 
 ; The basic steps for reading are:
 ; - parse a line (string) to a parse vector
@@ -141,13 +141,13 @@
   "Given a sequence of states with the same subject,
    ensure that the subject-start state is present."
   [states]
-  (let [{first-event :event :as first-state} (first states)
+  (let [{first-event ::st/event :as first-state} (first states)
         subject (:si first-state)]
     (concat
-     (when (and subject (not= first-event :subject-start))
+     (when (and subject (not= first-event ::st/subject-start))
        [(-> first-state
             (select-keys subject-keys)
-            (assoc :event :subject-start))])
+            (assoc ::st/event ::st/subject-start))])
      states)))
 
 (defn insert-subject-end
@@ -156,18 +156,18 @@
    If the last state is a blank line, it will still be last
    but without a subject."
   [states]
-  (let [{last-event :event :as last-state} (last states)
+  (let [{last-event ::st/event :as last-state} (last states)
         subject (:si last-state)]
     (concat
-     (if (= last-event :blank)
+     (if (= last-event ::st/blank)
        (butlast states)
        states)
-     (when (and subject (not= last-event :subject-end))
+     (when (and subject (not= last-event ::st/subject-end))
        [(-> last-state
             (select-keys subject-keys)
-            (assoc :event :subject-end))])
-     (when (= last-event :blank)
-       [(dissoc last-state :si)]))))
+            (assoc ::st/event ::st/subject-end))])
+     (when (= last-event ::st/blank)
+       [(dissoc last-state ::rdf/si)]))))
 
 (defn insert-subject-events
   "Given a sequence of states,
@@ -184,27 +184,27 @@
   "Given a sequence of states with the same graph,
    ensure that the graph-start state is present."
   [states]
-  (let [{first-event :event :as first-state} (first states)
+  (let [{first-event ::st/event :as first-state} (first states)
         graph (:gi first-state)]
     (concat
-     (when (not= first-event :graph-start)
+     (when (not= first-event ::st/graph-start)
        [(-> first-state
             (select-keys graph-keys)
-            (assoc :event :graph-start))])
+            (assoc ::st/event ::st/graph-start))])
      states)))
 
 (defn insert-graph-end
   "Given a sequence of states with the same graph,
    ensure that the graph-end state is present."
   [states]
-  (let [{last-event :event :as last-state} (last states)
+  (let [{last-event ::st/event :as last-state} (last states)
         graph (:gi last-state)]
     (concat
      states
-     (when (not= last-event :graph-end)
+     (when (not= last-event ::st/graph-end)
        [(-> last-state
             (select-keys graph-keys)
-            (assoc :event :graph-end))]))))
+            (assoc ::st/event ::st/graph-end))]))))
 
 (defn insert-graph-events
   "Given a sequence of states,

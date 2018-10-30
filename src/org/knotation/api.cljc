@@ -24,7 +24,7 @@
 (defn prefixes [env] (::en/prefix-seq env))
 (defn prefix-states [env]
   (map (fn [[prefix iri]]
-         {:event :prefix
+         {::st/event ::st/prefix
           :prefix prefix
           :iri iri})
        (::en/prefix-iri env)))
@@ -36,11 +36,11 @@
 (def iri->label en/iri->label)
 
 ;; State queries
-(defn graph-end? [s] (= :graph-end (:event s)))
-(defn error? [s] (= :error (:event s)))
+(defn graph-end? [s] (= ::st/graph-end (::st/event s)))
+(defn error? [s] (= ::st/error (::st/event s)))
 
-(defn error-message [s] (->> s :error :error-message))
-(defn error-type [s] (->> s :error :error-type))
+(defn error-message [s] (->> s ::st/error ::st/error-message))
+(defn error-type [s] (->> s ::st/error ::st/error-type))
 
 (defn line-num-in [s] (->> s :input :line-number))
 (defn line-ct-in [s] (->> s :input :line-count))

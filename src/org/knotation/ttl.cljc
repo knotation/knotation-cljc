@@ -3,6 +3,7 @@
 
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
+            [org.knotation.state :as st]
             [org.knotation.format :as fmt]))
 
 (defn deep-line-count
@@ -111,7 +112,7 @@
   (let [subjects (set (annotation-subjects triples))]
     (->> triples
          (remove #(contains? subjects (::rdf/sb %)))
-         (remove #(= :annotation (:event %))))))
+         (remove #(= ::st/annotation (::st/event %))))))
 
 (defn render-annotation
   [env triples zn]
@@ -166,7 +167,7 @@
         (ensure-ending-newline
          (cons (add-to-output (first states) stanza) (rest states))))
       (let [res (map render-declaration states)]
-        (if (empty? (remove #(contains? #{:graph-start :graph-end :comment :blank} (:event %)) res))
+        (if (empty? (remove #(contains? #::st{:graph-start :graph-end :comment :blank} (::st/event %)) res))
           res
           (ensure-ending-newline res))))))
 

@@ -5,6 +5,7 @@
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf :refer [owl rdf kn]]
             [org.knotation.environment :as en]
+            [org.knotation.state :as st]
             [org.knotation.format :as fmt]
             [org.knotation.omn :as omn]))
 
@@ -28,7 +29,7 @@
 
 (defn read-blank
   [env parse]
-  {:event :blank})
+  {::st/event ::st/blank})
 
 (defn render-blank
   [env state]
@@ -49,7 +50,7 @@
 (defn read-comment
   [env parse]
   (if-let [comment (-> parse parse-map :comment)]
-    {:event :comment
+    {::st/event ::st/comment
      :comment comment}
     (util/error :not-a-comment-parse parse)))
 
@@ -85,7 +86,7 @@
   [env parse]
   (let [{:keys [keyword prefix iri]} (parse-map parse)]
     (if (and (= keyword "prefix") prefix iri)
-      {:event :prefix
+      {::st/event ::st/prefix
        :prefix prefix
        :iri iri}
       (util/error :not-a-prefix-parse parse))))
@@ -134,7 +135,7 @@
   [env parse]
   (if-let [name (-> parse parse-map :name)]
     (if-let [iri (en/name->iri env name)]
-      {:event :subject-start
+      {::st/event ::st/subject-start
        ::rdf/si iri}
       (util/error :unrecognized-name name))
     (util/error :not-a-subject-parse parse)))
@@ -271,7 +272,7 @@
                     (when datatype-name (en/name->iri env datatype-name))))]
           (assoc
            object
-           :event :statement
+           ::st/event ::st/statement
            ::rdf/pi predicate-iri)
           (util/error :unrecognized-object parse))
         (util/error :unrecognized-datatype datatype-name))
@@ -280,7 +281,7 @@
 (defn read-annotation
   [env parse]
   (merge (read-statement env (cons ::statement-block (drop 3 parse)))
-         {:event :annotation :level (count (second (second parse)))}))
+         {::st/event ::st/annotation :level (count (second (second parse)))}))
 
 (defn render-datatype
   "Render the datatype part of a statement.
@@ -355,13 +356,13 @@
 
 (defn process-annotation
   [prev s]
-  (if (= (:event s) :annotation)
+  (if (= (::st/event s) ::st/annotation)
     (let [tgt (select-keys prev rdf-keys)
-          ann-prev? (= (:event prev) :annotation)]
+          ann-prev? (= (::st/event prev) ::st/annotation)]
       (cond (and (not ann-prev?) (> (:level s) 1))
             (util/error :invalid-annotation-level (->> s :input :parse))
 
-            (= (:event prev) :statement)
+            (= (::st/event prev) ::st/statement)
             (assoc s :target tgt :stack {(:level s) tgt})
 
             (and ann-prev? (= (:level prev) (:level s)))
@@ -391,18 +392,18 @@
   [states]
   (mapcat
    (fn [state]
-     (if (= :annotation (:event state))
+     (if (= ::st/annotation (::st/event state))
        (let [{:keys [::rdf/si ::rdf/sb] :as target} (:target state)
              b1 (blank-node-of! state)
              source (if-let [bnode (blank-node-of target)]
                       {::rdf/ob bnode}
                       (if si {::rdf/oi si} {::rdf/ob sb}))]
          [(dissoc state :stack :level)
-          {:event :annotation ::rdf/sb b1 ::rdf/pi (rdf "type") ::rdf/oi (owl "Annotation")}
-          (merge {:event :annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedSource")} source)
-          {:event :annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedProperty") ::rdf/oi (::rdf/pi target)}
-          (merge {:event :annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedTarget")} (select-keys target [::rdf/oi ::rdf/ob ::rdf/ol]))
-          (merge {:event :annotation ::rdf/sb b1} (select-keys state [::rdf/pi ::rdf/oi ::rdf/ob ::rdf/ol]))])
+          {::st/event ::st/annotation ::rdf/sb b1 ::rdf/pi (rdf "type") ::rdf/oi (owl "Annotation")}
+          (merge {::st/event ::st/annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedSource")} source)
+          {::st/event ::st/annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedProperty") ::rdf/oi (::rdf/pi target)}
+          (merge {::st/event ::st/annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedTarget")} (select-keys target [::rdf/oi ::rdf/ob ::rdf/ol]))
+          (merge {::st/event ::st/annotation ::rdf/sb b1} (select-keys state [::rdf/pi ::rdf/oi ::rdf/ob ::rdf/ol]))])
        [state]))
    ((fn rec [ss]
       (when (not (empty? (rest ss)))
@@ -414,7 +415,7 @@
   [states]
   (mapcat
    (fn [state]
-     (if (and (= :statement (:event state))
+     (if (and (= ::st/statement (::st/event state))
               (= "https://knotation.org/kn/omn" (:di state)))
        (cons (dissoc state :states)
              (:states state))
@@ -449,11 +450,11 @@
   (let [top-subject (atom nil)]
     (map
      (fn [s]
-       (case (:event s)
-         :subject-start (assoc s ::rdf/zn (reset! top-subject (or (::rdf/si s) (::rdf/sb s))))
-         :subject-end (let [res (assoc s ::rdf/zn @top-subject)]
-                        (reset! top-subject nil)
-                        res)
+       (case (::st/event s)
+         ::st/subject-start (assoc s ::rdf/zn (reset! top-subject (or (::rdf/si s) (::rdf/sb s))))
+         ::st/subject-end (let [res (assoc s ::rdf/zn @top-subject)]
+                            (reset! top-subject nil)
+                            res)
          (if-let [zi @top-subject] (assoc s ::rdf/zn zi) s)))
      states)))
 
@@ -550,17 +551,17 @@
     [state []]))
 
 (defn render-state
-  [env {:keys [:event] :as state}]
+  [env {:keys [::st/event] :as state}]
   (case event
-    :blank (render-blank env state)
-    :comment (render-comment env state)
-    :prefix (render-prefix env state)
-    :graph-start [::graph-start]
-    :graph-end [::graph-end]
-    :subject-start (render-subject env state)
-    :subject-end [::subject-end]
-    :statement (render-statement env state)
-    :annotation (render-annotation env state)
+    ::st/blank (render-blank env state)
+    ::st/comment (render-comment env state)
+    ::st/prefix (render-prefix env state)
+    ::st/graph-start [::graph-start]
+    ::st/graph-end [::graph-end]
+    ::st/subject-start (render-subject env state)
+    ::st/subject-end [::subject-end]
+    ::st/statement (render-statement env state)
+    ::st/annotation (render-annotation env state)
     (util/throw-exception :bad-state state)))
 
 ; Implement format interface

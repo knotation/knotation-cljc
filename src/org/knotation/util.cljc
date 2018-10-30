@@ -42,10 +42,12 @@
        ;(concat [(get error-messages error-type "ERROR:")])
        (string/join " ")
        (assoc
-        {:error-type error-type}
-        :error-message)
-       (merge (when info {:error-info info}))
-       (assoc {:event :error} :error)))
+        {:org.knotation.state/error-type error-type}
+        :org.knotation.state/error-message)
+       (merge (when info {:org.knotation.state/error-info info}))
+       (assoc
+        {:org.knotation.state/event :org.knotation.state/error}
+        :org.knotation.state/error)))
 
 (defn throw-exception
   "Given a sequence of arguments,
