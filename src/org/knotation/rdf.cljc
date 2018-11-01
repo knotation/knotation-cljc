@@ -75,8 +75,8 @@
    return true if it is the head of an RDF list, false otherwise."
   [quads head]
   (->> quads
-       (filter #(= head (or (:si %) (:sb %))))
-       (filter #(= (rdf "first") (:pi %)))
+       (filter #(= head (or (::si %) (::sb %))))
+       (filter #(= (rdf "first") (::pi %)))
        first
        nil?
        not))
@@ -119,6 +119,18 @@
        ob (assoc coll ob (or sb si))
        (and sb (= pi (owl "annotatedSource"))) (assoc coll sb oi)
        :else coll))
+   {}
+   quads))
+
+(defn subjects-blank-objects
+  "Given a sequence of quad maps,
+   return a map from subjects to sequences of blank objects."
+  [quads]
+  (reduce
+   (fn [coll {:keys [::si ::pi ::sb ::ob ::oi] :as quad}]
+     (if ob
+       (update coll (or sb si) (fnil conj []) ob)
+       coll))
    {}
    quads))
 

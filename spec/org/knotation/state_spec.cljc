@@ -30,6 +30,7 @@
     ::st/prefix
     ::st/base
     ::st/graph-start ::st/graph-end
+    ::st/stanza-start ::st/stanza-end
     ::st/subject-start ::st/subject-end
     ::st/statement
     ::st/annotation
@@ -47,3 +48,7 @@
 (s/fdef st/update-env
         :args (s/cat :env ::en/env :state ::st/state)
         :ret ::en/env)
+
+(s/fdef st/update-env
+        :args (s/cat :previous-state ::st/state :state ::st/state)
+        :ret ::st/state)

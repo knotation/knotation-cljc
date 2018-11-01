@@ -94,6 +94,20 @@
        :start (queue->lazy-seq queue)
        (cons item (queue->lazy-seq queue))))))
 
+(defn insert-stanza-events
+  [states]
+  (->> states
+       (partition-by #(get-in % [::rdf/quad ::rdf/zn]))
+       (mapcat
+        (fn [states]
+          (let [zn (-> states first ::rdf/quad ::rdf/zn)]
+            (if zn
+              (concat
+               [{::st/event ::st/stanza-start :subject zn}]
+               states
+               [{::st/event ::st/stanza-end :subject zn}])
+              states))))))
+
 (defn read-input
   "Given a format string and an input stream for RDF data,
    return a lazy sequence of RDF triple maps."
@@ -102,7 +116,8 @@
     (.start (Thread. #(RDFDataMgr/parse (make-stream queue) input (get-format fmt))))
     (->> queue
          queue->lazy-seq
-         st/assign-stanzas)))
+         st/assign-stanzas
+         insert-stanza-events)))
 
 (defn read-string
   "Given a format string and an input string of RDF data,

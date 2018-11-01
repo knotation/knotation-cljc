@@ -1,5 +1,6 @@
 (ns org.knotation.state
   (:require [clojure.string :as string]
+            [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]))
 
@@ -59,14 +60,26 @@
     :else
     env))
 
+(defn update-state
+  "Given a previous state and the current state,
+   use the previous state to assign an environment to the current state."
+  [{:keys [::en/env :line-number :column-number] :as previous-state} state]
+  (assoc
+   state
+   :line-number line-number
+   :column-number column-number
+   ::en/env
+   (update-env (::en/env previous-state) previous-state)))
+
 (defn sequential-blank-nodes
   "Given a sequence of states, some of which have ::rdf/quads,
    return a lazy sequence of states with sequential blank nodes."
   [states]
   (->> states
        (reductions
-        (fn [[coll _] {:keys [::rdf/quad] :as state}]
-          (if quad
+        (fn [[coll _] {:keys [::rdf/quad :subject] :as state}]
+          (cond
+            quad
             (let [[coll sb] (rdf/replace-blank-node coll (::rdf/sb quad))
                   [coll ob] (rdf/replace-blank-node coll (::rdf/ob quad))
                   [coll zn] (rdf/replace-blank-node coll (when (rdf/blank? (::rdf/zn quad))
@@ -79,6 +92,15 @@
                        (when zn {::rdf/zn zn})
                        (when sb {::rdf/sb sb})
                        (when ob {::rdf/ob ob})))])
+
+            subject
+            (let [[coll zn] (rdf/replace-blank-node coll (when (rdf/blank? subject) subject))]
+              [coll
+               (if zn
+                 (assoc state :subject zn)
+                 state)])
+
+            :else
             [coll state]))
         [{::rdf/counter 0} nil])
        rest
@@ -87,9 +109,16 @@
 (defn objects-subjects
   [states]
   (->> states
-       ::rdf/quad
+       (map ::rdf/quad)
        (remove nil?)
        (rdf/objects-subjects)))
+
+(defn subjects-blank-objects
+  [states]
+  (->> states
+       (map ::rdf/quad)
+       (remove nil?)
+       (rdf/subjects-blank-objects)))
 
 (defn assign-stanza
   [coll {:keys [::rdf/quad] :as state}]
@@ -103,11 +132,31 @@
    and return a lazy sequence of quad maps with stanza assigned."
   [states]
   (->> states
-       (partition-by (fn [state]
-                       (boolean
-                        (or (get-in state [::rdf/quad ::rdf/sb])
-                            (get-in state [::rdf/quad ::rdf/ob])))))
+       (partition-by
+        (fn [state]
+          (boolean
+           (or (get-in state [::rdf/quad ::rdf/sb])
+               (get-in state [::rdf/quad ::rdf/ob])))))
        (mapcat #(map (partial assign-stanza (objects-subjects %)) %))))
+
+(defn partition-stanzas
+  "Given a sequence of states,
+   partition into sequences of states in the same stanza
+   (or outside any stanza)."
+  [states]
+  (util/partition-with
+   #(= ::stanza-start (::event %))
+   states))
+
+(defn partition-subjects
+  "Given a sequence of states,
+   partition into sequences of states with the same subject
+   (or without a subject)."
+  [states]
+  (partition-by
+   (fn [{:keys [::rdf/quad] :as state}]
+     (or (::rdf/si quad) (::rdf/sb quad)))
+   states))
 
 (def blank-state
   {::event ::blank

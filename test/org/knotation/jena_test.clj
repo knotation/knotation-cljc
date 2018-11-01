@@ -18,7 +18,7 @@
 _:s <p> _:o ."
        (jena/read-string :nt)
        st/sequential-blank-nodes
-       (= [;{::st/event ::st/stanza-start :subject "s"}
+       (= [{::st/event ::st/stanza-start :subject "s"}
            {::st/event ::st/statement
             ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :oi "o"}}
            {::st/event ::st/statement
@@ -27,15 +27,15 @@ _:s <p> _:o ."
             ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ol "o" :lt "l"}}
            {::st/event ::st/statement
             ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ol "o" :di "d"}}
-           ;{::st/event ::st/stanza-end :subject "s"}
-           ;{::st/event ::st/subject-start :subject "_:b0"}
+           {::st/event ::st/stanza-end :subject "s"}
+           {::st/event ::st/stanza-start :subject "_:b0"}
            {::st/event ::st/statement
-            ::rdf/quad #::rdf{:zn "_:b0" :sb "_:b0" :pi "p" :ob "_:b1"}}])
-           ;{::st/event ::st/subject-end :subject "_:b0"}
+            ::rdf/quad #::rdf{:zn "_:b0" :sb "_:b0" :pi "p" :ob "_:b1"}}
+           {::st/event ::st/stanza-end :subject "_:b0"}])
        is))
 
-(deftest test-ttl->edn
-  (->> "@prefix ex: <http://example.com/> .
+(def test-ttl-string
+  "@prefix ex: <http://example.com/> .
 @base <http://example.com/> .
 
 ex:s
@@ -45,56 +45,64 @@ ex:s
   ex:p \"o\" ;
   ex:p \"o\"@l ;
   ex:p \"o\"^^ex:d ;
-  ex:p _:o ."
+  ex:p _:o .")
+
+(def test-ttl-edn
+  [{::st/event ::st/prefix :prefix "ex" :iri "http://example.com/"}
+   {::st/event ::st/base :base "http://example.com/"}
+   {::st/event ::st/stanza-start :subject "http://example.com/s"}
+   {::st/event ::st/statement
+    ::rdf/quad
+    #::rdf{:zn "http://example.com/s"
+           :si "http://example.com/s"
+           :pi "http://example.com/p"
+           :oi "http://example.com/o"}}
+   {::st/event ::st/statement
+    ::rdf/quad
+    #::rdf{:zn "http://example.com/s"
+           :si "http://example.com/s"
+           :pi "http://example.com/p"
+           :oi "http://example.com/o"}}
+   {::st/event ::st/statement
+    ::rdf/quad
+    #::rdf{:zn "http://example.com/s"
+           :si "http://example.com/s"
+           :pi "http://example.com/p"
+           :oi "http://example.com/o"}}
+   {::st/event ::st/statement
+    ::rdf/quad
+    #::rdf{:zn "http://example.com/s"
+           :si "http://example.com/s"
+           :pi "http://example.com/p"
+           :ol "o"
+           :di "http://www.w3.org/2001/XMLSchema#string"}}
+   {::st/event ::st/statement
+    ::rdf/quad
+    #::rdf{:zn "http://example.com/s"
+           :si "http://example.com/s"
+           :pi "http://example.com/p"
+           :ol "o"
+           :lt "l"}}
+   {::st/event ::st/statement
+    ::rdf/quad
+    #::rdf{:zn "http://example.com/s"
+           :si "http://example.com/s"
+           :pi "http://example.com/p"
+           :ol "o"
+           :di "http://example.com/d"}}
+   {::st/event ::st/statement
+    ::rdf/quad
+    #::rdf{:zn "http://example.com/s"
+           :si "http://example.com/s"
+           :pi "http://example.com/p"
+           :ob "_:b0"}}
+   {::st/event ::st/stanza-end :subject "http://example.com/s"}])
+
+(deftest test-ttl->edn
+  (->> test-ttl-string
        (jena/read-string :ttl)
        st/sequential-blank-nodes
-       (= [{::st/event ::st/prefix :prefix "ex" :iri "http://example.com/"}
-           {::st/event ::st/base :base "http://example.com/"}
-           {::st/event ::st/statement
-            ::rdf/quad
-            #::rdf{:zn "http://example.com/s"
-                   :si "http://example.com/s"
-                   :pi "http://example.com/p"
-                   :oi "http://example.com/o"}}
-           {::st/event ::st/statement
-            ::rdf/quad
-            #::rdf{:zn "http://example.com/s"
-                   :si "http://example.com/s"
-                   :pi "http://example.com/p"
-                   :oi "http://example.com/o"}}
-           {::st/event ::st/statement
-            ::rdf/quad
-            #::rdf{:zn "http://example.com/s"
-                   :si "http://example.com/s"
-                   :pi "http://example.com/p"
-                   :oi "http://example.com/o"}}
-           {::st/event ::st/statement
-            ::rdf/quad
-            #::rdf{:zn "http://example.com/s"
-                   :si "http://example.com/s"
-                   :pi "http://example.com/p"
-                   :ol "o"
-                   :di "http://www.w3.org/2001/XMLSchema#string"}}
-           {::st/event ::st/statement
-            ::rdf/quad
-            #::rdf{:zn "http://example.com/s"
-                   :si "http://example.com/s"
-                   :pi "http://example.com/p"
-                   :ol "o"
-                   :lt "l"}}
-           {::st/event ::st/statement
-            ::rdf/quad
-            #::rdf{:zn "http://example.com/s"
-                   :si "http://example.com/s"
-                   :pi "http://example.com/p"
-                   :ol "o"
-                   :di "http://example.com/d"}}
-           {::st/event ::st/statement
-            ::rdf/quad
-            #::rdf{:zn "http://example.com/s"
-                   :si "http://example.com/s"
-                   :pi "http://example.com/p"
-                   :ob "_:b0"}}])
+       (= test-ttl-edn)
        is))
 
 (deftest test-rdfxml->edn
@@ -111,6 +119,7 @@ ex:s
        (jena/read-string :rdfxml)
        (= [{::st/event ::st/prefix :prefix "rdf" :iri "http://www.w3.org/1999/02/22-rdf-syntax-ns#"}
            {::st/event ::st/prefix :prefix "ex" :iri "http://example.com/"}
+           {::st/event ::st/stanza-start :subject "http://example.com/s"}
            {::st/event ::st/statement
             ::rdf/quad
             #::rdf{:zn "http://example.com/s"
@@ -143,5 +152,6 @@ ex:s
                    :si "http://example.com/s"
                    :pi "http://example.com/p"
                    :ol "o"
-                   :di "http://example.com/d"}}])
+                   :di "http://example.com/d"}}
+           {::st/event ::st/stanza-end :subject "http://example.com/s"}])
        is))
