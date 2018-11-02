@@ -6,7 +6,7 @@
             [org.knotation.state :as st]
             [org.knotation.format :as fmt]
 
-            org.knotation.kn
+            [org.knotation.kn :as kn]
             org.knotation.ttl
             org.knotation.nq
             org.knotation.tsv))
@@ -66,11 +66,40 @@
   (->> h errors-of (remove nil?) empty? not))
 
 ;; Processing to/from state
+(defn -inner-read-parses
+  "Given a format keyword, and initial environment (or nil), and a sequence of parses,
+   return a lazy sequence of [env parse state] triples."
+  [fmt env parses]
+  (->> parses
+       (reductions
+        (fn [previous parse]
+          (let [[previous-env _ previous-state] (last previous)
+                previous-env (or previous-env en/blank-env)
+                previous-state (or previous-state st/blank-state)
+                env (st/update-env previous-env previous-state)
+                state (fmt/read-parse fmt env parse)
+                [state expanded-parses] (fmt/expand-state fmt env state)]
+            (concat
+             [[env parse state]]
+             (-inner-read-parses fmt env expanded-parses))))
+        [[env nil nil]])
+       rest
+       (mapcat identity)))
+
+(defn read-parses
+  [fmt env parses]
+  (->> parses
+       (-inner-read-parses fmt env)
+       (map (fn [[env parse state]] (assoc state ::en/env env :input {:parse parse})))
+       fmt/insert-graph-events
+       fmt/insert-subject-events
+       kn/process-states))
+
 (defn read-lines
   ([format lines]
    (read-lines format default-env lines))
   ([format env lines]
-   (fmt/read-parses format env (fmt/parse-lines format lines))))
+   (read-parses format env (fmt/parse-lines format lines))))
 
 (defn read-from
   ([format thing] (read-from format default-env thing))

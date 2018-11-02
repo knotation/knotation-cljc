@@ -41,11 +41,6 @@
   [fmt parses]
   (kn/process-parses parses))
 
-(defmethod fmt/process-states
-  :tsv
-  [fmt states]
-  (kn/process-states states))
-
 (defmethod fmt/read-parse
   :tsv
   [fmt env parse]

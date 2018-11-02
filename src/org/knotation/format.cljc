@@ -23,7 +23,6 @@
 ; Formats may optionally provide:
 ; - (process-parses parses) :: [{:env :input ...}] -> [{:env :input ...}]
 ; - (expand-state env state) :: Env -> {:env :input ...} -> ({:env :input ...} ParseVector)
-; - (process-states states) :: [{:env :input ...}] -> [{:env :input ...}]
 ; - (render-states env states) :: Env -> [{:env :input ...}] -> [{:env :input (:output :: {:parse...}) ...}]
 
 ; Parse handling functions
@@ -241,41 +240,6 @@
   :default
   [fmt states]
   states)
-
-(defn inner-read-parses
-  "Given a format keyword, and initial environment (or nil), and a sequence of parses,
-   return a lazy sequence of [env parse state] triples."
-  [fmt env parses]
-  (->> parses
-       (reductions
-        (fn [previous parse]
-          (let [[previous-env _ previous-state] (last previous)
-                previous-env (or previous-env en/blank-env)
-                previous-state (or previous-state st/blank-state)
-                env (st/update-env previous-env previous-state)
-                state (read-parse fmt env parse)
-                [state expanded-parses] (expand-state fmt env state)]
-            (concat
-             [[env parse state]]
-             (inner-read-parses fmt env expanded-parses))))
-        [[env nil nil]])
-       rest
-       (mapcat identity)))
-
-(defmulti read-parses
-  "Given a format keyword, an initial environment (or nil). and a sequence of parses
-   return a lazy sequence of states."
-  (fn [fmt env parses] fmt))
-
-(defmethod read-parses
-  :default
-  [fmt env parses]
-  (->> parses
-       (inner-read-parses fmt env)
-       (map (fn [[env parse state]] (assoc state ::en/env env :input {:parse parse})))
-       insert-graph-events
-       insert-subject-events
-       (process-states fmt)))
 
 (defn inner-render-states
   "Given an initial environment, a format keyword, and a sequence of states,

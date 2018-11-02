@@ -576,11 +576,6 @@
   [fmt parses]
   (process-parses parses))
 
-(defmethod fmt/process-states
-  :kn
-  [fmt states]
-  (process-states states))
-
 (defmethod fmt/read-parse
   :kn
   [fmt env parse]
