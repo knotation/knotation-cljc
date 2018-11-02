@@ -116,8 +116,8 @@
     (.start (Thread. #(RDFDataMgr/parse (make-stream queue) input (get-format fmt))))
     (->> queue
          queue->lazy-seq
-         st/assign-stanzas
-         insert-stanza-events)))
+         st/assign-stanzas)))
+         ;insert-stanza-events)))
 
 (defn read-string
   "Given a format string and an input string of RDF data,

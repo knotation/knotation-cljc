@@ -102,6 +102,28 @@
             (#(or (:oi %) (:ob %)))))
       firsts)))
 
+(defn collect-lists
+  "Given a sequence of quads,
+   return a map from list head (blank node)
+   to a sequence of the blank nodes in the list."
+  [quads]
+  (let [pairs (->> quads
+                   (filter #(= (rdf "rest") (::pi %)))
+                   (map (juxt ::ob ::sb)))
+        tails (->> pairs
+                   (filter #(nil? (first %)))
+                   (map second))
+        coll (dissoc (into {} pairs) nil)]
+    ; For each tail, recursively trace back to the head.
+    (->> tails
+         (map
+          #(loop [heads []
+                  tail %]
+             (if (find coll tail)
+               (recur (conj heads tail) (get coll tail))
+               [tail (reverse (conj heads tail))])))
+         (into {}))))
+
 ; # Stanzas
 ;
 ; We often want to process all the quads for a given subject IRI.
@@ -116,8 +138,8 @@
   (reduce
    (fn [coll {:keys [::si ::pi ::sb ::ob ::oi] :as quad}]
      (cond
+       (and sb (= pi (owl "annotatedSource"))) (assoc coll sb (or ob oi))
        ob (assoc coll ob (or sb si))
-       (and sb (= pi (owl "annotatedSource"))) (assoc coll sb oi)
        :else coll))
    {}
    quads))

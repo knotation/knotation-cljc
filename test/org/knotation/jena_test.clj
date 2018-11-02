@@ -16,10 +16,9 @@
 <s> <p> \"o\"@l .
 <s> <p> \"o\"^^<d> .
 _:s <p> _:o ."
-       (jena/read-string :nt)
+       (jena/read-string "nt")
        st/sequential-blank-nodes
-       (= [{::st/event ::st/stanza-start :subject "s"}
-           {::st/event ::st/statement
+       (= [{::st/event ::st/statement
             ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :oi "o"}}
            {::st/event ::st/statement
             ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ol "o" :di "http://www.w3.org/2001/XMLSchema#string"}}
@@ -27,11 +26,8 @@ _:s <p> _:o ."
             ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ol "o" :lt "l"}}
            {::st/event ::st/statement
             ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ol "o" :di "d"}}
-           {::st/event ::st/stanza-end :subject "s"}
-           {::st/event ::st/stanza-start :subject "_:b0"}
            {::st/event ::st/statement
-            ::rdf/quad #::rdf{:zn "_:b0" :sb "_:b0" :pi "p" :ob "_:b1"}}
-           {::st/event ::st/stanza-end :subject "_:b0"}])
+            ::rdf/quad #::rdf{:zn "_:b0" :sb "_:b0" :pi "p" :ob "_:b1"}}])
        is))
 
 (def test-ttl-string
@@ -50,7 +46,6 @@ ex:s
 (def test-ttl-edn
   [{::st/event ::st/prefix :prefix "ex" :iri "http://example.com/"}
    {::st/event ::st/base :base "http://example.com/"}
-   {::st/event ::st/stanza-start :subject "http://example.com/s"}
    {::st/event ::st/statement
     ::rdf/quad
     #::rdf{:zn "http://example.com/s"
@@ -95,12 +90,11 @@ ex:s
     #::rdf{:zn "http://example.com/s"
            :si "http://example.com/s"
            :pi "http://example.com/p"
-           :ob "_:b0"}}
-   {::st/event ::st/stanza-end :subject "http://example.com/s"}])
+           :ob "_:b0"}}])
 
 (deftest test-ttl->edn
   (->> test-ttl-string
-       (jena/read-string :ttl)
+       (jena/read-string "ttl")
        st/sequential-blank-nodes
        (= test-ttl-edn)
        is))
@@ -116,10 +110,9 @@ ex:s
         <ex:p rdf:datatype=\"http://example.com/d\">o</ex:p>
     </ex:foo>
 </rdf:RDF>"
-       (jena/read-string :rdfxml)
+       (jena/read-string "rdfxml")
        (= [{::st/event ::st/prefix :prefix "rdf" :iri "http://www.w3.org/1999/02/22-rdf-syntax-ns#"}
            {::st/event ::st/prefix :prefix "ex" :iri "http://example.com/"}
-           {::st/event ::st/stanza-start :subject "http://example.com/s"}
            {::st/event ::st/statement
             ::rdf/quad
             #::rdf{:zn "http://example.com/s"
@@ -152,6 +145,5 @@ ex:s
                    :si "http://example.com/s"
                    :pi "http://example.com/p"
                    :ol "o"
-                   :di "http://example.com/d"}}
-           {::st/event ::st/stanza-end :subject "http://example.com/s"}])
+                   :di "http://example.com/d"}}])
        is))

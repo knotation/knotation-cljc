@@ -132,11 +132,23 @@
    and return a lazy sequence of quad maps with stanza assigned."
   [states]
   (->> states
-       (partition-by
-        (fn [state]
-          (boolean
-           (or (get-in state [::rdf/quad ::rdf/sb])
-               (get-in state [::rdf/quad ::rdf/ob])))))
+       (#(concat % [nil]))
+       (reductions
+        (fn [{:keys [stored stanza] :as coll} state]
+          (let [si (-> state ::rdf/quad ::rdf/si)]
+            (cond
+              (nil? state)
+              {:results stored}
+              (and si (not= si stanza))
+              {:results stored
+               :stored [state]
+               :stanza si}
+              :else
+              {:stored (conj stored state)
+               :stanza stanza})))
+        {:stored [] :stanza nil})
+       (map :results)
+       (remove nil?)
        (mapcat #(map (partial assign-stanza (objects-subjects %)) %))))
 
 (defn partition-stanzas
@@ -144,8 +156,10 @@
    partition into sequences of states in the same stanza
    (or outside any stanza)."
   [states]
-  (util/partition-with
-   #(= ::stanza-start (::event %))
+  (partition-by
+   (fn [state]
+     (or (-> state ::rdf/quad ::rdf/zn)
+         (-> state :subject)))
    states))
 
 (defn partition-subjects
