@@ -118,7 +118,9 @@
       (en/add-prefix "ex" "http://example.com/")))
 
 (def test-output-edn
-  [{::st/event ::st/prefix :prefix "kn" :iri "https://knotation.org/kn/"
+  [{::st/event ::st/prefix
+    :prefix "kn"
+    :iri "https://knotation.org/kn/"
     ::en/env {}
     :line-number 2
     :column-number 1
@@ -127,7 +129,9 @@
           :content "@prefix kn: <https://knotation.org/kn/> .\n"
           :line-number 1
           :column-number 1}}
-   {::st/event ::st/prefix :prefix "ex" :iri "http://example.com/"
+   {::st/event ::st/prefix
+    :prefix "ex"
+    :iri "http://example.com/"
     ::en/env (en/add-prefix {} "kn" "https://knotation.org/kn/")
     :line-number 3
     :column-number 1
@@ -145,7 +149,8 @@
           :content "\n"
           :line-number 3
           :column-number 1}}
-   {::st/event ::st/subject-start :subject "http://example.com/s"
+   {::st/event ::st/subject-start
+    :subject "http://example.com/s"
     ::en/env test-output-env
     :depth 0
     :line-number 5
@@ -157,6 +162,7 @@
           :line-number 4
           :column-number 1}}
    {::st/event ::st/statement
+    :subject "http://example.com/s"
     ::rdf/quad #::rdf{:zn "http://example.com/s"
                       :si "http://example.com/s"
                       :pi "http://example.com/p"
@@ -172,6 +178,7 @@
           :line-number 5
           :column-number 1}}
    {::st/event ::st/statement
+    :subject "http://example.com/s"
     ::rdf/quad #::rdf{:zn "http://example.com/s"
                       :si "http://example.com/s"
                       :pi "http://example.com/p"
@@ -187,7 +194,8 @@
           :content "  ex:p \"o\" .\n"
           :line-number 6
           :column-number 1}}
-   {::st/event ::st/subject-end :subject "http://example.com/s"
+   {::st/event ::st/subject-end
+    :subject "http://example.com/s"
     ::en/env test-output-env
     :depth 0
     :line-number 7

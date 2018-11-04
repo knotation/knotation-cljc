@@ -36,17 +36,17 @@
   [fmt lines]
   (parse-lines lines))
 
-(defmethod fmt/process-parses
-  :tsv
-  [fmt parses]
-  (kn/process-parses parses))
+;(defmethod fmt/process-parses
+;  :tsv
+;  [fmt parses]
+;  (kn/process-parses parses))
 
-(defmethod fmt/read-parse
-  :tsv
-  [fmt env parse]
-  (kn/read-parse env parse))
+;(defmethod fmt/read-parse
+;  :tsv
+;  [fmt env parse]
+;  (kn/read-parse env parse))
 
-(defmethod fmt/expand-state
-  :tsv
-  [fmt env state]
-  (kn/expand-state env state))
+;(defmethod fmt/expand-state
+;  :tsv
+;  [fmt env state]
+;  (kn/expand-state env state))

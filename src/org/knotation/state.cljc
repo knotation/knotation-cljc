@@ -52,48 +52,45 @@
 (defn update-env
   "Given an environment and a state,
    return an updated environment."
-  [env {:keys [prefix iri ::rdf/si ::rdf/sb ::rdf/pi ::rdf/oi ::rdf/ol] :as state}]
-  (cond
-    (and prefix iri)
-    (en/add-prefix env prefix iri)
+  [env {:keys [prefix iri ::rdf/quad] :as state}]
+  (let [{::rdf/keys [si pi oi ol]} quad]
+    (cond
+      (and prefix iri)
+      (en/add-prefix env prefix iri)
 
-    ; TODO: make this configurable
-    ; WARN: case macro requires literal values, not symbols or functions
-    pi
-    (case pi
-      "http://www.w3.org/2000/01/rdf-schema#label"
-      (en/add-label env ol si)
+      ; TODO: make this configurable
+      ; WARN: case macro requires literal values, not symbols or functions
+      (::rdf/pi quad)
+      (case (::rdf/pi quad)
+        "http://www.w3.org/2000/01/rdf-schema#label"
+        (en/add-label env ol si)
 
-      "https://knotation.org/kn/default-datatype"
-      (en/set-datatype env si oi)
+        "https://knotation.org/kn/default-datatype"
+        (en/set-datatype env si oi)
 
-      "https://knotation.org/kn/default-language"
-      (en/set-language env si ol)
+        "https://knotation.org/kn/default-language"
+        (en/set-language env si ol)
 
-      "https://knotation.org/kn/template-content"
-      (en/set-template-content env si ol)
+        "https://knotation.org/kn/template-content"
+        (en/set-template-content env si ol)
 
-      ;else
-      env)
+        ;else
+        env)
 
-    si
-    (assoc env ::rdf/si si)
-
-    sb
-    (assoc env ::rdf/sb sb)
-
-    :else
-    env))
+      :else
+      env)))
 
 (defn update-state
   "Given a previous state and the current state,
    use the previous state to assign an environment to the current state."
   [{:keys [::en/env :line-number :column-number] :or {env {}} :as previous-state} state]
-  (assoc
+  (merge
    state
-   :line-number line-number
-   :column-number column-number
-   ::en/env (update-env env previous-state)))
+   (when-let [subject (or (:subject state) (:subject previous-state))]
+     {:subject subject})
+   {:line-number line-number
+    :column-number column-number
+    ::en/env (update-env env previous-state)}))
 
 (defn sequential-blank-nodes
   "Given a sequence of states, some of which have ::rdf/quads,

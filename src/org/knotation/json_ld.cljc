@@ -4,7 +4,7 @@
             [org.knotation.environment :as en]))
 
 (defn render-object
-  [env {:keys [::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt]}]
+  [env {::rdf/keys [oi ob ol di lt]}]
   (cond
     oi
     {"@id" (or (en/iri->curie env oi) oi)
@@ -28,8 +28,11 @@
          (map (juxt :prefix :iri))
          (into {}))
     (->> states
+         (map ::rdf/quad)
          (mapcat #(select-keys % [::rdf/si ::rdf/pi ::rdf/oi ::rdf/di]))
          vals
+         set
+         (remove nil?)
          (map (fn [iri]
                 (let [label (en/iri->label env iri)]
                   (when label
@@ -42,11 +45,12 @@
 (defn render-stanza-edn
   [env si states]
   (->> states
+       (map ::rdf/quad)
        (filter ::rdf/pi)
        (reduce
-        (fn [coll {:keys [::rdf/pi] :as state}]
+        (fn [coll {:keys [::rdf/pi] :as quad}]
           (let [plabel (en/iri->name env pi)]
-            (assoc coll plabel (render-object env state))))
+            (assoc coll plabel (render-object env quad))))
         (let [curie (en/iri->curie env si)]
           {"@id" curie
            "iri" si

@@ -28,11 +28,11 @@
     (util/error :not-a-blank-line line)))
 
 (defn read-blank
-  [env parse]
-  {::st/event ::st/blank})
+  [state]
+  (assoc state ::st/event ::st/blank))
 
 (defn render-blank
-  [env state]
+  [state]
   [::blank-line
    [:eol "\n"]])
 
@@ -48,20 +48,22 @@
     (util/error :not-a-comment-line line)))
 
 (defn read-comment
-  [env parse]
+  [{:keys [::st/parse] :as state}]
   (if-let [comment (-> parse parse-map :comment)]
-    {::st/event ::st/comment
-     :comment comment}
-    (util/error :not-a-comment-parse parse)))
+    (assoc
+     state
+     ::st/event ::st/comment
+     :comment comment)
+    (st/error state :not-a-comment-parse)))
 
 (defn render-comment
-  [env {:keys [comment] :as state}]
+  [{:keys [comment] :as state}]
   (if comment
     [::comment-line
      [:symbol "#"]
      [:comment comment]
      [:eol "\n"]]
-    (util/error :not-a-comment-state state)))
+    (st/error state :not-a-comment-state)))
 
 ; A prefix declaration is a line starting with '@prefix '
 
@@ -83,16 +85,18 @@
     (util/error :not-a-prefix-line line)))
 
 (defn read-prefix
-  [env parse]
+  [{:keys [::st/parse] :as state}]
   (let [{:keys [keyword prefix iri]} (parse-map parse)]
     (if (and (= keyword "prefix") prefix iri)
-      {::st/event ::st/prefix
+      (assoc
+       state
+       ::st/event ::st/prefix
        :prefix prefix
-       :iri iri}
-      (util/error :not-a-prefix-parse parse))))
+       :iri iri)
+      (st/error state :not-a-prefix-parse parse))))
 
 (defn render-prefix
-  [env {:keys [prefix iri] :as state}]
+  [{:keys [prefix iri] :as state}]
   (if (and prefix iri)
     [::prefix-line
      [:symbol "@"]
@@ -106,9 +110,9 @@
      [:symbol ">"]
      [:space ""]
      [:eol "\n"]]
-    (util/error :not-a-prefix-state state)))
+    (st/error state :not-a-prefix-state)))
 
-; A declaration is one of: prefix
+; A declaration is one of: prefix, (TODO: base, graph)
 
 (defn parse-declaration
   [line]
@@ -118,7 +122,7 @@
     :else
     (util/error :unrecognized-declaration-line line)))
 
-; A subject line start with ': '
+; A subject line start with ': ' followed by the name of the subjects
 
 (defn parse-subject
   [line]
@@ -132,35 +136,32 @@
       (util/error :not-a-subject-line line))))
 
 (defn read-subject
-  [env parse]
+  [{:keys [::en/env ::st/parse] :as state}]
   (if-let [name (-> parse parse-map :name)]
     (if-let [iri (en/name->iri env name)]
-      {::st/event ::st/subject-start
-       ::rdf/si iri}
-      (util/error :unrecognized-name name))
-    (util/error :not-a-subject-parse parse)))
+      (assoc
+       state
+       ::st/event ::st/subject-start
+       :subject iri)
+      (st/error state :unrecognized-name name))
+    (st/error state :not-a-subject-parse)))
 
 (defn render-subject
-  [env {:keys [::rdf/si ::rdf/sb] :as state}]
-  (cond
-    sb
-    [::subject-line
-     [:symbol ":"]
-     [:space " "]
-     [:name sb]
-     [:eol "\n"]]
-    si
-    (if-let [name (en/iri->name env si)]
+  [{:keys [::en/env :subject] :as state}]
+  (if subject
+    (if-let [name (or (and (rdf/blank? subject) subject)
+                      (en/iri->name env subject))]
       [::subject-line
        [:symbol ":"]
        [:space " "]
        [:name name]
        [:eol "\n"]]
-      (util/error :invalid-iri name))
-    :else
-    (util/error :not-a-subject-state state)))
+      (st/error state :invalid-iri name))
+    (st/error state :not-a-subject-state)))
 
-; A statement
+; Indented lines continue the content of the previous statement.
+; They must be merged into the previous statement-line
+; to create a statement-block.
 
 (defn parse-indented
   [line]
@@ -171,12 +172,45 @@
      [:eol "\n"]]
     (util/error :not-an-indented-line line)))
 
+(defn merge-indented-statement
+  "Given a sequence of states, return a single state.
+   This is used to merge ::statement-line and ::indented-line
+   into a single ::statement-block."
+  [states]
+  (if (-> states first ::st/parse first (= ::statement-line))
+    (-> states
+        first
+        (assoc-in [::st/input ::st/content]
+                  (->> states
+                       (map ::st/input)
+                       (map ::st/content)
+                       (string/join "\n")))
+        (assoc ::st/parse
+               (concat
+                [::statement-block]
+                (->> states first ::st/parse rest)
+                (->> states rest (map ::st/parse) (mapcat rest)))))
+    (first states)))
+
+(defn merge-indented
+  "Given a sequence of states,
+   merge indented lines into blocks
+   and return a sequence of states."
+  [states]
+  (->> states
+       (util/partition-with #(-> % ::st/parse first (not= ::indented-line)))
+       (map merge-indented-statement)))
+
+; Statements are the most complicated,
+; since they can expand to multiple states.
+
 (defn parse-statement
   [line]
-  (if-let [[_ pd lexical] (re-matches #"(.*?): (.*)\n?" line)]
+  (if-let [[_ arrows pd lexical] (re-matches #"(>* )?(.*?): (.*)\n?" line)]
     (if-let [[predicate datatype] (string/split pd #"; " 2)]
       (if datatype
         [::statement-line
+         [:arrows (or arrows "")]
          [:name predicate]
          [:symbol ";"]
          [:space " "]
@@ -186,25 +220,13 @@
          [:lexical lexical]
          [:eol "\n"]]
         [::statement-line
+         [:arrows (or arrows "")]
          [:name predicate]
          [:symbol ":"]
          [:space " "]
          [:lexical lexical]
          [:eol "\n"]])
       (util/error :invalid-predicate-datatype pd))
-    (util/error :not-a-statement line)))
-
-; An annotation is a line starting with some number of >
-(defn parse-annotation
-  [line]
-  (if-let [[_ arrows annotation] (re-matches #"(>+) (.*)\n?" line)]
-    (vec
-     (concat
-      [::annotation-line
-       [:symbol arrows]
-       [:space " "]]
-      (rest (parse-statement
-             (subs line (+ (count arrows) 1))))))
     (util/error :not-a-statement line)))
 
 (defn inner-read-object
@@ -252,12 +274,12 @@
         string/join)))
 
 (defn read-statement
-  [env parse]
+  [{:keys [::en/env ::st/parse subject] :as state}]
   (let [names (->> parse rest (filter #(= :name (first %))))
         predicate-name (-> names first second)
         datatype-name (-> names second second)
         leading-at? (when datatype-name (string/starts-with? datatype-name "@"))]
-    (if-let [predicate-iri (en/name->iri env predicate-name)]
+    (if-let [predicate-iri (when predicate-name (en/name->iri env predicate-name))]
       (if (or (nil? datatype-name)
               leading-at?
               (when datatype-name (en/name->iri env datatype-name)))
@@ -270,38 +292,38 @@
                     (string/replace datatype-name #"^@" ""))
                   (when-not leading-at?
                     (when datatype-name (en/name->iri env datatype-name))))]
-          (assoc
-           object
-           ::st/event ::st/statement
-           ::rdf/pi predicate-iri)
-          (util/error :unrecognized-object parse))
-        (util/error :unrecognized-datatype datatype-name))
-      (util/error :unrecognized-predicate predicate-name))))
-
-(defn read-annotation
-  [env parse]
-  (merge (read-statement env (cons ::statement-block (drop 3 parse)))
-         {::st/event ::st/annotation :level (count (second (second parse)))}))
+          [(assoc
+            state
+            ::st/event ::st/statement
+            ::rdf/quad
+            (merge
+             object
+             (if (rdf/blank? subject) {::rdf/sb subject} {::rdf/si subject})
+             {::rdf/pi predicate-iri}))]
+          [(st/error state :unrecognized-object parse)])
+        [(st/error state :unrecognized-datatype datatype-name)])
+      [(st/error state :unrecognized-predicate predicate-name)])))
 
 (defn render-datatype
   "Render the datatype part of a statement.
    Handles default dataypes and languages."
-  [env predicate-iri {:keys [::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt] :as object}]
-  (cond
-    (and lt (not= lt (en/get-language env predicate-iri)))
-    [[:symbol ";"]
-     [:space " "]
-     [:name (str "@" lt)]]
-    (and di (not= di (en/get-datatype env predicate-iri)))
-    [[:symbol ";"]
-     [:space " "]
-     [:name (en/iri->name env di)]]
-    :else
-    []))
+  [env predicate-iri {::rdf/keys [oi ob ol di lt] :as object}]
+  (let [di (if oi "https://knotation.org/kn/link" di)]
+    (cond
+      (and lt (not= lt (en/get-language env predicate-iri)))
+      [[:symbol ";"]
+       [:space " "]
+       [:name (str "@" lt)]]
+      (and di (not= di (en/get-datatype env predicate-iri)))
+      [[:symbol ";"]
+       [:space " "]
+       [:name (en/iri->name env di)]]
+      :else
+      [])))
 
 (defn render-object
   "Render the lexical part of a statement."
-  [env {:keys [::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt] :as object}]
+  [env {::rdf/keys [oi ob ol di lt] :as object}]
   (cond
     oi
     [[:space " "]
@@ -321,106 +343,17 @@
     (util/error :not-an-object object)))
 
 (defn render-statement
-  [env {:keys [::rdf/pi] :as state}]
-  (if pi
+  [{:keys [::en/env ::rdf/quad] :as state}]
+  (if-let [pi (::rdf/pi quad)]
     (if-let [predicate-name (en/iri->name env pi)]
       (concat
        [::statement-block
         [:name predicate-name]]
-       (render-datatype env pi state)
+       (render-datatype env pi quad)
        [[:symbol ":"]]
-       (render-object env state))
-      (util/error :invalid-iri pi))
-    (util/error :not-a-statement-state state)))
-
-(defn render-annotation
-  [env state]
-  (->> state :input :parse flatten (filter string?)))
-
-; Handle multi-line structures
-
-(defn merge-parses
-  "Given a sequence of parses, return a single parse.
-   This is used to merge ::statement-line and ::indented-line
-   into a single ::statement-block."
-  [parses]
-  ; TODO: check more carefully
-  (if (contains? #{::statement-line ::annotation-line} (ffirst parses))
-    (concat
-     [(if (= (ffirst parses) ::statement-line) ::statement-block ::annotation-block)]
-     (->> parses first rest)
-     (->> parses rest (mapcat rest)))
-    (first parses)))
-
-(def rdf-keys [:rt ::rdf/gi ::rdf/si ::rdf/sb ::rdf/pi ::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt])
-
-(defn process-annotation
-  [prev s]
-  (if (= (::st/event s) ::st/annotation)
-    (let [tgt (select-keys prev rdf-keys)
-          ann-prev? (= (::st/event prev) ::st/annotation)]
-      (cond (and (not ann-prev?) (> (:level s) 1))
-            (util/error :invalid-annotation-level (->> s :input :parse))
-
-            (= (::st/event prev) ::st/statement)
-            (assoc s :target tgt :stack {(:level s) tgt})
-
-            (and ann-prev? (= (:level prev) (:level s)))
-            (assoc s :target (:target prev) :stack (:stack prev))
-
-            (and ann-prev? (= (:level prev) (- (:level s) 1)))
-            (assoc s :target tgt :stack (assoc (:stack prev) (:level s) tgt))
-
-            (and ann-prev? (get (:stack prev) (:level s)))
-            (assoc s :target (get (:stack prev) (:level s)) :stack (:stack prev))
-
-            :else
-            (util/error :no-annotation-target (->> s :input :parse))))
-    s))
-
-(def -blank-node-table (atom {}))
-(defn blank-node-of [target]
-  (let [target (select-keys target rdf-keys)]
-    (get @-blank-node-table target)))
-(defn blank-node-of! [target]
-  (let [target (select-keys target rdf-keys)]
-    (if (not (get @-blank-node-table target))
-      (swap! -blank-node-table #(assoc % target (rdf/random-blank-node))))
-    (get @-blank-node-table target)))
-
-(defn process-annotations
-  [states]
-  (mapcat
-   (fn [state]
-     (if (= ::st/annotation (::st/event state))
-       (let [{:keys [::rdf/si ::rdf/sb] :as target} (:target state)
-             b1 (blank-node-of! state)
-             source (if-let [bnode (blank-node-of target)]
-                      {::rdf/ob bnode}
-                      (if si {::rdf/oi si} {::rdf/ob sb}))]
-         [(dissoc state :stack :level)
-          {::st/event ::st/annotation ::rdf/sb b1 ::rdf/pi (rdf "type") ::rdf/oi (owl "Annotation")}
-          (merge {::st/event ::st/annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedSource")} source)
-          {::st/event ::st/annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedProperty") ::rdf/oi (::rdf/pi target)}
-          (merge {::st/event ::st/annotation ::rdf/sb b1 ::rdf/pi (owl "annotatedTarget")} (select-keys target [::rdf/oi ::rdf/ob ::rdf/ol]))
-          (merge {::st/event ::st/annotation ::rdf/sb b1} (select-keys state [::rdf/pi ::rdf/oi ::rdf/ob ::rdf/ol]))])
-       [state]))
-   ((fn rec [ss]
-      (when (not (empty? (rest ss)))
-        (let [res (process-annotation (first ss) (second ss))]
-          (lazy-seq (cons res (rec (cons res (rest (rest ss)))))))))
-    (cons nil states))))
-
-(defn process-class-expressions
-  [states]
-  (mapcat
-   (fn [state]
-     (if (and (= ::st/statement (::st/event state))
-              (= "https://knotation.org/kn/omn" (:di state)))
-       (cons (dissoc state :states)
-             (:states state))
-       [state]))
-   states))
+       (render-object env quad))
+      (st/error state :invalid-predicate-iri pi))
+    (st/error state :not-a-statement-state)))
 
 ; Primary interface: step-by-step
 
@@ -434,159 +367,143 @@
     \@ (parse-declaration line)
     \: (parse-subject line)
     \space (parse-indented line)
-    \> (parse-annotation line)
     (parse-statement line)))
 
-(defn process-parses
-  "Given a sequence of parses, return a lazy sequence of processed parses."
-  [parses]
-  (->> parses
-       (util/partition-with #(not= ::indented-line (first %)))
-       (map merge-parses)
-       (map vec)))
-
-(defn process-stanza-labels
-  [states]
-  (let [top-subject (atom nil)]
-    (map
-     (fn [s]
-       (case (::st/event s)
-         ::st/subject-start (assoc s ::rdf/zn (reset! top-subject (or (::rdf/si s) (::rdf/sb s))))
-         ::st/subject-end (let [res (assoc s ::rdf/zn @top-subject)]
-                            (reset! top-subject nil)
-                            res)
-         (if-let [zi @top-subject] (assoc s ::rdf/zn zi) s)))
-     states)))
-
-(defn process-default-datatypes
-  [states]
-  (let [new-states
-        ((fn rec [ss default-datatypes]
-           (when (not (empty? ss))
-             (let [s (first ss)
-                   new-dds (if (and (::rdf/si s) (::rdf/oi s) (= (::rdf/pi s) (kn "default-datatype")))
-                             (assoc default-datatypes (::rdf/si s) (::rdf/oi s))
-                             default-datatypes)
-                   new-env (assoc
-                            (::en/env s) ::en/predicate-datatype
-                            (merge
-                             (::en/predicate-datatype (::en/env s))
-                             default-datatypes))]
-               (lazy-seq (cons (assoc s ::en/env new-env) (rec (rest ss) new-dds))))))
-         states {})]
-    new-states))
-
-(defn state-line-count
-  [s]
-  (->> s :input :parse
-       (filter #(and (vector? %) (= :eol (first %))))
-       count))
-
-(defn number-input-lines
-  [states]
-  (reductions
-   (fn [prev cur]
-     (let [ln (get-in prev [:input :line-number] 0)
-           ct (get-in prev [:input :line-count] 0)
-           cct (state-line-count cur)]
-       (assoc cur :input
-              (assoc (:input cur)
-                     :line-count (if (zero? cct) ct cct)
-                     :line-number (if (zero? cct) ln (+ ln ct))))))
-   states))
-
-(defn process-states
-  [states]
-  (->> states
-       process-annotations
-       process-class-expressions
-       process-stanza-labels
-       process-default-datatypes
-       (remove nil?)
-       number-input-lines))
+(defn parse-lines
+  "Given a sequence of lines,
+   return a sequence of states with ::st/input and ::st/parse."
+  [lines]
+  (->> lines
+       (map-indexed
+        (fn [i line]
+          {::st/input
+           #::st{:format :kn
+                 :content line
+                 :line-number (inc i)
+                 :column-number 1}
+           :line-number (+ 2 i)
+           :column-number 1
+           ::st/parse (parse-line line)}))
+       merge-indented))
 
 (defn read-parse
-  "Given an environment and a parse,
-   return the resulting state."
-  [env parse]
-  (merge
-   (select-keys env [::rdf/gi ::rdf/si ::rdf/sb])
-   (case (first parse)
-     ::blank-line (read-blank env parse)
-     ::comment-line (read-comment env parse)
-     ::prefix-line (read-prefix env parse)
-     ::subject-line (read-subject env parse)
-     ::statement-block (read-statement env parse)
-     ::annotation-block (read-annotation env parse)
-     (util/throw-exception :bad-parse parse))))
+  "Given a state with a ::st/parse,
+   read it, expand it as required,
+   and return a sequence of resulting states."
+  [state]
+  (case (-> state ::st/parse first)
+    ::blank-line [(read-blank state)]
+    ::comment-line [(read-comment state)]
+    ::prefix-line [(read-prefix state)]
+    ::subject-line [(read-subject state)]
+    ::statement-block (read-statement state)
+    (util/throw-exception :bad-parse state)))
 
-(defn expand-state
-  "Given an environment and a state,
-   expand any templates using string substitution,
-   returning the pair of the updated state and a sequence of new parses
-   (empty if this is not a template statement)."
-  [env {:keys [::rdf/pi ::rdf/ol] :as state}]
-  (if (= pi "https://knotation.org/kn/apply-template")
-    (try
-      (let [template-iri (->> ol
-                              util/split-lines
-                              first
-                              string/trim
-                              (en/name->iri env))
-            values (->> ol
-                        util/split-lines
-                        rest
-                        (map #(string/split % #": " 2))
-                        (into {}))]
-        [(assoc state ::rdf/pi "https://knotation.org/kn/applied-template")
-         (->> (string/replace
-               (en/get-template-content env template-iri)
-               #"\{(.*?)\}"
-               (fn [[_ x]] (get values x)))
-              util/split-lines
-              rest
-              (map parse-line)
-              process-parses)])
-      (catch Exception e (util/throw-exception "Template error for " ol " " e)))
-    [state []]))
+(defn read-parses
+  "Given an initial environment and a sequence of states with ::st/parse,
+   read the parses and return the fully processed states."
+  [env states]
+  (->> states
+       (reductions
+        (fn [previous-states state]
+          ;(println "PREV")
+          ;(doseq [prev previous-states]
+          ;  (println "  " prev))
+          ;(println "STATE")
+          ;(println "  " state)
+          (->> state
+               (st/update-state (last previous-states))
+               read-parse))
+        [{::en/env env}])
+       rest
+       (mapcat identity)))
+
+(defn read-lines
+  "Given a initial environment and a sequence of lines (strings)
+   return a sequence of states."
+  [env lines]
+  (->> lines
+       parse-lines
+       (read-parses env)))
+
+(defn read-input
+  "Given an initial environment and a string,
+   return a sequence of states."
+  [env input]
+  (->> input
+       util/split-lines
+       (read-lines env)))
+
+(defn output
+  "Given a state and a vector of strings,
+   update the state with an output map
+   and current :line-number and :column-number."
+  [{:keys [line-number column-number]
+    :or {line-number 1 column-number 1}
+    :as state}
+   parse]
+  (let [content (->> parse flatten (filter string?) string/join)
+        lines (util/split-lines content)]
+    (assoc
+     state
+     :line-number (-> lines count dec (+ line-number))
+     :column-number
+     (if (second lines)
+       (-> lines last count inc)
+       (-> lines first count (+ column-number)))
+     ::st/output
+     #::st{:format :ttl
+           :content content
+           :line-number line-number
+           :column-number column-number})))
+
+(defn render-parse
+  [parse]
+  (->> parse
+       flatten
+       (filter string?)
+       (#(when (first %) (string/join %)))))
 
 (defn render-state
-  [env {:keys [::st/event] :as state}]
-  (case event
-    ::st/blank (render-blank env state)
-    ::st/comment (render-comment env state)
-    ::st/prefix (render-prefix env state)
-    ::st/graph-start [::graph-start]
-    ::st/graph-end [::graph-end]
-    ::st/subject-start (render-subject env state)
-    ::st/subject-end [::subject-end]
-    ::st/statement (render-statement env state)
-    ::st/annotation (render-annotation env state)
-    (util/throw-exception :bad-state state)))
+  "Given a state, render it and return the updated state."
+  [{:keys [::st/event] :as state}]
+  (->> (case event
+         ::st/blank (render-blank state)
+         ::st/comment (render-comment state)
+         ::st/prefix (render-prefix state)
+         ::st/graph-start state ; TODO
+         ::st/graph-end state
+         ::st/subject-start (render-subject state)
+         ::st/subject-end state
+         ::st/statement (render-statement state)
+         (util/throw-exception :bad-state state))
+       render-parse
+       (st/output state :kn)))
 
-; Implement format interface
+(defn render-states
+  "Given an initial environment and a sequence of states,
+   return a sequenc of states with ::st/output."
+  [env states]
+  (->> states
+       (reductions
+        (fn [previous-state state]
+          ;(println "PREV")
+          ;(doseq [prev previous-states]
+          ;  (println "  " prev))
+          ;(println "STATE")
+          ;(println "  " state)
+          (->> state
+               (st/update-state previous-state)
+               render-state))
+        {::en/env env :line-number 1 :column-number 1})
+       rest))
 
-(defmethod fmt/parse-line
-  :kn
-  [fmt line]
-  (parse-line line))
-
-(defmethod fmt/process-parses
-  :kn
-  [fmt parses]
-  (process-parses parses))
-
-(defmethod fmt/read-parse
-  :kn
-  [fmt env parse]
-  (read-parse env parse))
-
-(defmethod fmt/expand-state
-  :kn
-  [fmt env state]
-  (expand-state env state))
-
-(defmethod fmt/render-state
-  :kn
-  [fmt env state]
-  (render-state env state))
+(comment
+  (def example-1-kn "@prefix ex: <ex/>\n\n: ex:s\nex:p: o")
+  (->> example-1-kn
+       (read-input {})
+       (render-states {})
+       (map ::st/output)
+       (map ::st/content)
+       string/join
+       println))

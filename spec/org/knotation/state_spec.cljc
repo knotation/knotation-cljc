@@ -20,7 +20,7 @@
 (s/def ::st/content string?)
 
 (s/def ::st/input (s/keys :req [::st/format ::st/content ::st/line-number ::st/column-number]))
-(s/def ::st/parse vector?)
+(s/def ::st/parse (s/coll-of (s/or :string string? :keyword keyword? :parse ::st/parse)))
 
 (s/def ::st/event
   #{::st/blank ; default value

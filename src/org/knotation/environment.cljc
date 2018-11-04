@@ -1,5 +1,6 @@
 (ns org.knotation.environment
   (:require [clojure.string :as string]
+            [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]))
 
 (defn add-base
@@ -101,7 +102,8 @@
   (or (wrapped-iri->iri input)
       (label->iri env input)
       (curie->iri env input)
-      (when (http-url? input) input)))
+      (when (http-url? input) input)
+      (util/throw-exception "Unknown name " input " in environment " env)))
 
 (defn find-prefix
   "Given an environment and an IRI,

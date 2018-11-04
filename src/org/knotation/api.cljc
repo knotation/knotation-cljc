@@ -18,6 +18,7 @@
 (def set-datatype en/set-datatype)
 (def set-language en/set-language)
 (def set-template-content en/set-template-content)
+(def blank-env en/blank-env)
 (def default-env en/default-env)
 
 (defn labels [env] (::en/label-seq env))
@@ -86,23 +87,15 @@
        rest
        (mapcat identity)))
 
-(defn read-parses
-  [fmt env parses]
-  (->> parses
-       (-inner-read-parses fmt env)
-       (map (fn [[env parse state]] (assoc state ::en/env env :input {:parse parse})))
-       fmt/insert-graph-events
-       fmt/insert-subject-events
-       kn/process-states))
-
 (defn read-lines
   ([format lines]
-   (read-lines format default-env lines))
+   (read-lines format blank-env lines))
   ([format env lines]
-   (read-parses format env (fmt/parse-lines format lines))))
+   ; TODO: more formats
+   (kn/read-lines env lines)))
 
 (defn read-from
-  ([format thing] (read-from format default-env thing))
+  ([format thing] (read-from format blank-env thing))
   ([format env thing]
    (cond
      (string? thing)
