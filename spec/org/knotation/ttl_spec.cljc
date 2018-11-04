@@ -7,10 +7,6 @@
             [org.knotation.state-spec]
             [org.knotation.ttl :as ttl]))
 
-(s/fdef ttl/output
-        ;:args (s/cat :state ::st/state :parse (s/coll-of string?))
-        :ret ::st/state)
-
 (s/fdef ttl/render-iri
         :args (s/cat :env ::en/env :iri ::rdf/iri)
         :ret string?)
@@ -25,35 +21,35 @@
 
 (s/fdef ttl/render-blank
         :args (s/cat :state ::st/state)
-        :ret ::st/state)
+        :ret string?)
 
 (s/fdef ttl/render-prefix
         :args (s/cat :state ::st/state)
-        :ret ::st/state)
+        :ret string?)
 
 (s/fdef ttl/render-base
         :args (s/cat :state ::st/state)
-        :ret ::st/state)
+        :ret string?)
 
 (s/fdef ttl/render-stanza-start
         :args (s/cat :state ::st/state)
-        :ret ::st/state)
+        :ret (s/nilable string?))
 
 (s/fdef ttl/render-stanza-end
         :args (s/cat :state ::st/state)
-        :ret ::st/state)
+        :ret (s/nilable string?))
 
 (s/fdef ttl/render-subject-start
         :args (s/cat :state ::st/state)
-        :ret ::st/state)
+        :ret string?)
 
 (s/fdef ttl/render-subject-end
         :args (s/cat :state ::st/state)
-        :ret ::st/state)
+        :ret (s/nilable string?))
 
 (s/fdef ttl/render-statement
         :args (s/cat :state ::st/state)
-        :ret ::st/state)
+        :ret string?)
 
 (s/fdef ttl/render-state
         :args (s/cat :state ::st/state)

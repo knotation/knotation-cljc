@@ -7,29 +7,6 @@
             [org.knotation.state :as st]
             [org.knotation.format :as fmt]))
 
-(defn output
-  "Given a state and a vector of strings,
-   update the state with an output map
-   and current :line-number and :column-number."
-  [{:keys [line-number column-number]
-    :or {line-number 1 column-number 1}
-    :as state}
-   parse]
-  (let [content (->> parse flatten (filter string?) string/join)
-        lines (util/split-lines content)]
-    (assoc
-     state
-     :line-number (-> lines count dec (+ line-number))
-     :column-number
-     (if (second lines)
-       (-> lines last count inc)
-       (-> lines first count (+ column-number)))
-     ::st/output
-     #::st{:format :ttl
-           :content content
-           :line-number line-number
-           :column-number column-number})))
-
 (defn render-iri
   "Given an environment and an IRI string,
    return a CURIE or a wrapped IRI string."
@@ -62,41 +39,39 @@
 
 (defn render-blank
   [state]
-  (output state ["\n"]))
+  "\n")
 
 (defn render-prefix
   [{:keys [prefix iri] :as state}]
-  (output state ["@prefix " prefix ": <" iri "> .\n"]))
+  (str "@prefix " prefix ": <" iri "> .\n"))
 
 (defn render-base
   [{:keys [base] :as state}]
-  (output state ["@base <" base "> .\n"]))
+  (str "@base <" base "> .\n"))
 
 (defn render-stanza-start
   [{:keys [::en/env subject] :or {env {}} :as state}]
-  state)
+  nil)
 
 (defn render-stanza-end
   [state]
-  state)
+  nil)
 
 (defn render-subject-start
   [{:keys [::en/env subject depth list-item terminal] :or {env {}} :as state}]
-  (output
-   state
-   [(cond
-      list-item "("
-      (and (rdf/blank? subject) (= depth 0)) subject
-      (rdf/blank? subject) "["
-      :else (render-iri env subject))
-    terminal]))
+  (str
+   (cond
+     list-item "("
+     (and (rdf/blank? subject) (= depth 0)) subject
+     (rdf/blank? subject) "["
+     :else (render-iri env subject))
+   terminal))
 
 (defn render-subject-end
   [{:keys [subject depth list-item terminal] :or {depth 0} :as state}]
-  (if (= depth 0)
-    state
-    (output
-     state
+  (when (> depth 0)
+    (apply
+     str
      (concat
       (repeat depth "  ")
       [(cond
@@ -109,10 +84,9 @@
   [{:keys [::en/env ::rdf/quad :silent :predicate :object :depth :initial :terminal]
     :or {env {} depth 1}
     :as state}]
-  (if silent
-    state
-    (output
-     state
+  (when-not silent
+    (apply
+     str
      (concat
       (repeat depth "  ")
       [initial]
@@ -125,17 +99,20 @@
       [terminal]))))
 
 (defn render-state
+  "Given a state, return a state with optional ::st/output."
   [{:keys [::st/event] :as state}]
-  (case event
-    ::st/blank (render-blank state)
-    ::st/prefix (render-prefix state)
-    ::st/base (render-base state)
-    ::st/stanza-start (render-stanza-start state)
-    ::st/stanza-end (render-stanza-end state)
-    ::st/subject-start (render-subject-start state)
-    ::st/subject-end (render-subject-end state)
-    ::st/statement (render-statement state)
-    state))
+  (st/output
+   state
+   :ttl
+   (case event
+     ::st/blank (render-blank state)
+     ::st/prefix (render-prefix state)
+     ::st/base (render-base state)
+     ::st/stanza-start (render-stanza-start state)
+     ::st/stanza-end (render-stanza-end state)
+     ::st/subject-start (render-subject-start state)
+     ::st/subject-end (render-subject-end state)
+     ::st/statement (render-statement state))))
 
 (def default-state
   {::en/env {}

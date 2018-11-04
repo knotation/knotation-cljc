@@ -24,6 +24,31 @@
        (merge (when info {::error-info info}))
        (assoc state ::event ::error ::error)))
 
+(defn output
+  "Given a state, a format keyword, and an output string (or nil)
+   update the state with an output map
+   and current :line-number and :column-number."
+  [{:keys [line-number column-number]
+    :or {line-number 1 column-number 1}
+    :as state}
+   format
+   content]
+  (if (and content (string? content))
+    (let [lines (util/split-lines content)]
+      (assoc
+       state
+       :line-number (-> lines count dec (+ line-number))
+       :column-number
+       (if (second lines)
+         (-> lines last count inc)
+         (-> lines first count (+ column-number)))
+       ::output
+       {::format format
+        ::content content
+        ::line-number line-number
+        ::column-number column-number}))
+    state))
+
 (defn update-env
   "Given an environment and a state,
    return an updated environment."
@@ -63,13 +88,12 @@
 (defn update-state
   "Given a previous state and the current state,
    use the previous state to assign an environment to the current state."
-  [{:keys [::en/env :line-number :column-number] :as previous-state} state]
+  [{:keys [::en/env :line-number :column-number] :or {env {}} :as previous-state} state]
   (assoc
    state
    :line-number line-number
    :column-number column-number
-   ::en/env
-   (update-env (::en/env previous-state) previous-state)))
+   ::en/env (update-env env previous-state)))
 
 (defn sequential-blank-nodes
   "Given a sequence of states, some of which have ::rdf/quads,

@@ -15,34 +15,16 @@
 (deftest test-render-state
   (is (= (ttl/render-prefix
           {::st/event ::st/prefix :prefix "kn" :iri "https://knotation.org/kn/"})
-         {::st/event ::st/prefix :prefix "kn" :iri "https://knotation.org/kn/"
-          :line-number 2 :column-number 1
-          ::st/output
-          #::st{:format :ttl
-                :content "@prefix kn: <https://knotation.org/kn/> .\n"
-                :line-number 1
-                :column-number 1}}))
+         "@prefix kn: <https://knotation.org/kn/> .\n"))
   (is (= (ttl/render-base
           {::st/event ::st/base :base "http://example.com/"})
-         {::st/event ::st/base :base "http://example.com/"
-          :line-number 2 :column-number 1
-          ::st/output
-          #::st{:format :ttl
-                :content "@base <http://example.com/> .\n"
-                :line-number 1
-                :column-number 1}}))
+         "@base <http://example.com/> .\n"))
   (is (= (ttl/render-subject-start
           {::st/event ::st/subject-start :subject "http://example.com/s" :terminal "\n"})
-         {::st/event ::st/subject-start :subject "http://example.com/s" :terminal "\n"
-          :line-number 2 :column-number 1
-          ::st/output
-          #::st{:format :ttl
-                :content "<http://example.com/s>\n"
-                :line-number 1
-                :column-number 1}}))
+         "<http://example.com/s>\n"))
   (is (= (ttl/render-subject-end
           {::st/event ::st/subject-end :subject "http://example.com/s"})
-         {::st/event ::st/subject-end :subject "http://example.com/s"}))
+         nil))
   (is (= (ttl/render-statement
           {::st/event ::st/statement
            :terminal " ;\n"
@@ -51,19 +33,7 @@
                   :si "http://example.com/s"
                   :pi "http://example.com/p"
                   :oi "http://example.com/o"}})
-         {::st/event ::st/statement
-          :terminal " ;\n"
-          ::rdf/quad
-          #::rdf{:zn "http://example.com/s"
-                 :si "http://example.com/s"
-                 :pi "http://example.com/p"
-                 :oi "http://example.com/o"}
-          :line-number 2 :column-number 1
-          ::st/output
-          #::st{:format :ttl
-                :content "  <http://example.com/p> <http://example.com/o> ;\n"
-                :line-number 1
-                :column-number 1}}))
+         "  <http://example.com/p> <http://example.com/o> ;\n"))
   (is (= (ttl/render-statement
           {::st/event ::st/statement
            :terminal " ;\n"
@@ -72,19 +42,7 @@
                   :si "http://example.com/s"
                   :pi "http://example.com/p"
                   :ob "_:o"}})
-         {::st/event ::st/statement
-          :terminal " ;\n"
-          ::rdf/quad
-          #::rdf{:zn "http://example.com/s"
-                 :si "http://example.com/s"
-                 :pi "http://example.com/p"
-                 :ob "_:o"}
-          :line-number 2 :column-number 1
-          ::st/output
-          #::st{:format :ttl
-                :content "  <http://example.com/p> _:o ;\n"
-                :line-number 1
-                :column-number 1}}))
+         "  <http://example.com/p> _:o ;\n"))
   (is (= (ttl/render-statement
           {::st/event ::st/statement
            :terminal " ;\n"
@@ -93,19 +51,7 @@
                   :si "http://example.com/s"
                   :pi "http://example.com/p"
                   :ol "o"}})
-         {::st/event ::st/statement
-          :terminal " ;\n"
-          ::rdf/quad
-          #::rdf{:zn "http://example.com/s"
-                 :si "http://example.com/s"
-                 :pi "http://example.com/p"
-                 :ol "o"}
-          :line-number 2 :column-number 1
-          ::st/output
-          #::st{:format :ttl
-                :content "  <http://example.com/p> \"o\" ;\n"
-                :line-number 1
-                :column-number 1}}))
+         "  <http://example.com/p> \"o\" ;\n"))
   (is (= (ttl/render-statement
           {::st/event ::st/statement
            :terminal " ;\n"
@@ -115,20 +61,7 @@
                   :pi "http://example.com/p"
                   :ol "o"
                   :di "http://example.com/d"}})
-         {::st/event ::st/statement
-          :terminal " ;\n"
-          ::rdf/quad
-          #::rdf{:zn "http://example.com/s"
-                 :si "http://example.com/s"
-                 :pi "http://example.com/p"
-                 :ol "o"
-                 :di "http://example.com/d"}
-          :line-number 2 :column-number 1
-          ::st/output
-          #::st{:format :ttl
-                :content "  <http://example.com/p> \"o\"^^<http://example.com/d> ;\n"
-                :line-number 1
-                :column-number 1}}))
+         "  <http://example.com/p> \"o\"^^<http://example.com/d> ;\n"))
   (is (= (ttl/render-statement
           {::st/event ::st/statement
            :terminal " ;\n"
@@ -138,20 +71,7 @@
                   :pi "http://example.com/p"
                   :ol "o"
                   :lt "en"}})
-         {::st/event ::st/statement
-          :terminal " ;\n"
-          ::rdf/quad
-          #::rdf{:zn "http://example.com/s"
-                 :si "http://example.com/s"
-                 :pi "http://example.com/p"
-                 :ol "o"
-                 :lt "en"}
-          :line-number 2 :column-number 1
-          ::st/output
-          #::st{:format :ttl
-                :content "  <http://example.com/p> \"o\"@en ;\n"
-                :line-number 1
-                :column-number 1}})))
+         "  <http://example.com/p> \"o\"@en ;\n")))
 
 (def test-sorting-before
   [{::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :sb "_:b0" :pi (rdf/rdf "first") :ol "1"}}

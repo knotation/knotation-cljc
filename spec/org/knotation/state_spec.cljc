@@ -19,7 +19,7 @@
 (s/def ::st/lines (s/coll-of string?))
 (s/def ::st/content string?)
 
-(s/def ::st/input (s/keys :req [::st/format ::st/source ::st/line-number ::st/lines]))
+(s/def ::st/input (s/keys :req [::st/format ::st/content ::st/line-number ::st/column-number]))
 (s/def ::st/parse vector?)
 
 (s/def ::st/event
@@ -44,6 +44,10 @@
                                 ::st/event ::rdf/quad
                                 ::st/output]))
 (s/def ::st/states (s/coll-of ::st/state))
+
+(s/fdef st/output
+        :args (s/cat :state ::st/state :format ::st/format :content (s/nilable string?))
+        :ret ::st/state)
 
 (s/fdef st/update-env
         :args (s/cat :env ::en/env :state ::st/state)
