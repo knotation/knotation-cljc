@@ -49,6 +49,22 @@
         ::column-number column-number}))
     state))
 
+(defn render-output
+  "Given a sequence of states with ::output,
+   return a sequence of string contents."
+  [states]
+  (->> states
+       (map ::output)
+       (map ::content)))
+
+(defn render-output-string
+  "Given a sequence of states with ::output,
+   return a string."
+  [states]
+  (->> states
+       render-output
+       string/join))
+
 (defn update-env
   "Given an environment and a state,
    return an updated environment."

@@ -6,7 +6,6 @@
             [org.knotation.rdf :as rdf :refer [owl rdf kn]]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
-            [org.knotation.format :as fmt]
             [org.knotation.omn :as omn]))
 
 (defn parse-map

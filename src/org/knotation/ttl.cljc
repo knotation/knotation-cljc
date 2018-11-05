@@ -4,8 +4,7 @@
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
-            [org.knotation.state :as st]
-            [org.knotation.format :as fmt]))
+            [org.knotation.state :as st]))
 
 (defn render-iri
   "Given an environment and an IRI string,
@@ -329,8 +328,3 @@
           (render-stanza previous-stanza stanza))
         [])
        (mapcat identity)))
-
-(defmethod fmt/render-states
-  :ttl
-  [fmt env states]
-  (render-states env states))

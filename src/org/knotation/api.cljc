@@ -4,12 +4,11 @@
             [org.knotation.util :as util]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
-            [org.knotation.format :as fmt]
 
             [org.knotation.kn :as kn]
-            org.knotation.ttl
-            org.knotation.nq
-            org.knotation.tsv))
+            [org.knotation.ttl :as ttl]
+            [org.knotation.nq :as nq]
+            [org.knotation.tsv :as tsv]))
 
 ;; Environments
 (def add-base en/add-base)
@@ -67,25 +66,6 @@
   (->> h errors-of (remove nil?) empty? not))
 
 ;; Processing to/from state
-(defn -inner-read-parses
-  "Given a format keyword, and initial environment (or nil), and a sequence of parses,
-   return a lazy sequence of [env parse state] triples."
-  [fmt env parses]
-  (->> parses
-       (reductions
-        (fn [previous parse]
-          (let [[previous-env _ previous-state] (last previous)
-                previous-env (or previous-env en/blank-env)
-                previous-state (or previous-state st/blank-state)
-                env (st/update-env previous-env previous-state)
-                state (fmt/read-parse fmt env parse)
-                [state expanded-parses] (fmt/expand-state fmt env state)]
-            (concat
-             [[env parse state]]
-             (-inner-read-parses fmt env expanded-parses))))
-        [[env nil nil]])
-       rest
-       (mapcat identity)))
 
 (defn read-lines
   ([format lines]
@@ -109,10 +89,18 @@
 
      :else (util/throw-exception "Can't read from a thing of type" (type thing)))))
 
+(defn render-states
+  [format env states]
+  (case format
+    :kn (kn/render-states env states)
+    :ttl (ttl/render-states env states)
+    :nq (nq/render-states states)
+    :else (util/throw-exception "Unsupported format: " format)))
+
 (defn render-to
-  ([format h] (render-to format (env-of h) h))
-  ([format env h]
-   (fmt/render-output (fmt/render-states format env h))))
+  ([format states] (render-to format blank-env states))
+  ([format env states]
+   (st/render-output-string (render-states format env states))))
 
 (defn collect-line-map
   [state]
@@ -130,4 +118,4 @@
 
 (defn line-map-of
   ([format h] (line-map-of format (env-of h) h))
-  ([format env h] (collect-line-map (fmt/render-states format env h))))
+  ([format env h] (collect-line-map (render-states format env h))))

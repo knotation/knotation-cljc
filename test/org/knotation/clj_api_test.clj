@@ -177,9 +177,7 @@ ex:s
   (->> s
        (kn/read-input {})
        (kn/render-states {})
-       (map ::st/output)
-       (map ::st/content)
-       string/join
+       st/render-output-string
        normalize-trailing-newlines
        (= (normalize-trailing-newlines s))
        is))
@@ -194,9 +192,7 @@ ex:s
        (api/read-string :ttl {})
        st/sequential-blank-nodes
        (ttl/render-states {})
-       (map ::st/output)
-       (map ::st/content)
-       string/join
+       st/render-output-string
        (= s)
        is))
 
@@ -223,9 +219,7 @@ ex:s
   (->> t
        (api/read-string :ttl {})
        (kn/render-states {})
-       (map ::st/output)
-       (map ::st/content)
-       string/join
+       st/render-output-string
        normalize-trailing-newlines
        (= (normalize-trailing-newlines k))
        is))
@@ -263,7 +257,5 @@ ex:s
        st/sequential-blank-nodes
        ;(map println))
        (ttl/render-states {})
-       (map ::st/output)
-       (map ::st/content)
-       string/join
+       st/render-output-string
        println)
