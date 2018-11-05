@@ -24,29 +24,56 @@
        (merge (when info {::error-info info}))
        (assoc state ::event ::error ::error)))
 
-(defn output
-  "Given a state, a format keyword, and an output string (or nil)
-   update the state with an output map
-   and current :line-number and :column-number."
-  [{:keys [line-number column-number]
-    :or {line-number 1 column-number 1}
-    :as state}
-   format
-   content]
+(def default-location
+  {::line-number 1
+   ::column-number 1})
+
+(defn step-location
+  "Given a start location, step forward one column,
+   and return the new location."
+  [{:keys [::line-number ::column-number] :as start}]
+  (update start ::column-number inc))
+
+(defn advance-location
+  "Given a start location and a content string,
+   return an end location."
+  [{:keys [::line-number ::column-number] :as start} content]
+  (let [lines (util/split-lines content)]
+    {::line-number (-> lines count dec (+ line-number))
+     ::column-number
+     (if (second lines)
+       (-> lines last count)
+       (-> lines first count dec (+ column-number)))}))
+
+(defn input
+  "Given a state, a format keyword, and an input string (or nil)
+   update the state with an ::input map and current ::location."
+  [{:keys [::location] :or {location default-location} :as state} format content]
   (if (and content (string? content))
-    (let [lines (util/split-lines content)]
+    (let [end (advance-location location content)]
       (assoc
        state
-       :line-number (-> lines count dec (+ line-number))
-       :column-number
-       (if (second lines)
-         (-> lines last count inc)
-         (-> lines first count (+ column-number)))
+       ::input
+       {::format format
+        ::content content
+        ::start location
+        ::end end}))
+    state))
+
+(defn output
+  "Given a state, a format keyword, and an output string (or nil)
+   update the state with an ::output map and current ::location."
+  [{:keys [::location] :or {location default-location} :as state} format content]
+  (if (and content (string? content))
+    (let [end (advance-location location content)]
+      (assoc
+       state
+       ::location (step-location end)
        ::output
        {::format format
         ::content content
-        ::line-number line-number
-        ::column-number column-number}))
+        ::start location
+        ::end end}))
     state))
 
 (defn render-output
@@ -55,7 +82,8 @@
   [states]
   (->> states
        (map ::output)
-       (map ::content)))
+       (map ::content)
+       (filter string?)))
 
 (defn render-output-string
   "Given a sequence of states with ::output,
@@ -99,14 +127,13 @@
 (defn update-state
   "Given a previous state and the current state,
    use the previous state to assign an environment to the current state."
-  [{:keys [::en/env :line-number :column-number] :or {env {}} :as previous-state} state]
+  [{:keys [::en/env ::location] :or {env {} location default-location} :as previous-state} state]
   (merge
    state
    (when-let [subject (or (:subject state) (:subject previous-state))]
      {:subject subject})
-   {:line-number line-number
-    :column-number column-number
-    ::en/env (update-env env previous-state)}))
+   {::en/env (update-env env previous-state)
+    ::location location}))
 
 (defn sequential-blank-nodes
   "Given a sequence of states, some of which have ::rdf/quads,

@@ -122,45 +122,41 @@
     :prefix "kn"
     :iri "https://knotation.org/kn/"
     ::en/env {}
-    :line-number 2
-    :column-number 1
+    ::st/location #::st{:line-number 2 :column-number 1}
     ::st/output
     #::st{:format :ttl
           :content "@prefix kn: <https://knotation.org/kn/> .\n"
-          :line-number 1
-          :column-number 1}}
+          :start #::st{:line-number 1 :column-number 1}
+          :end #::st{:line-number 2 :column-number 0}}}
    {::st/event ::st/prefix
     :prefix "ex"
     :iri "http://example.com/"
     ::en/env (en/add-prefix {} "kn" "https://knotation.org/kn/")
-    :line-number 3
-    :column-number 1
+    ::st/location #::st{:line-number 3 :column-number 1}
     ::st/output
     #::st{:format :ttl
           :content "@prefix ex: <http://example.com/> .\n"
-          :line-number 2
-          :column-number 1}}
+          :start #::st{:line-number 2 :column-number 1}
+          :end #::st{:line-number 3 :column-number 0}}}
    {::st/event ::st/blank
     ::en/env test-output-env
-    :line-number 4
-    :column-number 1
+    ::st/location #::st{:line-number 4 :column-number 1}
     ::st/output
     #::st{:format :ttl
           :content "\n"
-          :line-number 3
-          :column-number 1}}
+          :start #::st{:line-number 3 :column-number 1}
+          :end #::st{:line-number 4 :column-number 0}}}
    {::st/event ::st/subject-start
     :subject "http://example.com/s"
     ::en/env test-output-env
+    ::st/location #::st{:line-number 5 :column-number 1}
     :depth 0
-    :line-number 5
-    :column-number 1
     :terminal "\n"
     ::st/output
     #::st{:format :ttl
           :content "ex:s\n"
-          :line-number 4
-          :column-number 1}}
+          :start #::st{:line-number 4 :column-number 1}
+          :end #::st{:line-number 5 :column-number 0}}}
    {::st/event ::st/statement
     :subject "http://example.com/s"
     ::rdf/quad #::rdf{:zn "http://example.com/s"
@@ -168,15 +164,14 @@
                       :pi "http://example.com/p"
                       :oi "http://example.com/o"}
     ::en/env test-output-env
+    ::st/location #::st{:line-number 6 :column-number 1}
     :depth 1
-    :line-number 6
-    :column-number 1
     :terminal " ;\n"
     ::st/output
     #::st{:format :ttl
           :content "  ex:p ex:o ;\n"
-          :line-number 5
-          :column-number 1}}
+          :start #::st{:line-number 5 :column-number 1}
+          :end #::st{:line-number 6 :column-number 0}}}
    {::st/event ::st/statement
     :subject "http://example.com/s"
     ::rdf/quad #::rdf{:zn "http://example.com/s"
@@ -184,22 +179,20 @@
                       :pi "http://example.com/p"
                       :ol "o"}
     ::en/env test-output-env
-    :line-number 7
-    :column-number 1
+    ::st/location #::st{:line-number 7 :column-number 1}
     :depth 1
     :last true
     :terminal " .\n"
     ::st/output
     #::st{:format :ttl
           :content "  ex:p \"o\" .\n"
-          :line-number 6
-          :column-number 1}}
+          :start #::st{:line-number 6 :column-number 1}
+          :end #::st{:line-number 7 :column-number 0}}}
    {::st/event ::st/subject-end
     :subject "http://example.com/s"
     ::en/env test-output-env
+    ::st/location #::st{:line-number 7 :column-number 1}
     :depth 0
-    :line-number 7
-    :column-number 1
     :list-item false
     :terminal "\n"}])
 

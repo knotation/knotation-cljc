@@ -26,10 +26,7 @@
    Return the state."
   [{:keys [::rdf/quad] :as state}]
   (if quad
-    (->> quad
-         render-quad
-         (assoc {::st/format :nq} ::st/content)
-         (assoc state ::st/output))
+    (st/output state :nq (render-quad quad))
     state))
 
 (defn render-states

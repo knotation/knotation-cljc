@@ -114,9 +114,7 @@
      ::st/statement (render-statement state))))
 
 (def default-state
-  {::en/env {}
-   :line-number 1
-   :column-number 1})
+  {::en/env {}})
 
 (defn get-subject
   [state]

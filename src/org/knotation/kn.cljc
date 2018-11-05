@@ -375,14 +375,11 @@
   (->> lines
        (map-indexed
         (fn [i line]
-          {::st/input
-           #::st{:format :kn
-                 :content line
-                 :line-number (inc i)
-                 :column-number 1}
-           :line-number (+ 2 i)
-           :column-number 1
-           ::st/parse (parse-line line)}))
+          (st/input
+           {::st/location {::st/line-number (inc i) ::st/column-number 1}
+            ::st/parse (parse-line line)}
+           :kn
+           line)))
        merge-indented))
 
 (defn read-parse

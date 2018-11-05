@@ -29,5 +29,9 @@
            ::rdf/quad #::rdf{:gi "GI" :si "SI" :pi "PI" :oi "OI"}})
          {::st/event ::st/statement
           ::rdf/quad #::rdf{:gi "GI" :si "SI" :pi "PI" :oi "OI"}
-          ::st/output {::st/format :nq
-                       ::st/content "<SI> <PI> <OI> <GI> .\n"}})))
+          ::st/location #::st{:line-number 2 :column-number 1}
+          ::st/output
+          #::st{:format :nq
+                :content "<SI> <PI> <OI> <GI> .\n"
+                :start #::st{:line-number 1 :column-number 1}
+                :end #::st{:line-number 2 :column-number 0}}})))
