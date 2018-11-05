@@ -1,7 +1,6 @@
 (ns org.knotation.tsv
   (:require [clojure.string :as string]
             [org.knotation.state :as st]
-            [org.knotation.format :as fmt]
             [org.knotation.kn :as kn]))
 
 (defn parse-cell
@@ -29,24 +28,4 @@
                            first)]
     (mapcat (partial parse-line headers subject-index) (rest lines))))
 
-; Implement format interface, mostly reusing Knotation format
-
-(defmethod fmt/parse-lines
-  :tsv
-  [fmt lines]
-  (parse-lines lines))
-
-;(defmethod fmt/process-parses
-;  :tsv
-;  [fmt parses]
-;  (kn/process-parses parses))
-
-;(defmethod fmt/read-parse
-;  :tsv
-;  [fmt env parse]
-;  (kn/read-parse env parse))
-
-;(defmethod fmt/expand-state
-;  :tsv
-;  [fmt env state]
-;  (kn/expand-state env state))
+; TODO: Implement format interface, mostly reusing Knotation format

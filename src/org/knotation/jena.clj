@@ -5,8 +5,7 @@
 
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
-            [org.knotation.state :as st]
-            [org.knotation.format :as fmt])
+            [org.knotation.state :as st])
   (:import (java.io InputStream ByteArrayInputStream)
            (java.util.concurrent BlockingQueue LinkedBlockingQueue TimeUnit)
            (org.apache.jena.graph Triple Node_URI Node_Blank Node_Literal)
