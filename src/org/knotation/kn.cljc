@@ -90,12 +90,12 @@
       (assoc
        state
        ::st/event ::st/prefix
-       :prefix prefix
-       :iri iri)
+       ::en/prefix prefix
+       ::en/iri iri)
       (st/error state :not-a-prefix-parse parse))))
 
 (defn render-prefix
-  [{:keys [prefix iri] :as state}]
+  [{:keys [::en/prefix ::en/iri] :as state}]
   (if (and prefix iri)
     [::prefix-line
      [:symbol "@"]
@@ -141,12 +141,13 @@
       (assoc
        state
        ::st/event ::st/subject-start
-       :subject iri)
+       ::rdf/stanza iri
+       ::rdf/subject iri)
       (st/error state :unrecognized-name name))
     (st/error state :not-a-subject-parse)))
 
 (defn render-subject
-  [{:keys [::en/env :subject] :as state}]
+  [{:keys [::en/env ::rdf/subject] :as state}]
   (if subject
     (if-let [name (or (and (rdf/blank? subject) subject)
                       (en/iri->name env subject))]
@@ -273,7 +274,7 @@
         string/join)))
 
 (defn read-statement
-  [{:keys [::en/env ::st/parse subject] :as state}]
+  [{:keys [::en/env ::st/parse ::rdf/stanza ::rdf/subject] :as state}]
   (let [names (->> parse rest (filter #(= :name (first %))))
         predicate-name (-> names first second)
         datatype-name (-> names second second)
@@ -298,7 +299,8 @@
             (merge
              object
              (if (rdf/blank? subject) {::rdf/sb subject} {::rdf/si subject})
-             {::rdf/pi predicate-iri}))]
+             {::rdf/zn stanza
+              ::rdf/pi predicate-iri}))]
           [(st/error state :unrecognized-object parse)])
         [(st/error state :unrecognized-datatype datatype-name)])
       [(st/error state :unrecognized-predicate predicate-name)])))
@@ -307,12 +309,14 @@
   "Render the datatype part of a statement.
    Handles default dataypes and languages."
   [env predicate-iri {::rdf/keys [oi ob ol di lt] :as object}]
-  (let [di (if oi "https://knotation.org/kn/link" di)]
+  (let [di (if (or oi ob) "https://knotation.org/kn/link" di)]
     (cond
       (and lt (not= lt (en/get-language env predicate-iri)))
       [[:symbol ";"]
        [:space " "]
        [:name (str "@" lt)]]
+      (= di (rdf/xsd "string")) ; ignore xsd:string
+      []
       (and di (not= di (en/get-datatype env predicate-iri)))
       [[:symbol ";"]
        [:space " "]
@@ -469,6 +473,8 @@
          ::st/prefix (render-prefix state)
          ::st/graph-start state ; TODO
          ::st/graph-end state
+         ::st/stanza-start state
+         ::st/stanza-end state
          ::st/subject-start (render-subject state)
          ::st/subject-end state
          ::st/statement (render-statement state)

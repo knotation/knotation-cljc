@@ -24,8 +24,8 @@
   {"@context"
    (merge
     (->> states
-         (filter :prefix)
-         (map (juxt :prefix :iri))
+         (filter ::en/prefix)
+         (map (juxt ::en/prefix ::en/iri))
          (into {}))
     (->> states
          (map ::rdf/quad)

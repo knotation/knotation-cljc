@@ -23,33 +23,35 @@
   "Given an environment, a sequence of states, and an object node,
    return a (possibly nested) sequence of strings representing the object,
    including nested lists and anonymous subjects."
-  [env {::rdf/keys [oi ob ol di lt] :as quad}]
-  (cond
-    oi (render-iri env oi)
+  [env {::rdf/keys [pi oi ob ol di lt] :as quad}]
+  (let [di (or di (en/get-datatype env pi))
+        lt (or lt (en/get-language env pi))]
+    (cond
+      oi (render-iri env oi)
 
-    ob ob
+      ob ob
 
-    (and di (not (contains? #{(rdf/xsd "string") (rdf/kn "link")} di)))
-    (str (render-lexical ol) "^^" (render-iri env di))
+      (and di (not (contains? #{(rdf/xsd "string") (rdf/kn "link")} di)))
+      (str (render-lexical ol) "^^" (render-iri env di))
 
-    lt (str (render-lexical ol) "@" lt)
+      lt (str (render-lexical ol) "@" lt)
 
-    ol (render-lexical ol)))
+      ol (render-lexical ol))))
 
 (defn render-blank
   [state]
   "\n")
 
 (defn render-prefix
-  [{:keys [prefix iri] :as state}]
+  [{:keys [::en/prefix ::en/iri] :as state}]
   (str "@prefix " prefix ": <" iri "> .\n"))
 
 (defn render-base
-  [{:keys [base] :as state}]
+  [{:keys [::en/base] :as state}]
   (str "@base <" base "> .\n"))
 
 (defn render-stanza-start
-  [{:keys [::en/env subject] :or {env {}} :as state}]
+  [{:keys [::en/env ::rdf/subject] :or {env {}} :as state}]
   nil)
 
 (defn render-stanza-end
@@ -57,7 +59,7 @@
   nil)
 
 (defn render-subject-start
-  [{:keys [::en/env subject depth list-item terminal] :or {env {}} :as state}]
+  [{:keys [::en/env ::rdf/subject ::depth ::list-item ::terminal] :or {env {}} :as state}]
   (str
    (cond
      list-item "("
@@ -67,7 +69,7 @@
    terminal))
 
 (defn render-subject-end
-  [{:keys [subject depth list-item terminal] :or {depth 0} :as state}]
+  [{:keys [::rdf/subject ::depth ::list-item ::terminal] :or {depth 0} :as state}]
   (when (> depth 0)
     (apply
      str
@@ -80,7 +82,7 @@
        terminal]))))
 
 (defn render-statement
-  [{:keys [::en/env ::rdf/quad :silent :predicate :object :depth :initial :terminal]
+  [{:keys [::en/env ::rdf/quad ::silent ::predicate ::object ::depth ::initial ::terminal]
     :or {env {} depth 1}
     :as state}]
   (when-not silent
@@ -129,44 +131,44 @@
    that points to a branch of this stanza,
    annotate the statement
    then recurse to that branch."
-  [{:keys [subjects lists list-items depth] :as coll} subject state ob]
+  [{:keys [::subjects ::lists ::list-items ::depth] :as coll} subject state ob]
   ; bump this subject to the top of the list of subjects
-  (let [coll (assoc coll :subjects (concat [ob] (remove #{ob} subjects)))]
+  (let [coll (assoc coll ::subjects (concat [ob] (remove #{ob} subjects)))]
     (cond
       ; statement is a "first" list item with nested object
       (-> state ::rdf/quad ::rdf/pi (= (rdf/rdf "first")))
       (-> coll
-          (update :states conj (assoc state :predicate "" :object ""))
-          (update :states conj {::st/event ::st/subject-start
-                                :list-item (boolean (find lists ob))
-                                :depth depth
-                                :subject ob})
-          (update :depth inc)
+          (update ::states conj (assoc state ::predicate "" ::object ""))
+          (update ::states conj {::st/event ::st/subject-start
+                                 ::rdf/subject ob
+                                 ::list-item (boolean (find lists ob))
+                                 ::depth depth})
+          (update ::depth inc)
           inner-sort-statements)
 
       ; statement is a "rest" list item: do not indent!
       (-> state ::rdf/quad ::rdf/pi (= (rdf/rdf "rest")))
       (-> coll
-          (update :states conj (assoc state :silent true))
+          (update ::states conj (assoc state ::silent true))
           inner-sort-statements)
 
       :else
       (-> coll
-          (update :states conj (assoc state :object ""))
-          (update :states conj {::st/event ::st/subject-start
-                                :list-item (boolean (find lists ob))
-                                :depth depth
-                                :subject ob})
-          (update :depth inc)
+          (update ::states conj (assoc state ::object ""))
+          (update ::states conj {::st/event ::st/subject-start
+                                 ::rdf/subject ob
+                                 ::list-item (boolean (find lists ob))
+                                 ::depth depth})
+          (update ::depth inc)
           inner-sort-statements))))
 
 (defn annotate-state
   "Annotate a single state by marking it as nested, last, or a list item,
    then recurse to the next state."
-  [{:keys [subjects annotations depth] :as coll} subject state]
+  [{:keys [::subjects ::annotations ::depth] :as coll} subject state]
   (let [last? (= state (last (get coll subject)))
         coll (update coll subject rest) ; remove this state
-        state (merge state {:depth depth} (when last? {:last true}))
+        state (merge state {::depth depth} (when last? {::last true}))
         ob (-> state ::rdf/quad ::rdf/ob)]
     (if (and ob (find coll ob) (not (contains? annotations ob)))
       (annotate-nested coll subject state ob)
@@ -174,42 +176,42 @@
       (let [state
             (cond
               (-> state ::rdf/quad ::rdf/pi (= (rdf/rdf "first")))
-              (assoc state :predicate "")
+              (assoc state ::predicate "")
 
               (-> state ::rdf/quad ::rdf/pi (= (rdf/rdf "rest")))
-              (assoc state :silent true)
+              (assoc state ::silent true)
 
               :else
               state)]
         (-> coll
-            (update :states conj state)
+            (update ::states conj state)
             inner-sort-statements)))))
 
 (defn annotate-subject
   "Annotate a subject, either by annotating its next remaining state,
    or annotating it as complete and recursing to the next subject."
-  [{:keys [subjects lists list-items depth] :as coll} subject]
+  [{:keys [::subjects ::lists ::list-items ::depth] :as coll} subject]
   (if-let [state (first (get coll subject))]
     (annotate-state coll subject state)
 
     ; no more states for this subject
     (let [coll (-> coll
                    (dissoc subject)
-                   (assoc :subjects (remove #{subject} subjects)))
+                   (assoc ::subjects (remove #{subject} subjects)))
           subject-end {::st/event ::st/subject-end
-                       :list-item (boolean (find lists subject))
-                       :depth (dec depth)
-                       :subject subject}
+                       ::list-item (boolean (find lists subject))
+                       ::depth (dec depth)
+                       ::rdf/subject subject}
           next-subject (second subjects)]
       (cond
         ; There's another top-level subject to handle
         (and next-subject (= depth 1))
         (-> coll
-            (update :states conj subject-end)
-            (update :states conj {::st/event ::st/blank :depth 0})
-            (update :states conj {::st/event ::st/subject-start
-                                  :depth 0
-                                  :subject next-subject})
+            (update ::states conj subject-end)
+            (update ::states conj {::st/event ::st/blank ::depth 0})
+            (update ::states conj {::st/event ::st/subject-start
+                                   ::rdf/subject next-subject
+                                   ::depth 0})
             inner-sort-statements)
 
         ; subject is an item inside a list: do not unindent!
@@ -218,17 +220,17 @@
 
         :else
         (-> coll
-            (update :states conj subject-end)
-            (update :depth dec)
+            (update ::states conj subject-end)
+            (update ::depth dec)
             inner-sort-statements)))))
 
 (defn inner-sort-statements
   "Given a map from subjects to sequences of their states,
-   plus :subjects and :states sequences,
-   a :lists map and a :depth integer,
+   plus :subjects and ::states sequences,
+   a :lists map and a ::depth integer,
    recursively loop through the :subjects and add to :states,
    in the order and depth that Turtle expects."
-  [{:keys [subjects] :as coll}]
+  [{:keys [::subjects] :as coll}]
   (if-let [subject (first subjects)]
     (annotate-subject coll subject)
     coll))
@@ -236,45 +238,45 @@
 (defn sort-statements
   [grouped-states lists annotations subjects]
   (concat
-   (when (first subjects)
-     [{::st/event ::st/subject-start :depth 0 :subject (first subjects)}])
+   (when-let [s (first subjects)]
+     [{::st/event ::st/subject-start ::rdf/stanza s ::rdf/subject s ::depth 0}])
    (-> grouped-states
-       (assoc :states []
-              :subjects subjects
-              :lists lists
-              :list-items (-> lists vals flatten set)
-              :annotations annotations
-              :depth 1)
+       (assoc ::states []
+              ::subjects subjects
+              ::lists lists
+              ::list-items (-> lists vals flatten set)
+              ::annotations annotations
+              ::depth 1)
        inner-sort-statements
-       :states)))
+       ::states)))
 
 (defn annotate-terminal
   "Given a state, add the right :terminal annotation."
-  [state]
+  [{:keys [::st/event ::depth ::last ::object] :as state}]
   (cond
-    (:object state)
+    object
     state
 
-    (= ::st/statement (::st/event state))
+    (= ::st/statement event)
     (cond
-      (:last state)
-      (if (= 1 (:depth state))
-        (assoc state :terminal " .\n")
-        (assoc state :terminal "\n"))
+      last
+      (if (= 1 depth)
+        (assoc state ::terminal " .\n")
+        (assoc state ::terminal "\n"))
 
       (-> state ::rdf/quad ::rdf/pi (= (rdf/rdf "first")))
-      (assoc state :terminal "\n")
+      (assoc state ::terminal "\n")
 
       :else
-      (assoc state :terminal " ;\n"))
+      (assoc state ::terminal " ;\n"))
 
-    (= ::st/subject-start (::st/event state))
-    (assoc state :terminal "\n")
+    (= ::st/subject-start event)
+    (assoc state ::terminal "\n")
 
-    (= ::st/subject-end (::st/event state))
-    (if (= 1 (:depth state))
-      (assoc state :terminal " ;\n")
-      (assoc state :terminal "\n"))
+    (= ::st/subject-end event)
+    (if (= 1 depth)
+      (assoc state ::terminal " ;\n")
+      (assoc state ::terminal "\n"))
 
     :else
     state))
@@ -319,7 +321,7 @@
   [env states]
   (->> states
        (filter #(contains? #{::st/prefix ::st/base ::st/statement} (::st/event %)))
-       st/partition-stanzas
+       (partition-by ::rdf/stanza)
        (interpose [{::st/event ::st/blank}])
        (reductions
         (fn [previous-stanza stanza]

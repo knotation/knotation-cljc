@@ -70,9 +70,9 @@
       ; TODO: read-quad
       ;(.put queue quad))
     (^void base   [_ ^String base]
-      (.put queue {::st/event ::st/base :base base}))
+      (.put queue {::st/event ::st/base ::en/base base}))
     (^void prefix [_ ^String prefix ^String iri]
-      (.put queue {::st/event ::st/prefix :prefix prefix :iri iri}))
+      (.put queue {::st/event ::st/prefix ::en/prefix prefix ::en/iri iri}))
     (^void finish [_]
       (.put queue :finish))))
 
@@ -93,30 +93,23 @@
        :start (queue->lazy-seq queue)
        (cons item (queue->lazy-seq queue))))))
 
-(defn insert-stanza-events
-  [states]
-  (->> states
-       (partition-by #(get-in % [::rdf/quad ::rdf/zn]))
-       (mapcat
-        (fn [states]
-          (let [zn (-> states first ::rdf/quad ::rdf/zn)]
-            (if zn
-              (concat
-               [{::st/event ::st/stanza-start :subject zn}]
-               states
-               [{::st/event ::st/stanza-end :subject zn}])
-              states))))))
-
-(defn read-input
+(defn read-basic-input
   "Given a format string and an input stream for RDF data,
-   return a lazy sequence of RDF triple maps."
+   return a lazy sequence of basic states: prefix, base, statement."
   [^String fmt ^InputStream input]
   (let [^BlockingQueue queue (LinkedBlockingQueue. 10000)]
     (.start (Thread. #(RDFDataMgr/parse (make-stream queue) input (get-format fmt))))
-    (->> queue
-         queue->lazy-seq
-         st/assign-stanzas)))
-         ;insert-stanza-events)))
+    (queue->lazy-seq queue)))
+
+(defn read-input
+  "Given a format string and an input string of RDF data,
+   return a lazy sequence of states."
+  [^String fmt ^String input]
+  (->> input
+       (read-basic-input fmt)
+       st/assign-stanzas
+       (st/update-states nil)
+       st/insert-events))
 
 (defn read-string
   "Given a format string and an input string of RDF data,

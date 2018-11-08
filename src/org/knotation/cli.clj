@@ -70,7 +70,7 @@ Options:
             out (if (:output options)
                   (io/file (:output options))
                   System/out)]
-        (api/render-file fmt (ap/env-of in) in out)))))
+        (api/render-file fmt nil in out)))))
 
 (defn -main [& args]
   (run args))

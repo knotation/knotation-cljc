@@ -7,3 +7,8 @@
             [org.knotation.state-spec]))
 
 (stest/instrument)
+
+(def example-1
+  [{::st/event ::st/prefix
+    ::st/prefix "ex"
+    ::st/iri "http://example.com/"}])

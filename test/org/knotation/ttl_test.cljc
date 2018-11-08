@@ -14,20 +14,20 @@
 
 (deftest test-render-state
   (is (= (ttl/render-prefix
-          {::st/event ::st/prefix :prefix "kn" :iri "https://knotation.org/kn/"})
+          {::st/event ::st/prefix ::en/prefix "kn" ::en/iri "https://knotation.org/kn/"})
          "@prefix kn: <https://knotation.org/kn/> .\n"))
   (is (= (ttl/render-base
-          {::st/event ::st/base :base "http://example.com/"})
+          {::st/event ::st/base ::en/base "http://example.com/"})
          "@base <http://example.com/> .\n"))
   (is (= (ttl/render-subject-start
-          {::st/event ::st/subject-start :subject "http://example.com/s" :terminal "\n"})
+          {::st/event ::st/subject-start ::rdf/subject "http://example.com/s" ::ttl/terminal "\n"})
          "<http://example.com/s>\n"))
   (is (= (ttl/render-subject-end
-          {::st/event ::st/subject-end :subject "http://example.com/s"})
+          {::st/event ::st/subject-end ::rdf/subject "http://example.com/s"})
          nil))
   (is (= (ttl/render-statement
           {::st/event ::st/statement
-           :terminal " ;\n"
+           ::ttl/terminal " ;\n"
            ::rdf/quad
            #::rdf{:zn "http://example.com/s"
                   :si "http://example.com/s"
@@ -36,7 +36,7 @@
          "  <http://example.com/p> <http://example.com/o> ;\n"))
   (is (= (ttl/render-statement
           {::st/event ::st/statement
-           :terminal " ;\n"
+           ::ttl/terminal " ;\n"
            ::rdf/quad
            #::rdf{:zn "http://example.com/s"
                   :si "http://example.com/s"
@@ -45,7 +45,7 @@
          "  <http://example.com/p> _:o ;\n"))
   (is (= (ttl/render-statement
           {::st/event ::st/statement
-           :terminal " ;\n"
+           ::ttl/terminal " ;\n"
            ::rdf/quad
            #::rdf{:zn "http://example.com/s"
                   :si "http://example.com/s"
@@ -54,7 +54,7 @@
          "  <http://example.com/p> \"o\" ;\n"))
   (is (= (ttl/render-statement
           {::st/event ::st/statement
-           :terminal " ;\n"
+           ::ttl/terminal " ;\n"
            ::rdf/quad
            #::rdf{:zn "http://example.com/s"
                   :si "http://example.com/s"
@@ -64,7 +64,7 @@
          "  <http://example.com/p> \"o\"^^<http://example.com/d> ;\n"))
   (is (= (ttl/render-statement
           {::st/event ::st/statement
-           :terminal " ;\n"
+           ::ttl/terminal " ;\n"
            ::rdf/quad
            #::rdf{:zn "http://example.com/s"
                   :si "http://example.com/s"
@@ -81,32 +81,36 @@
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ol "after"}}])
 
 (def test-sorting-after
-  [{::st/event ::st/subject-start :subject "s"}
+  [{::st/event ::st/subject-start ::rdf/subject "s"}
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ol "before"}}
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ob "_:b0"}}
-   {::st/event ::st/subject-start :subject "_:b0"}
+   {::st/event ::st/subject-start ::rdf/subject "_:b0"}
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :sb "_:b0" :pi (rdf/rdf "first") :ol "1"}}
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :sb "_:b0" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}}
-   {::st/event ::st/subject-end :subject "_:b0"}
+   {::st/event ::st/subject-end ::rdf/subject "_:b0"}
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ol "after"}}
-   {::st/event ::st/subject-end :subject "s"}])
+   {::st/event ::st/subject-end ::rdf/subject "s"}])
 
 (deftest test-sorting
   (->> test-sorting-before
        ttl/sort-stanza
-       (map #(select-keys % [::st/event ::rdf/quad :subject]))
+       (map #(select-keys % [::st/event ::rdf/quad ::rdf/subject]))
        (= test-sorting-after)
        is))
 
 (def test-input-edn
-  [{::st/event ::st/prefix :prefix "kn" :iri "https://knotation.org/kn/"}
-   {::st/event ::st/prefix :prefix "ex" :iri "http://example.com/"}
+  [{::st/event ::st/prefix ::en/prefix "kn" ::en/iri "https://knotation.org/kn/"}
+   {::st/event ::st/prefix ::en/prefix "ex" ::en/iri "http://example.com/"}
    {::st/event ::st/statement
+    ::rdf/stanza "http://example.com/s"
+    ::rdf/subject "http://example.com/s"
     ::rdf/quad #::rdf{:zn "http://example.com/s"
                       :si "http://example.com/s"
                       :pi "http://example.com/p"
                       :oi "http://example.com/o"}}
    {::st/event ::st/statement
+    ::rdf/stanza "http://example.com/s"
+    ::rdf/subject "http://example.com/s"
     ::rdf/quad #::rdf{:zn "http://example.com/s"
                       :si "http://example.com/s"
                       :pi "http://example.com/p"
@@ -119,9 +123,8 @@
 
 (def test-output-edn
   [{::st/event ::st/prefix
-    :prefix "kn"
-    :iri "https://knotation.org/kn/"
-    ::en/env {}
+    ::en/prefix "kn"
+    ::en/iri "https://knotation.org/kn/"
     ::st/location #::st{:line-number 2 :column-number 1}
     ::st/output
     #::st{:format :ttl
@@ -129,8 +132,8 @@
           :start #::st{:line-number 1 :column-number 1}
           :end #::st{:line-number 2 :column-number 0}}}
    {::st/event ::st/prefix
-    :prefix "ex"
-    :iri "http://example.com/"
+    ::en/prefix "ex"
+    ::en/iri "http://example.com/"
     ::en/env (en/add-prefix {} "kn" "https://knotation.org/kn/")
     ::st/location #::st{:line-number 3 :column-number 1}
     ::st/output
@@ -147,54 +150,58 @@
           :start #::st{:line-number 3 :column-number 1}
           :end #::st{:line-number 4 :column-number 0}}}
    {::st/event ::st/subject-start
-    :subject "http://example.com/s"
+    ::rdf/stanza "http://example.com/s"
+    ::rdf/subject "http://example.com/s"
     ::en/env test-output-env
     ::st/location #::st{:line-number 5 :column-number 1}
-    :depth 0
-    :terminal "\n"
+    ::ttl/depth 0
+    ::ttl/terminal "\n"
     ::st/output
     #::st{:format :ttl
           :content "ex:s\n"
           :start #::st{:line-number 4 :column-number 1}
           :end #::st{:line-number 5 :column-number 0}}}
    {::st/event ::st/statement
-    :subject "http://example.com/s"
+    ::rdf/stanza "http://example.com/s"
+    ::rdf/subject "http://example.com/s"
     ::rdf/quad #::rdf{:zn "http://example.com/s"
                       :si "http://example.com/s"
                       :pi "http://example.com/p"
                       :oi "http://example.com/o"}
     ::en/env test-output-env
     ::st/location #::st{:line-number 6 :column-number 1}
-    :depth 1
-    :terminal " ;\n"
+    ::ttl/depth 1
+    ::ttl/terminal " ;\n"
     ::st/output
     #::st{:format :ttl
           :content "  ex:p ex:o ;\n"
           :start #::st{:line-number 5 :column-number 1}
           :end #::st{:line-number 6 :column-number 0}}}
    {::st/event ::st/statement
-    :subject "http://example.com/s"
+    ::rdf/stanza "http://example.com/s"
+    ::rdf/subject "http://example.com/s"
     ::rdf/quad #::rdf{:zn "http://example.com/s"
                       :si "http://example.com/s"
                       :pi "http://example.com/p"
                       :ol "o"}
     ::en/env test-output-env
     ::st/location #::st{:line-number 7 :column-number 1}
-    :depth 1
-    :last true
-    :terminal " .\n"
+    ::ttl/depth 1
+    ::ttl/last true
+    ::ttl/terminal " .\n"
     ::st/output
     #::st{:format :ttl
           :content "  ex:p \"o\" .\n"
           :start #::st{:line-number 6 :column-number 1}
           :end #::st{:line-number 7 :column-number 0}}}
    {::st/event ::st/subject-end
-    :subject "http://example.com/s"
+    ::rdf/stanza "http://example.com/s"
+    ::rdf/subject "http://example.com/s"
     ::en/env test-output-env
     ::st/location #::st{:line-number 7 :column-number 1}
-    :depth 0
-    :list-item false
-    :terminal "\n"}])
+    ::ttl/depth 0
+    ::ttl/list-item false
+    ::ttl/terminal "\n"}])
 
 (deftest test-edn->edn
   (->> test-input-edn
@@ -203,8 +210,7 @@
        is))
 
 (def test-input-list
-  [{::st/event ::st/stanza-start :subject "http://example.com/s"}
-   {::st/event ::st/statement
+  [{::st/event ::st/statement
     ::rdf/quad #::rdf{:sb "_:b0"
                       :pi (rdf/rdf "first")
                       :oi "http://example.com/a"}}
@@ -231,11 +237,10 @@
    {::st/event ::st/statement
     ::rdf/quad #::rdf{:si "http://example.com/s"
                       :pi "http://example.com/p"
-                      :ob "_:b0"}}
-   {::st/event ::st/stanza-end :subject "http://example.com/s"}])
+                      :ob "_:b0"}}])
 
 (def test-output-list
-  [{::st/event ::st/stanza-start :subject "http://example.com/s"
+  [{::st/event ::st/stanza-start ::rdf/stanza "http://example.com/s"
     ::en/env {}
     :line-number 2
     :column-number 1
@@ -251,7 +256,7 @@
     ::en/env {}
     :line-number 3
     :column-number 1
-    :depth 1
+    ::ttl/depth 1
     ::st/output
     #::st{:format :ttl
           :content "  <http://example.com/p> (\n"
@@ -281,7 +286,7 @@
     ::rdf/quad #::rdf{:sb "_:b2"
                       :pi (rdf/rdf "rest")
                       :oi (rdf/rdf "nil")}}
-   {::st/event ::st/stanza-end :subject "http://example.com/s"}])
+   {::st/event ::st/stanza-end ::rdf/stanza "http://example.com/s"}])
 
 (deftest test-list
   #_(->> test-input-list

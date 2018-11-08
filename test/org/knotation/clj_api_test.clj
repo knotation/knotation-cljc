@@ -233,10 +233,6 @@ ex:s
   (test-kn->ttl test-0-kn test-0-ttl)
   (test-kn->ttl test-A-kn test-A-ttl))
 
-; TODO: test-kn roundtrips
-; TODO: test-kn->ttl
-; TODO: test-ttl->kn
-
 #_(->> test-2-ttl
        (api/read-string :ttl {})
        st/sequential-blank-nodes
