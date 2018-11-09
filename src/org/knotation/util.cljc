@@ -1,7 +1,6 @@
 (ns org.knotation.util
   (:require [clojure.string :as string]
-            #?(:clj [clojure.data.json :as json])
-            #?(:cljs [org.knotation.util-macros-cljs])))
+            #?(:clj [clojure.data.json :as json])))
 
 (defn split-lines
   "Split a string on newlines."
