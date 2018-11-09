@@ -29,66 +29,29 @@
       (string/ends-with? path ".edn") :edn
       :else nil)))
 
-; Environments
-
-(def default-env (en/add-prefix en/default-env "ex" (rdf/ex)))
-
-(defn collect-env
-  [states]
-  (reduce
-   (fn [env state]
-     (st/update-env env state))
-   {}
-   states))
-
-(defn collect-prefixes
-  [states]
-  (reduce
-   (fn [env {:keys [prefix iri base] :as state}]
-     (cond
-       (and prefix iri) (en/add-prefix env prefix iri)
-       base (en/add-base env base)
-       :else env))
-   {}
-   states))
-
-; Read Input
 (defn read-input
-  "Given a format keyword, an initial environment (or nil), and an input-stream,
-   return a lazy sequence of state maps."
-  [fmt env input]
-  (case fmt
-    (:nt :ttl :rdfxml) (jena/read-input (name fmt) input)
-    (:kn :tsv)  (api/read-lines fmt env (line-seq (io/reader input)))
-    (throw (Exception. (format "Unsupported read format '%s'" fmt)))))
-
-(defn read-path
-  "Given a format keyword (or nil), an initial environment (or nil), and a file path,
-   return a lazy sequence of state maps."
-  [fmt env path]
-  (let [fmt (or fmt (path-format path))]
-    (try
-      (read-input fmt env (io/input-stream path))
-      (catch Exception e
-        (throw (Exception. (format "Failed to read from path '%s'" path) e))))))
-
-(defn read-paths
-  [fmt env paths]
-  (->> paths
-       (reductions
-        (fn [[env _] path]
-          (let [states (read-path fmt env path)]
-            [(api/env-of states) states]))
-        [nil []])
-       rest
-       (mapcat second)))
+  "Given a format keyword,
+   an initial state (or nil for the default state),
+   and an input stream,
+   return a lazy sequence of states."
+  [input-format initial-state input-stream]
+  (let [initial-state (or initial-state st/default-state)]
+    (case input-format
+      (:nt :ttl :rdfxml) (jena/read-input input-format initial-state input-stream)
+      :kn (kn/read-lines initial-state (line-seq (io/reader input-stream)))
+      (throw (Exception. (format "Unsupported read format '%s'" input-format))))))
 
 (defn read-string
-  "Given a format keyword, an initial environment (or nil), and a content string
+  "Given a format keyword,
+   an initial state (or nil for the default state),
+   and a content string
    return a lazy sequence of state maps."
-  [fmt env content]
+  [input-format initial-state content]
   (try
-    (read-input fmt env (java.io.ByteArrayInputStream. (.getBytes content "UTF-8")))
+    (read-input
+     input-format
+     initial-state
+     (java.io.ByteArrayInputStream. (.getBytes content "UTF-8")))
     (catch Exception e
       (throw
        (Exception.
@@ -98,6 +61,38 @@
            content
            (str (subs content 0 100) " ...")))
         e)))))
+
+(defn read-path
+  "Given a format keyword (or nil to detect the format),
+   an initial state (or nil for the default state),
+   and a file path (string),
+   return a lazy sequence of states."
+  [force-format initial-state path]
+  (try
+    (read-input
+     (or force-format (path-format path))
+     (or initial-state st/default-state)
+     (io/input-stream path))
+    (catch Exception e
+      (throw
+       (Exception.
+        (format "Failed to read from path '%s'" path)
+        e)))))
+
+(defn read-paths
+  "Given a format keyword (or nil to detect the format),
+   initial state (or nil for the default state),
+   and a sequence of paths (strings),
+   read each path in order, accumulating state,
+   and returning a sequence of states."
+  [force-format initial-state paths]
+  (->> paths
+       (reductions
+        (fn [previous-states path]
+          (read-path force-format (last previous-states) path))
+        [(or initial-state st/default-state)])
+       rest
+       (mapcat identity)))
 
 ; Render Output
 

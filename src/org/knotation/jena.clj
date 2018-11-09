@@ -94,25 +94,33 @@
        (cons item (queue->lazy-seq queue))))))
 
 (defn read-basic-input
-  "Given a format string and an input stream for RDF data,
+  "Given a format keyword,
+   and an input stream of RDF data,
    return a lazy sequence of basic states: prefix, base, statement."
-  [^String fmt ^InputStream input]
+  [input-format ^InputStream input]
   (let [^BlockingQueue queue (LinkedBlockingQueue. 10000)]
-    (.start (Thread. #(RDFDataMgr/parse (make-stream queue) input (get-format fmt))))
+    (.start (Thread. #(RDFDataMgr/parse (make-stream queue) input (get-format input-format))))
     (queue->lazy-seq queue)))
 
 (defn read-input
-  "Given a format string and an input string of RDF data,
+  "Given a format keyword,
+   an initial state (or nil for the default state),
+   and an input stream of RDF data,
    return a lazy sequence of states."
-  [^String fmt ^String input]
+  [input-format initial-state ^InputStream input]
   (->> input
-       (read-basic-input fmt)
+       (read-basic-input input-format)
        st/assign-stanzas
-       (st/update-states nil)
+       (st/update-states (or initial-state st/default-state))
        st/insert-events))
 
 (defn read-string
-  "Given a format string and an input string of RDF data,
+  "Given a format keyword,
+   an initial state (or nil for the default state),
+   and an input string of RDF data,
    return a lazy sequence of RDF triple maps."
-  [^String fmt ^String input]
-  (read-input fmt (java.io.ByteArrayInputStream. (.getBytes input "UTF-8"))))
+  [input-format initial-state ^String input]
+  (read-input
+   input-format
+   initial-state
+   (java.io.ByteArrayInputStream. (.getBytes input "UTF-8"))))

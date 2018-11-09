@@ -50,19 +50,7 @@
 
 (def blank-env {})
 
-(def default-env
-  (-> blank-env
-      (add-prefix "rdf" (rdf/rdf))
-      (add-prefix "rdfs" (rdf/rdfs))
-      (add-prefix "xsd" (rdf/xsd))
-      (add-prefix "owl" (rdf/owl))
-      (add-prefix "kn" (rdf/kn))
-      (add-label "label" (rdf/rdfs "label"))
-      (add-label "type" (rdf/rdf "type"))
-      (add-label "link" (rdf/kn "link"))
-      (add-label "default datatype" (rdf/kn "default-datatype"))
-      (set-datatype (rdf/rdf "type") (rdf/kn "link"))
-      (set-datatype (rdf/kn "default-datatype") (rdf/kn "link"))))
+(def default-env blank-env)
 
 (defn http-url?
   [input]

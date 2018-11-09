@@ -10,12 +10,8 @@
   {::line-number 1
    ::column-number 1})
 
-(def blank-state
-  {::event ::blank
-   ::en/env {}})
-
 (def default-state
-  (assoc blank-state ::en/env en/default-env))
+  {::event ::default})
 
 ;; # Errors
 
@@ -68,6 +64,7 @@
     (let [end (advance-location location content)]
       (assoc
        state
+       ::event ::input
        ::input
        {::format format
         ::content content
@@ -164,13 +161,13 @@
 (defn update-state
   "Given a previous state and the current state,
    use the previous state to assign an environment to the current state."
-  [{:keys [::en/env ::location] :as previous-state}
+  [{:keys [::en/env ::location] :or {env en/default-env} :as previous-state}
    {:keys [::event ::rdf/quad] :as state}]
   (strip-state
    (merge
     state
-    (let [env (when previous-state (update-env (or env {}) previous-state))]
-      (when (and env (first env))
+    (let [env (update-env env previous-state)]
+      (when (and env (not= env en/default-env))
         {::en/env env}))
     (when location
       {::location location})

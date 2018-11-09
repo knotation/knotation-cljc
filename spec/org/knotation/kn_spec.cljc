@@ -43,9 +43,6 @@
         :args (s/cat :states ::st/states)
         :ret ::st/states)
 
-(s/fdef kn/read-parses
-        :args (s/cat :env ::en/env :states ::st/states)
-        :ret ::st/states)
 (s/fdef kn/read-parse
         :args (s/cat :state ::st/state)
         :ret ::st/states)
@@ -69,6 +66,9 @@
         :args (s/cat :env ::en/env :parse ::st/parse :predicate ::rdf/predicate :language (s/nilable ::rdf/language) :datatype (s/nilable ::rdf/datatype))
         :ret map?)
 
+(s/fdef kn/render-state
+        :args (s/cat :state ::st/state)
+        :ret ::st/state)
 (s/fdef kn/render-blank
         :args (s/cat :state ::st/state)
         :ret ::st/parse)
@@ -84,9 +84,6 @@
 (s/fdef kn/render-statement
         :args (s/cat :state ::st/state)
         :ret ::st/parse)
-(s/fdef kn/render-state
-        :args (s/cat :state ::st/state)
-        :ret ::st/state)
 
 (s/fdef kn/render-datatype
         :args (s/cat :env ::en/env :predicate ::rdf/predicate :object map?)
@@ -94,3 +91,17 @@
 (s/fdef kn/render-object
         :args (s/cat :env ::en/env :object map?)
         :ret ::st/parse)
+
+(s/fdef kn/read-parses
+        :args (s/cat :previous-state ::st/state :states ::st/states)
+        :ret ::st/states)
+(s/fdef kn/read-lines
+        :args (s/cat :previous-state ::st/state :lines (s/coll-of string?))
+        :ret ::st/states)
+(s/fdef kn/read-input
+        :args (s/cat :previous-state ::st/state :input string?)
+        :ret ::st/states)
+
+(s/fdef kn/render-states
+        :args (s/cat :env ::en/env :states ::st/states)
+        :ret ::st/states)

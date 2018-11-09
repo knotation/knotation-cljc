@@ -175,8 +175,8 @@ ex:s
 (defn test-kn-roundtrip
   [s]
   (->> s
-       (kn/read-input {})
-       (kn/render-states {})
+       (api/read-string :kn nil)
+       (kn/render-states en/default-env)
        st/render-output-string
        normalize-trailing-newlines
        (= (normalize-trailing-newlines s))
@@ -189,9 +189,9 @@ ex:s
 (defn test-ttl-roundtrip
   [s]
   (->> s
-       (api/read-string :ttl {})
+       (api/read-string :ttl nil)
        st/sequential-blank-nodes
-       (ttl/render-states {})
+       (ttl/render-states en/default-env)
        st/render-output-string
        (= s)
        is))
@@ -205,9 +205,9 @@ ex:s
 (defn test-kn->ttl
   [k t]
   (->> k
-       (kn/read-input {})
+       (api/read-string :kn nil)
        st/sequential-blank-nodes
-       (ttl/render-states {})
+       (ttl/render-states en/default-env)
        (map ::st/output)
        (map ::st/content)
        string/join
@@ -217,8 +217,8 @@ ex:s
 (defn test-ttl->kn
   [t k]
   (->> t
-       (api/read-string :ttl {})
-       (kn/render-states {})
+       (api/read-string :ttl nil)
+       (kn/render-states en/default-env)
        st/render-output-string
        normalize-trailing-newlines
        (= (normalize-trailing-newlines k))
@@ -231,10 +231,10 @@ ex:s
 
 (deftest test-kn-ttl
   (test-kn->ttl test-0-kn test-0-ttl)
-  (test-kn->ttl test-A-kn test-A-ttl))
+  (test-kn-ttl-roundtrip test-A-kn test-A-ttl))
 
 #_(->> test-2-ttl
-       (api/read-string :ttl {})
+       (api/read-string :ttl nil)
        st/sequential-blank-nodes
      ;(org.knotation.util/partition-with #(-> % ::rdf/quad ::rdf/si))
      ;second
@@ -249,9 +249,9 @@ ex:s
        count)
 
 #_(->> test-2-ttl
-       (api/read-string :ttl {})
+       (api/read-string :ttl nil)
        st/sequential-blank-nodes
        ;(map println))
-       (ttl/render-states {})
+       (ttl/render-states en/default-env)
        st/render-output-string
        println)

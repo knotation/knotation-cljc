@@ -3,7 +3,6 @@
             [clojure.string :as string]
             [clojure.tools.cli :refer [parse-opts]]
             [org.knotation.state :as st]
-            [org.knotation.api :as ap]
             [org.knotation.clj-api :as api])
   (:gen-class))
 

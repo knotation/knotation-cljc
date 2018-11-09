@@ -19,6 +19,7 @@
 (def set-template-content en/set-template-content)
 (def blank-env en/blank-env)
 (def default-env en/default-env)
+(def default-state st/default-state)
 
 (defn labels [env] (::en/label-seq env))
 (defn prefixes [env] (::en/prefix-seq env))
@@ -75,23 +76,26 @@
 
 (defn read-lines
   ([format lines]
-   (read-lines format blank-env lines))
-  ([format env lines]
+   (read-lines format default-state lines))
+  ([format initial-state lines]
    ; TODO: more formats
-   (kn/read-lines env lines)))
+   (kn/read-lines initial-state lines)))
 
 (defn read-from
-  ([format thing] (read-from format blank-env thing))
-  ([format env thing]
+  ([format thing]
+   (read-from format default-state thing))
+  ([format initial-state thing]
    (cond
      (string? thing)
-     (read-lines format env (util/split-lines thing))
+     (read-lines format initial-state (util/split-lines thing))
 
+     ; TODO: Look more closely at this.
      (coll? thing)
      (reduce
       (fn [prev s]
-        (concat prev (read-lines format (or (env-of prev) env) (util/split-lines s))))
-      nil thing)
+        (concat prev (read-lines format (last prev) (util/split-lines s))))
+      nil
+      thing)
 
      :else (util/throw-exception "Can't read from a thing of type" (type thing)))))
 

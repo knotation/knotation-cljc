@@ -8,7 +8,10 @@
             [org.knotation.state :as st]))
 
 (s/def ::st/event
-  #{::st/blank ; default value
+  #{::st/default ; initial state
+    ::st/input
+    ::st/parse
+    ::st/blank
     ::st/error
     ::st/comment
     ::st/space
@@ -44,8 +47,8 @@
 
 (s/def ::st/parse (s/coll-of (s/or :string string? :keyword keyword? :parse ::st/parse)))
 
-(s/def ::st/state (s/keys :opt [::st/event
-                                ::st/error
+(s/def ::st/state (s/keys :req [::st/event]
+                          :opt [::st/error
                                 ::st/location
                                 ::en/env
                                 ::st/input
@@ -86,6 +89,6 @@
         :args (s/cat :env ::en/env :state ::st/state)
         :ret ::en/env)
 
-(s/fdef st/update-env
+(s/fdef st/update-state
         :args (s/cat :previous-state ::st/state :state ::st/state)
         :ret ::st/state)

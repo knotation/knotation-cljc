@@ -9,8 +9,7 @@
             [org.knotation.state :as st]
             [org.knotation.state-spec]
             [org.knotation.kn :as kn]
-            [org.knotation.kn-spec]
-            [org.knotation.api :as api]))
+            [org.knotation.kn-spec]))
 
 (stest/instrument)
 
@@ -18,7 +17,7 @@
   [parse-fn read-fn render-fn line]
   (->> line
        parse-fn
-       (assoc {::en/env {}} ::st/parse)
+       (assoc st/default-state ::st/parse)
        read-fn
        render-fn
        st/render-parse
@@ -31,7 +30,7 @@
 (defn test-before-after
   [before after]
   (->> before
-       (kn/read-input {})
+       (kn/read-input st/default-state)
        (kn/render-states {})
        (map ::st/output)
        (map ::st/content)
@@ -99,7 +98,7 @@ ex:label: Foo Bar
 
 > ex:p: This annotation has no target and should therefore error"
                      util/split-lines
-                     (api/read-lines :kn en/blank-env))]
+                     (api/read-lines :kn nil))]
         (is (api/any-errors? res))
         (is (->> (nth res 3) api/error-type (= :no-annotation-target)))))
   #_(testing "Annotations start with pointies"
@@ -118,7 +117,7 @@ ex:p; kn:link: ex:o
 > ex:a; kn:link: ex:b
 >> ex:c; kn:link: ex:d"
             res (->> chained util/split-lines
-                     (api/read-lines :kn en/blank-env))]
+                     (api/read-lines :kn nil))]
         (test-roundtrip chained)
         (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "ex:o", :di "http://knotation.org/kn/link"}
                (:target (nth res 6))))
@@ -133,7 +132,7 @@ ex:p: A
 >> ex:p: C is an annotation on B
 > ex:p: D is an annotation on A"
             res (->> deep-chain util/split-lines
-                     (api/read-lines :kn en/blank-env))]
+                     (api/read-lines :kn nil))]
         (test-roundtrip deep-chain)
         (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
                (:target (nth res 5))))

@@ -147,7 +147,7 @@
 
 (defn read-subject
   "Given a state with ::st/parse for a subject line, return a state."
-  [{:keys [::en/env ::st/parse] :as state}]
+  [{:keys [::en/env ::st/parse] :or {env en/default-env} :as state}]
   (if-let [name (-> parse parse-map :name)]
     (if-let [iri (en/name->iri env name)]
       (assoc
@@ -160,7 +160,7 @@
 
 (defn render-subject
   "Given a ::st/subject-start state, return a parse."
-  [{:keys [::en/env ::rdf/subject] :as state}]
+  [{:keys [::en/env ::rdf/subject] :or {env en/default-env} :as state}]
   (if subject
     (if-let [name (or (and (rdf/blank? subject) subject)
                       (en/iri->name env subject))]
@@ -402,11 +402,9 @@
   (->> lines
        (map-indexed
         (fn [i line]
-          (st/input
-           {::st/location {::st/line-number (inc i) ::st/column-number 1}
-            ::st/parse (parse-line line)}
-           :kn
-           line)))
+          (-> {::st/location {::st/line-number (inc i) ::st/column-number 1}}
+              (st/input :kn line)
+              (assoc ::st/event ::st/parse ::st/parse (parse-line line)))))
        merge-indented))
 
 (defn read-parse
@@ -423,34 +421,34 @@
     (util/throw-exception :bad-parse state)))
 
 (defn read-parses
-  "Given an initial environment and a sequence of states with ::st/parse,
+  "Given an initial state and a sequence of states with ::st/parse,
    read the parses and return the fully processed states."
-  [env states]
+  [initial-state states]
   (->> states
        (reductions
         (fn [previous-states state]
           (->> state
                (st/update-state (last previous-states))
                read-parse))
-        [{::en/env env}])
+        [initial-state])
        rest
        (mapcat identity)))
 
 (defn read-lines
-  "Given a initial environment and a sequence of lines (strings)
+  "Given a initial state and a sequence of lines (strings)
    return a sequence of states."
-  [env lines]
+  [initial-state lines]
   (->> lines
        parse-lines
-       (read-parses env)))
+       (read-parses initial-state)))
 
 (defn read-input
-  "Given an initial environment and a string,
+  "Given an initial state and a string,
    return a sequence of states."
-  [env input]
+  [initial-state input]
   (->> input
        util/split-lines
-       (read-lines env)))
+       (read-lines initial-state)))
 
 (defn render-state
   "Given a state, render it and return the updated state."
