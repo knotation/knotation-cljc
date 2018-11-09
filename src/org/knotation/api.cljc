@@ -42,11 +42,17 @@
 (defn error-message [s] (->> s ::st/error ::st/error-message))
 (defn error-type [s] (->> s ::st/error ::st/error-type))
 
-(defn line-num-in [s] (->> s :input :line-number))
-(defn line-ct-in [s] (->> s :input :line-count))
+(defn line-num-in [s] (->> s ::st/input ::st/start ::st/line-number))
+(defn line-ct-in [s]
+  (inc
+   (- (->> s ::st/input ::st/end ::st/line-number)
+      (line-num-in s))))
 
-(defn line-num-out [s] (->> s :output :line-number))
-(defn line-ct-out [s] (->> s :output :line-count))
+(defn line-num-out [s] (->> s ::st/output ::st/start ::st/line-number))
+(defn line-ct-out [s]
+  (inc
+   (- (->> s ::st/output ::st/end ::st/line-number)
+      (line-num-in s))))
 
 ;; State collection queries
 (defn env-of
