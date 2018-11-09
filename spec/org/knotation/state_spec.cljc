@@ -70,6 +70,10 @@
         :args (s/cat :state ::st/state :format ::st/format :content (s/nilable string?))
         :ret ::st/state)
 
+(s/fdef st/render-parse
+        :args (s/cat :parse ::st/parse)
+        :ret (s/nilable string?))
+
 (s/fdef st/render-output
         :args (s/cat :states ::st/states)
         :ret (s/coll-of string?))

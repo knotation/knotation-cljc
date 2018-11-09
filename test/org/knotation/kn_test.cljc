@@ -21,7 +21,7 @@
        (assoc {::en/env {}} ::st/parse)
        read-fn
        render-fn
-       kn/render-parse
+       st/render-parse
        (= line)
        is))
 

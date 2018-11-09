@@ -91,6 +91,14 @@
         ::end end}))
     state))
 
+(defn render-parse
+  "Given a parse, return a string or nil."
+  [parse]
+  (->> parse
+       flatten
+       (filter string?)
+       (#(when (first %) (string/join %)))))
+
 (defn render-output
   "Given a sequence of states with ::output,
    return a sequence of string contents."

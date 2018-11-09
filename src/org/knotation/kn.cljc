@@ -20,6 +20,7 @@
 ; A blank line contains nothing except an optional line ending.
 
 (defn parse-blank
+  "Given a blank line (string), return a parse."
   [line]
   (if (re-matches #"\n?" line)
     [::blank-line
@@ -27,10 +28,12 @@
     (util/error :not-a-blank-line line)))
 
 (defn read-blank
+  "Given a state with ::st/parse for a blank line, return a state."
   [state]
   (assoc state ::st/event ::st/blank))
 
 (defn render-blank
+  "Given a ::st/blank state, return a parse."
   [state]
   [::blank-line
    [:eol "\n"]])
@@ -38,6 +41,7 @@
 ; A comment is a line starting with '#'.
 
 (defn parse-comment
+  "Given a comment line (string), return a parse."
   [line]
   (if-let [[_ comment] (re-matches #"#(.*)\n?" line)]
     [::comment-line
@@ -47,6 +51,7 @@
     (util/error :not-a-comment-line line)))
 
 (defn read-comment
+  "Given a state with ::st/parse for a comment line, return a state."
   [{:keys [::st/parse] :as state}]
   (if-let [comment (-> parse parse-map :comment)]
     (assoc
@@ -56,6 +61,7 @@
     (st/error state :not-a-comment-parse)))
 
 (defn render-comment
+  "Given a ::st/comment state, return a parse."
   [{:keys [comment] :as state}]
   (if comment
     [::comment-line
@@ -67,6 +73,7 @@
 ; A prefix declaration is a line starting with '@prefix '
 
 (defn parse-prefix
+  "Given a prefix line (string), return a parse."
   [line]
   (if-let [[_ prefix iri] (re-matches #"@prefix (\S+):\s+<(\S+)>\s*\n?" line)]
     [::prefix-line
@@ -84,6 +91,7 @@
     (util/error :not-a-prefix-line line)))
 
 (defn read-prefix
+  "Given a state with ::st/parse for a prefix line, return a state."
   [{:keys [::st/parse] :as state}]
   (let [{:keys [keyword prefix iri]} (parse-map parse)]
     (if (and (= keyword "prefix") prefix iri)
@@ -95,6 +103,7 @@
       (st/error state :not-a-prefix-parse parse))))
 
 (defn render-prefix
+  "Given a ::st/prefix state, return a parse."
   [{:keys [::en/prefix ::en/iri] :as state}]
   (if (and prefix iri)
     [::prefix-line
@@ -114,6 +123,7 @@
 ; A declaration is one of: prefix, (TODO: base, graph)
 
 (defn parse-declaration
+  "Given a decalaration line (string), return a parse."
   [line]
   (cond
     (string/starts-with? line "@prefix ")
@@ -124,6 +134,7 @@
 ; A subject line start with ': ' followed by the name of the subjects
 
 (defn parse-subject
+  "Given a subject line (string), return a parse."
   [line]
   (let [[_ name] (re-matches #":\s+(.*)\n?" line)]
     (if name
@@ -135,6 +146,7 @@
       (util/error :not-a-subject-line line))))
 
 (defn read-subject
+  "Given a state with ::st/parse for a subject line, return a state."
   [{:keys [::en/env ::st/parse] :as state}]
   (if-let [name (-> parse parse-map :name)]
     (if-let [iri (en/name->iri env name)]
@@ -147,6 +159,7 @@
     (st/error state :not-a-subject-parse)))
 
 (defn render-subject
+  "Given a ::st/subject-start state, return a parse."
   [{:keys [::en/env ::rdf/subject] :as state}]
   (if subject
     (if-let [name (or (and (rdf/blank? subject) subject)
@@ -164,6 +177,7 @@
 ; to create a statement-block.
 
 (defn parse-indented
+  "Given an indented line (string), return a parse."
   [line]
   (if-let [[_ lexical] (re-matches #" (.*)\n?" line)]
     [::indented-line
@@ -205,6 +219,7 @@
 ; since they can expand to multiple states.
 
 (defn parse-statement
+  "Given a statement line (string), return a parse."
   [line]
   (if-let [[_ arrows pd lexical] (re-matches #"(>* )?(.*?): (.*)\n?" line)]
     (if-let [[predicate datatype] (string/split pd #"; " 2)]
@@ -230,6 +245,9 @@
     (util/error :not-a-statement line)))
 
 (defn inner-read-object
+  "Given an environment, language tag (or nil), datatype IRI (or nil),
+   and content string,
+   return the object part of an RDF quad."
   [env language datatype content]
   (cond
     (string? language)
@@ -258,7 +276,8 @@
 
 (defn read-object
   "Read the object part of a statement, with its language or datatype,
-   and using the default language for its predicate."
+   and using the default language for its predicate,
+   and return the object part of an RDF quad."
   [env parse predicate-iri language datatype-iri]
   (inner-read-object
    env
@@ -274,6 +293,9 @@
         string/join)))
 
 (defn read-statement
+  "Given a state with a ::st/parse for a statement,
+   return a sequence of states for the statement, any expanded templates,
+   and any anonymous structures such as OWL annotations, RDF lists, and OWL logic."
   [{:keys [::en/env ::st/parse ::rdf/stanza ::rdf/subject] :as state}]
   (let [names (->> parse rest (filter #(= :name (first %))))
         predicate-name (-> names first second)
@@ -346,6 +368,7 @@
     (util/error :not-an-object object)))
 
 (defn render-statement
+  "Given a ::st/statement state, return a parse."
   [{:keys [::en/env ::rdf/quad] :as state}]
   (if-let [pi (::rdf/pi quad)]
     (if-let [predicate-name (en/iri->name env pi)]
@@ -406,11 +429,6 @@
   (->> states
        (reductions
         (fn [previous-states state]
-          ;(println "PREV")
-          ;(doseq [prev previous-states]
-          ;  (println "  " prev))
-          ;(println "STATE")
-          ;(println "  " state)
           (->> state
                (st/update-state (last previous-states))
                read-parse))
@@ -434,36 +452,6 @@
        util/split-lines
        (read-lines env)))
 
-(defn output
-  "Given a state and a vector of strings,
-   update the state with an output map
-   and current :line-number and :column-number."
-  [{:keys [line-number column-number]
-    :or {line-number 1 column-number 1}
-    :as state}
-   parse]
-  (let [content (->> parse flatten (filter string?) string/join)
-        lines (util/split-lines content)]
-    (assoc
-     state
-     :line-number (-> lines count dec (+ line-number))
-     :column-number
-     (if (second lines)
-       (-> lines last count inc)
-       (-> lines first count (+ column-number)))
-     ::st/output
-     #::st{:format :ttl
-           :content content
-           :line-number line-number
-           :column-number column-number})))
-
-(defn render-parse
-  [parse]
-  (->> parse
-       flatten
-       (filter string?)
-       (#(when (first %) (string/join %)))))
-
 (defn render-state
   "Given a state, render it and return the updated state."
   [{:keys [::st/event] :as state}]
@@ -479,33 +467,18 @@
          ::st/subject-end state
          ::st/statement (render-statement state)
          (util/throw-exception :bad-state state))
-       render-parse
+       st/render-parse
        (st/output state :kn)))
 
 (defn render-states
   "Given an initial environment and a sequence of states,
-   return a sequenc of states with ::st/output."
+   return a sequence of states with ::st/output."
   [env states]
   (->> states
        (reductions
         (fn [previous-state state]
-          ;(println "PREV")
-          ;(doseq [prev previous-states]
-          ;  (println "  " prev))
-          ;(println "STATE")
-          ;(println "  " state)
           (->> state
                (st/update-state previous-state)
                render-state))
         {::en/env env :line-number 1 :column-number 1})
        rest))
-
-(comment
-  (def example-1-kn "@prefix ex: <ex/>\n\n: ex:s\nex:p: o")
-  (->> example-1-kn
-       (read-input {})
-       (render-states {})
-       (map ::st/output)
-       (map ::st/content)
-       string/join
-       println))
