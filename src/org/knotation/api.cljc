@@ -114,18 +114,47 @@
 
 (defn collect-line-map
   [state]
-  (->> state
-       (map (fn [s]
-              [[(get-in s [:input :line-number] 0) (get-in s [:input :line-count] 0)]
-               [(get-in s [:output :line-number] 0) (get-in s [:output :line-count] 0)]]))
-       (map (fn [[[ln-in ct-in] [ln-out ct-out]]]
-              (let [out (set (take ct-out (drop ln-out (range))))]
-                (map
-                 (fn [in] [in out])
-                 (take ct-in (drop ln-in (range)))))))
-       dedupe
-       (apply concat)))
+  (let [line-range
+        (fn [m]
+          (when (::st/start m)
+            (let [from (get-in m [::st/start ::st/line-number])
+                  to (get-in m [::st/end ::st/line-number])]
+              (range from (max
+                           (if (= 0 (get-in m [::st/end ::st/column-number])) (dec to) to)
+                           (inc from))))))]
+    (->> state
+         (filter
+          #(or (get-in % [::st/input ::st/start])
+               (get-in % [::st/output ::st/start])))
+         (map (fn [s]
+                [(line-range (::st/input s))
+                 (line-range (::st/output s))]))
+         (reductions
+          (fn [memo elem]
+            (if (first elem)
+              elem
+              [(first memo) (second elem)])))
+         (partition-by
+          (let [ix (atom 0)
+                prev (atom 0)]
+            (fn [[from to]]
+              (let [next (when (> @prev (first from))
+                           (swap! ix inc)
+                           @ix)]
+                (reset! prev (first from))
+                next))))
+         (map
+          #(reduce
+            (fn [memo [froms tos]]
+              (reduce
+               (fn [memo elem]
+                 (assoc memo elem
+                        (if-let [existing (get memo elem)]
+                          (concat existing tos)
+                          tos)))
+               memo froms))
+            {} %)))))
 
-(defn line-map-of
-  ([format h] (line-map-of format (env-of h) h))
+(defn line-maps-of
+  ([format h] (line-maps-of format (env-of h) h))
   ([format env h] (collect-line-map (render-states format env h))))
