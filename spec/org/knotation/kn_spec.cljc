@@ -92,6 +92,9 @@
         :args (s/cat :env ::en/env :object map?)
         :ret ::st/parse)
 
+(s/fdef kn/parse-lines
+        :args (s/cat :previous-state ::st/state :lines (s/coll-of string?))
+        :ret ::st/states)
 (s/fdef kn/read-parses
         :args (s/cat :previous-state ::st/state :states ::st/states)
         :ret ::st/states)

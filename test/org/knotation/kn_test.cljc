@@ -66,29 +66,30 @@ ex:p; ex:d: Multiline
 "))
 
 (deftest test-templates
-  #_(test-before-after
-     "@prefix kn: <https://knotation.org/kn/>
+  (test-before-after
+   "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:template
 kn:template-content: 
- ex:label: Foo {label}
+ ex:label: Foo {short name}
 
 : ex:1
 ex:foo: bar
 kn:apply-template: ex:template
- label: Bar"
-     "@prefix kn: <https://knotation.org/kn/>
+ short name: Bar
+"
+   "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:template
 kn:template-content: 
- ex:label: Foo {label}
+ ex:label: Foo {short name}
 
 : ex:1
 ex:foo: bar
 kn:applied-template: ex:template
- label: Bar
+ short name: Bar
 ex:label: Foo Bar
 "))
 

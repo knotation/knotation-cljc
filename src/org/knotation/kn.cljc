@@ -17,6 +17,8 @@
        (map (fn [[k v & xs]] [k v]))
        (into {})))
 
+(declare read-lines)
+
 ; A blank line contains nothing except an optional line ending.
 
 (defn parse-blank
@@ -292,6 +294,37 @@
         (map second)
         string/join)))
 
+(defn expand-template
+  "Given a state for a statement, return a sequence of states.
+   If it is a kn:apply-template statement, expand the template as a sequence of states."
+  [{:keys [::en/env ::rdf/quad] :as state}]
+  (if (= (::rdf/pi quad) "https://knotation.org/kn/apply-template")
+    (let [value (::rdf/ol quad)
+          template-iri (->> value
+                            string/split-lines
+                            first
+                            string/trim
+                            (en/name->iri env))
+          value-map (->> value
+                         string/split-lines
+                         rest
+                         (map #(string/split % #": "))
+                         (into {}))]
+      (if-let [content (en/get-template-content env template-iri)]
+        (->> (string/replace
+              content
+              #"\{(.*?)\}"
+              (fn [[_ x]] (get value-map x "UNKNOWN")))
+             util/split-lines
+             rest
+             (read-lines state)
+             (concat
+              [(assoc-in state [::rdf/quad ::rdf/pi] (rdf/kn "applied-template"))]))
+        [(st/error state :unrecognized-template template-iri)]));(concat
+      ; [(assoc state ::rdf/predicate {::rdf/iri "https://knotation.org/predicate/applied-template"})]
+      ; states)
+    [state]))
+
 (defn read-statement
   "Given a state with a ::st/parse for a statement,
    return a sequence of states for the statement, any expanded templates,
@@ -314,15 +347,17 @@
                     (string/replace datatype-name #"^@" ""))
                   (when-not leading-at?
                     (when datatype-name (en/name->iri env datatype-name))))]
-          [(assoc
-            state
-            ::st/event ::st/statement
-            ::rdf/quad
-            (merge
-             object
-             (if (rdf/blank? subject) {::rdf/sb subject} {::rdf/si subject})
-             {::rdf/zn stanza
-              ::rdf/pi predicate-iri}))]
+          (mapcat
+           expand-template
+           [(assoc
+             state
+             ::st/event ::st/statement
+             ::rdf/quad
+             (merge
+              object
+              (if (rdf/blank? subject) {::rdf/sb subject} {::rdf/si subject})
+              {::rdf/zn stanza
+               ::rdf/pi predicate-iri}))])
           [(st/error state :unrecognized-object parse)])
         [(st/error state :unrecognized-datatype datatype-name)])
       [(st/error state :unrecognized-predicate predicate-name)])))
@@ -388,7 +423,7 @@
    return a parse vector."
   [line]
   (case (first line)
-    (nil \n) (parse-blank line)
+    (nil \newline) (parse-blank line)
     \# (parse-comment line)
     \@ (parse-declaration line)
     \: (parse-subject line)
@@ -396,15 +431,18 @@
     (parse-statement line)))
 
 (defn parse-lines
-  "Given a sequence of lines,
+  "Given a previous state and a sequence of lines,
    return a sequence of states with ::st/input and ::st/parse."
-  [lines]
+  [previous-state lines]
   (->> lines
-       (map-indexed
-        (fn [i line]
-          (-> {::st/location {::st/line-number (inc i) ::st/column-number 1}}
+       (reductions
+        (fn [previous-state line]
+          (-> previous-state
+              (select-keys [::st/event ::st/location])
               (st/input :kn line)
-              (assoc ::st/event ::st/parse ::st/parse (parse-line line)))))
+              (assoc ::st/event ::st/parse ::st/parse (parse-line line))))
+        previous-state)
+       rest
        merge-indented))
 
 (defn read-parse
@@ -439,7 +477,7 @@
    return a sequence of states."
   [initial-state lines]
   (->> lines
-       parse-lines
+       (parse-lines initial-state)
        (read-parses initial-state)))
 
 (defn read-input

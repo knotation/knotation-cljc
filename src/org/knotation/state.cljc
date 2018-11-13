@@ -65,6 +65,7 @@
       (assoc
        state
        ::event ::input
+       ::location (step-location end)
        ::input
        {::format format
         ::content content
@@ -169,7 +170,7 @@
     (let [env (update-env env previous-state)]
       (when (and env (not= env en/default-env))
         {::en/env env}))
-    (when location
+    (when (and (::location previous-state) (not (::location state)))
       {::location location})
     (when-let [g (or (::rdf/gi quad) (::rdf/graph state) (::rdf/graph previous-state))]
       {::rdf/graph g})
