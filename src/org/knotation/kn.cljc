@@ -296,7 +296,9 @@
 
 (defn expand-template
   "Given a state for a statement, return a sequence of states.
-   If it is a kn:apply-template statement, expand the template as a sequence of states."
+   If the predicate is kn:apply-template
+   then use string substitution to fill in the template,
+   and read the template as a sequence of states."
   [{:keys [::en/env ::rdf/quad] :as state}]
   (if (= (::rdf/pi quad) "https://knotation.org/kn/apply-template")
     (let [value (::rdf/ol quad)
@@ -325,6 +327,22 @@
       ; states)
     [state]))
 
+(defn expand-annotation
+  [{:keys [::st/parse ::rdf/stanza ::rdf/subject ::rdf/quad] :as state}]
+  (if (->> parse rest (filter #(= :arrows (first %))) first second string/blank?)
+    [(assoc state ::quad-stack [quad])]
+    (let [bn "_:b0"]
+      (->> [{::rdf/pi (rdf/rdf "type") ::rdf/oi (rdf/owl "Annotation")}
+            (merge
+             {::rdf/pi (rdf/owl "annotatedSource")}
+             (if (rdf/blank? subject) {::rdf/ob subject} {::rdf/oi subject}))
+            {::rdf/pi (rdf/owl "annotatedProperty") ::rdf/oi (:rdf/pi quad)}
+            (assoc quad ::rdf/pi (rdf/owl "annotatedObject"))
+            quad]
+           (map #(dissoc % ::rdf/si))
+           (map #(assoc % ::rdf/zn stanza ::rdf/sb bn))
+           (map #(assoc state ::rdf/subject bn ::rdf/quad %))))))
+
 (defn read-statement
   "Given a state with a ::st/parse for a statement,
    return a sequence of states for the statement, any expanded templates,
@@ -347,17 +365,15 @@
                     (string/replace datatype-name #"^@" ""))
                   (when-not leading-at?
                     (when datatype-name (en/name->iri env datatype-name))))]
-          (mapcat
-           expand-template
-           [(assoc
-             state
-             ::st/event ::st/statement
-             ::rdf/quad
-             (merge
-              object
-              (if (rdf/blank? subject) {::rdf/sb subject} {::rdf/si subject})
-              {::rdf/zn stanza
-               ::rdf/pi predicate-iri}))])
+          (->> object
+               (merge
+                (if (rdf/blank? subject) {::rdf/sb subject} {::rdf/si subject})
+                {::rdf/zn stanza
+                 ::rdf/pi predicate-iri})
+               (assoc state ::st/event ::st/statement ::rdf/quad)
+               expand-annotation
+               (mapcat expand-template))
+
           [(st/error state :unrecognized-object parse)])
         [(st/error state :unrecognized-datatype datatype-name)])
       [(st/error state :unrecognized-predicate predicate-name)])))
@@ -506,15 +522,27 @@
        st/render-parse
        (st/output state :kn)))
 
-(defn render-states
-  "Given an initial environment and a sequence of states,
-   return a sequence of states with ::st/output."
-  [env states]
+(defn render-stanza
+  "Given an environment and a sequence of states for a single stanza,
+   return a sequence of states with rendered :output."
+  [previous-states states]
   (->> states
        (reductions
         (fn [previous-state state]
           (->> state
                (st/update-state previous-state)
                render-state))
-        {::en/env env :line-number 1 :column-number 1})
+        (last previous-states))
        rest))
+
+(defn render-states
+  [previous-state states]
+  (->> states
+       (partition-by ::rdf/stanza)
+       ;;(interpose [{::st/event ::st/blank}])
+       (reductions
+        (fn [previous-stanza stanza]
+          (render-stanza previous-stanza stanza))
+        [previous-state])
+       rest
+       (mapcat identity)))

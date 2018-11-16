@@ -105,6 +105,9 @@
         :args (s/cat :previous-state ::st/state :input string?)
         :ret ::st/states)
 
+(s/fdef kn/render-stanza
+        :args (s/cat :previous-states ::st/states :states ::st/states)
+        :ret ::st/states)
 (s/fdef kn/render-states
-        :args (s/cat :env ::en/env :states ::st/states)
+        :args (s/cat :previous-state ::st/state :states ::st/states)
         :ret ::st/states)

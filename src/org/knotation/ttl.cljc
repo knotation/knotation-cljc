@@ -115,15 +115,6 @@
      ::st/subject-end (render-subject-end state)
      ::st/statement (render-statement state))))
 
-(def default-state
-  {::en/env {}})
-
-(defn get-subject
-  [state]
-  (or
-   (get-in state [::rdf/quad ::rdf/si])
-   (get-in state [::rdf/quad ::rdf/sb])))
-
 (declare inner-sort-statements)
 
 (defn annotate-nested
@@ -286,7 +277,7 @@
    reorder and annotate them as required."
   [states]
   (let [zn (-> states first ::rdf/quad ::rdf/zn)
-        grouped (group-by get-subject states)
+        grouped (group-by st/get-subject states)
         lists (->> states (map ::rdf/quad) rdf/collect-lists)
         annotations (->> states
                          (map ::rdf/quad)
@@ -294,7 +285,7 @@
                          (map ::rdf/sb)
                          set)]
     (->> states
-         (map get-subject)
+         (map st/get-subject)
          distinct
          (remove #{zn})
          (concat [zn])
@@ -314,7 +305,7 @@
           (->> state
                (st/update-state previous-state)
                render-state))
-        (or (last previous-states) default-state))
+        (or (last previous-states) st/default-state))
        rest))
 
 (defn render-states

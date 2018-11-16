@@ -176,7 +176,7 @@ ex:s
   [s]
   (->> s
        (api/read-string :kn nil)
-       (kn/render-states en/default-env)
+       (kn/render-states st/default-state)
        st/render-output-string
        normalize-trailing-newlines
        (= (normalize-trailing-newlines s))
@@ -218,7 +218,7 @@ ex:s
   [t k]
   (->> t
        (api/read-string :ttl nil)
-       (kn/render-states en/default-env)
+       (kn/render-states st/default-state)
        st/render-output-string
        normalize-trailing-newlines
        (= (normalize-trailing-newlines k))

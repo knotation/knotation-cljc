@@ -31,7 +31,7 @@
   [before after]
   (->> before
        (kn/read-input st/default-state)
-       (kn/render-states {})
+       (kn/render-states st/default-state)
        (map ::st/output)
        (map ::st/content)
        string/join
@@ -53,7 +53,7 @@
            "<foo>; @en: bar\n"]]
     (test-roundtrip-line kn/parse-statement kn/read-statement (comp kn/render-statement first) s)))
 
-(deftest test-rountrips
+(deftest test-roundtrips
   (test-roundtrip "@prefix ex: <http://example.com/>
 
 # comment
@@ -103,14 +103,14 @@ ex:label: Foo Bar
         (is (api/any-errors? res))
         (is (->> (nth res 3) api/error-type (= :no-annotation-target)))))
   #_(testing "Annotations start with pointies"
-      (test-roundtrip "@prefix kn: <http://knotation.org/kn/>
+      (test-roundtrip "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:s
 ex:p; kn:link: ex:o
 > ex:a; kn:link: ex:b"))
   #_(testing "Annotations can refer to other annotations"
-      (let [chained "@prefix kn: <http://knotation.org/kn/>
+      (let [chained "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:s
@@ -120,9 +120,9 @@ ex:p; kn:link: ex:o
             res (->> chained util/split-lines
                      (api/read-lines :kn nil))]
         (test-roundtrip chained)
-        (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "ex:o", :di "http://knotation.org/kn/link"}
+        (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :oi "http://example.com/o"}
                (:target (nth res 6))))
-        (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/a", :ol "ex:b", :di "http://knotation.org/kn/link"}
+        (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/a", :oi "http://example.com/b"}
                (:target (nth res 12))))))
   #_(testing "Non-adjacent annotations can refer to previous annotation targets"
       (let [deep-chain "@prefix ex: <http://example.com/>

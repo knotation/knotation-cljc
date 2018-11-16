@@ -189,6 +189,11 @@
 
 ;; These are mostly wrappers around functions in the RDF namepace.
 ;; TODO: Use specter to simplify?
+(defn get-subject
+  [state]
+  (or
+   (get-in state [::rdf/quad ::rdf/si])
+   (get-in state [::rdf/quad ::rdf/sb])))
 
 (defn sequential-blank-nodes
   "Given a sequence of states, some of which have ::rdf/quads,
