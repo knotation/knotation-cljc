@@ -322,26 +322,40 @@
              (read-lines state)
              (concat
               [(assoc-in state [::rdf/quad ::rdf/pi] (rdf/kn "applied-template"))]))
-        [(st/error state :unrecognized-template template-iri)]));(concat
-      ; [(assoc state ::rdf/predicate {::rdf/iri "https://knotation.org/predicate/applied-template"})]
-      ; states)
+        [(st/error state :unrecognized-template template-iri)]))
     [state]))
 
 (defn expand-annotation
-  [{:keys [::st/parse ::rdf/stanza ::rdf/subject ::rdf/quad] :as state}]
-  (if (->> parse rest (filter #(= :arrows (first %))) first second string/blank?)
-    [(assoc state ::quad-stack [quad])]
-    (let [bn "_:b0"]
-      (->> [{::rdf/pi (rdf/rdf "type") ::rdf/oi (rdf/owl "Annotation")}
-            (merge
-             {::rdf/pi (rdf/owl "annotatedSource")}
-             (if (rdf/blank? subject) {::rdf/ob subject} {::rdf/oi subject}))
-            {::rdf/pi (rdf/owl "annotatedProperty") ::rdf/oi (:rdf/pi quad)}
-            (assoc quad ::rdf/pi (rdf/owl "annotatedObject"))
-            quad]
-           (map #(dissoc % ::rdf/si))
-           (map #(assoc % ::rdf/zn stanza ::rdf/sb bn))
-           (map #(assoc state ::rdf/subject bn ::rdf/quad %))))))
+  "Given a state for a statement, expand OWL annotations ('> ')
+   and return a sequence of states.
+   Annotations are expanded by generating five statements."
+  [{:keys [::st/parse ::rdf/stanza ::rdf/quad ::st/quad-stack] :as state}]
+  (let [arrows (->> parse rest (filter #(= :arrows (first %))) first second)
+        depth (if arrows (-> arrows string/trim count) 0)]
+    (cond
+      (= 0 depth)
+      [(assoc state ::st/quad-stack [quad])]
+
+      (> depth (count quad-stack))
+      [(st/error state :invalid-annotation-depth arrows)]
+
+      :else
+      (let [{::rdf/keys [si sb pi] :as target} (get quad-stack (dec depth))
+            bn (rdf/random-blank-node)
+            quad (-> quad (dissoc ::rdf/si) (assoc ::rdf/sb bn))
+            state (assoc state ::st/quad-stack (vec (concat (take depth quad-stack) [quad])))]
+        (->> [{::rdf/pi (rdf/rdf "type") ::rdf/oi (rdf/owl "Annotation")}
+              (merge
+               {::rdf/pi (rdf/owl "annotatedSource")}
+               (when si {::rdf/oi si})
+               (when sb {::rdf/ob sb}))
+              {::rdf/pi (rdf/owl "annotatedProperty") ::rdf/oi pi}
+              (merge
+               (dissoc target ::rdf/si ::rdf/sb)
+               {::rdf/pi (rdf/owl "annotatedTarget")})
+              quad]
+             (map #(assoc % ::rdf/zn stanza ::rdf/sb bn))
+             (map #(assoc state ::rdf/subject bn ::rdf/quad %)))))))
 
 (defn read-statement
   "Given a state with a ::st/parse for a statement,

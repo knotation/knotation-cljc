@@ -162,7 +162,7 @@
 (defn update-state
   "Given a previous state and the current state,
    use the previous state to assign an environment to the current state."
-  [{:keys [::en/env ::location] :or {env en/default-env} :as previous-state}
+  [{:keys [::en/env ::location ::quad-stack] :or {env en/default-env} :as previous-state}
    {:keys [::event ::rdf/quad] :as state}]
   (strip-state
    (merge
@@ -172,6 +172,8 @@
         {::en/env env}))
     (when (and (::location previous-state) (not (::location state)))
       {::location location})
+    (when quad-stack
+      {::quad-stack quad-stack})
     (when-let [g (or (::rdf/gi quad) (::rdf/graph state) (::rdf/graph previous-state))]
       {::rdf/graph g})
     (when-let [s (or (::rdf/zn quad) (::rdf/stanza state) (::rdf/stanza previous-state))]
