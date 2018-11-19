@@ -32,9 +32,7 @@
   (->> before
        (kn/read-input st/default-state)
        (kn/render-states st/default-state)
-       (map ::st/output)
-       (map ::st/content)
-       string/join
+       st/render-output-string
        normalize-trailing-newlines
        (= (normalize-trailing-newlines after))
        is))
@@ -102,47 +100,27 @@ ex:label: Foo Bar
                      (api/read-lines :kn nil))]
         (is (api/any-errors? res))
         (is (->> (nth res 3) api/error-type (= :no-annotation-target)))))
-  #_(testing "Annotations start with pointies"
-      (test-roundtrip "@prefix kn: <https://knotation.org/kn/>
+  (test-roundtrip "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:s
-ex:p; kn:link: ex:o
-> ex:a; kn:link: ex:b"))
-  #_(testing "Annotations can refer to other annotations"
-      (let [chained "@prefix kn: <https://knotation.org/kn/>
+ex:a: A
+> ex:b: B")
+  (test-roundtrip "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:s
 ex:p; kn:link: ex:o
 > ex:a; kn:link: ex:b
->> ex:c; kn:link: ex:d"
-            res (->> chained util/split-lines
-                     (api/read-lines :kn nil))]
-        (test-roundtrip chained)
-        (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :oi "http://example.com/o"}
-               (:target (nth res 6))))
-        (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/a", :oi "http://example.com/b"}
-               (:target (nth res 12))))))
-  #_(testing "Non-adjacent annotations can refer to previous annotation targets"
-      (let [deep-chain "@prefix ex: <http://example.com/>
+>> ex:c; kn:link: ex:d")
+  (test-roundtrip "@prefix ex: <http://example.com/>
 
 : ex:s
 ex:p: A
 > ex:p: B is an annotation on A
 >> ex:p: C is an annotation on B
-> ex:p: D is an annotation on A"
-            res (->> deep-chain util/split-lines
-                     (api/read-lines :kn nil))]
-        (test-roundtrip deep-chain)
-        (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
-               (:target (nth res 5))))
-        (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "B is an annotation on A"}
-               (:target (nth res 11))))
-        (is (= #::rdf{:si "http://example.com/s", :pi "http://example.com/p", :ol "A"}
-               (:target (nth res 17))))))
-  #_(testing "Annotations can have multi-line strings"
-      (test-roundtrip "@prefix ex: <http://example.com/>
+> ex:p: D is an annotation on A")
+  (test-roundtrip "@prefix ex: <http://example.com/>
 
 : ex:s
 ex:p: A
@@ -150,4 +128,4 @@ ex:p: A
   that includes a multi-line string
 >> ex:p: C is an annotation on B
    that likewise includes a multi-line string
-> ex:p: D is an annotation on A")))
+> ex:p: D is an annotation on A"))

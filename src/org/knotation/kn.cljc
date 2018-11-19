@@ -434,12 +434,13 @@
 
 (defn render-statement
   "Given a ::st/statement state, return a parse."
-  [{:keys [::en/env ::rdf/quad] :as state}]
+  [{:keys [::silent ::en/env ::rdf/quad ::depth] :as state}]
   (if-let [pi (::rdf/pi quad)]
     (if-let [predicate-name (en/iri->name env pi)]
       (concat
-       [::statement-block
-        [:name predicate-name]]
+       [::statement-block]
+       (when (and depth (> depth 0)) [[:arrows (apply str (concat (repeat depth ">") [" "]))]])
+       [[:name predicate-name]]
        (render-datatype env pi quad)
        [[:symbol ":"]]
        (render-object env quad))
@@ -520,27 +521,132 @@
 
 (defn render-state
   "Given a state, render it and return the updated state."
-  [{:keys [::st/event] :as state}]
-  (->> (case event
-         ::st/blank (render-blank state)
-         ::st/comment (render-comment state)
-         ::st/prefix (render-prefix state)
-         ::st/graph-start state ; TODO
-         ::st/graph-end state
-         ::st/stanza-start state
-         ::st/stanza-end state
-         ::st/subject-start (render-subject state)
-         ::st/subject-end state
-         ::st/statement (render-statement state)
-         (util/throw-exception :bad-state state))
-       st/render-parse
-       (st/output state :kn)))
+  [{:keys [::silent ::st/event] :as state}]
+  (if silent
+    state
+    (->> (case event
+           ::st/blank (render-blank state)
+           ::st/comment (render-comment state)
+           ::st/prefix (render-prefix state)
+           ::st/graph-start state ; TODO
+           ::st/graph-end state
+           ::st/stanza-start state
+           ::st/stanza-end state
+           ::st/subject-start (render-subject state)
+           ::st/subject-end state
+           ::st/statement (render-statement state)
+           (util/throw-exception :bad-state state))
+         st/render-parse
+         (st/output state :kn))))
+
+(defn annotate-annotation
+  "Given a state for an annotation,
+   return a state, maybe with a ::silent key."
+  [{:keys [::rdf/quad] :as state}]
+  (if quad
+    (if (contains? #{(rdf/rdf "type")
+                     (rdf/owl "annotatedSource")
+                     (rdf/owl "annotatedProperty")
+                     (rdf/owl "annotatedTarget")}
+                   (::rdf/pi quad))
+      (assoc state ::silent true)
+      state)
+    (assoc state ::silent true)))
+
+(defn inner-sort-statements
+  "Given a map from subjects to sequences of their states,
+   plus :subjects and ::states sequences,
+   a :lists map and a ::depth integer,
+   recursively loop through the :subjects and add to :states,
+   in the order and depth that Turtle expects."
+  [{:keys [::subjects ::annotations ::quad-annotations ::depth ::subject-depth] :as coll}]
+  (if-let [subject (first subjects)]
+    (let [coll (if (find subject-depth subject)
+                 coll
+                 (assoc-in coll [::subject-depth subject] depth))]
+      (if-let [state (first (get coll subject))]
+        (let [state (assoc state ::depth depth)
+              state (if (contains? annotations subject) (annotate-annotation state) state)
+              coll (-> coll
+                       (update ::states conj state)
+                       (update subject rest))]
+          (if-let [anns (get quad-annotations (::rdf/quad state))]
+              ; state with annotations: insert this state then switch to those subjects
+            (-> coll
+                (assoc ::subjects (concat anns subjects))
+                (update ::depth inc)
+                inner-sort-statements)
+              ; state without annotations
+            (inner-sort-statements coll)))
+          ; no more states for this subject
+        (-> coll
+            (dissoc subject)
+            (assoc ::subjects (rest subjects))
+            (assoc ::depth (get subject-depth subject))
+            inner-sort-statements)))
+    coll))
+
+(defn sort-statements
+  [grouped-states annotations quad-annotations subjects]
+  (-> grouped-states
+      (assoc ::states []
+             ::subjects subjects
+              ;::lists lists
+              ;::list-items (-> lists vals flatten set)
+             ::annotations annotations
+             ::quad-annotations quad-annotations
+             ::depth 0)
+      inner-sort-statements
+      ::states))
+
+(defn sort-stanza
+  "Given a sequence of states for one stanza,
+   return them in the required order for Knotation rendering."
+  [states]
+  (let [zn (-> states first ::rdf/quad ::rdf/zn)
+        grouped (group-by ::rdf/subject states)
+        lists (->> states (map ::rdf/quad) rdf/collect-lists)
+        annotations (->> states
+                         (map ::rdf/quad)
+                         (filter #(= (rdf/owl "annotatedSource") (::rdf/pi %)))
+                         (map ::rdf/sb)
+                         set)
+        quad-annotations
+        (->> states
+             (filter ::rdf/quad)
+             (map ::rdf/quad)
+             (filter #(->> % ::rdf/sb (contains? annotations)))
+             (group-by ::rdf/sb)
+             (map
+              (fn [[sb quads]]
+                (let [source (->> quads (filter #(= (rdf/owl "annotatedSource") (::rdf/pi %))) first)
+                      property (->> quads (filter #(= (rdf/owl "annotatedProperty") (::rdf/pi %))) first)
+                      target (->> quads (filter #(= (rdf/owl "annotatedTarget") (::rdf/pi %))) first)]
+                  [(merge
+                    (if (::rdf/oi source) {::rdf/si (::rdf/oi source)} {::rdf/sb (::rdf/ob source)})
+                    {::rdf/pi (::rdf/oi property)}
+                    (select-keys target [::rdf/zn ::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt]))
+                   sb])))
+             (reduce
+              (fn [coll [quad sb]]
+                (update coll quad (fnil conj []) sb))
+              {}))]
+    (concat
+     (->> states
+          (map st/get-subject)
+          distinct
+          (remove #{zn})
+          (concat [zn])
+          (remove nil?)
+          (sort-statements (dissoc grouped nil) annotations quad-annotations))
+     (get grouped nil))))
 
 (defn render-stanza
   "Given an environment and a sequence of states for a single stanza,
    return a sequence of states with rendered :output."
   [previous-states states]
   (->> states
+       sort-stanza
        (reductions
         (fn [previous-state state]
           (->> state
