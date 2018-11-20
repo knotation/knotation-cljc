@@ -470,7 +470,7 @@
         (fn [previous-state line]
           (-> previous-state
               (select-keys [::st/event ::st/location])
-              (st/input :kn line)
+              (st/input :kn (str line "\n"))
               (assoc ::st/event ::st/parse ::st/parse (parse-line line))))
         previous-state)
        rest
