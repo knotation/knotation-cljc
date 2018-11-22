@@ -144,9 +144,9 @@ _:b2
 
 : ex:s
 ex:before: before
-ex:a; kn:anon: 
+ex:a; kn:anon:
  ex:b: B
- ex:c; kn:anon: 
+ ex:c; kn:anon:
   ex:d: D
  ex:e: E
 ex:after: after

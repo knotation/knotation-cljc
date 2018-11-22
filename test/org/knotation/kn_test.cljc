@@ -69,7 +69,7 @@ ex:p; ex:d: Multiline
 @prefix ex: <http://example.com/>
 
 : ex:template
-kn:template-content: 
+kn:template-content:
  ex:label: Foo {short name}
 
 : ex:1
@@ -81,7 +81,7 @@ kn:apply-template: ex:template
 @prefix ex: <http://example.com/>
 
 : ex:template
-kn:template-content: 
+kn:template-content:
  ex:label: Foo {short name}
 
 : ex:1

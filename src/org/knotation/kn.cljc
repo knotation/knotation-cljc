@@ -223,7 +223,9 @@
 (defn parse-statement
   "Given a statement line (string), return a parse."
   [line]
-  (if-let [[_ arrows pd lexical] (re-matches #"(>* )?(.*?): (.*)\n?" line)]
+  (if-let [[_ arrows pd space lexical]
+           (or (re-matches #"(>* )?(.*?):()()\n?" line)
+               (re-matches #"(>* )?(.*?):( )(.*)\n?" line))]
     (if-let [[predicate datatype] (string/split pd #"; " 2)]
       (if datatype
         [::statement-line
@@ -233,14 +235,14 @@
          [:space " "]
          [:name datatype]
          [:symbol ":"]
-         [:space " "]
+         [:space space]
          [:lexical lexical]
          [:eol "\n"]]
         [::statement-line
          [:arrows (or arrows "")]
          [:name predicate]
          [:symbol ":"]
-         [:space " "]
+         [:space space]
          [:lexical lexical]
          [:eol "\n"]])
       (util/error :invalid-predicate-datatype pd))
@@ -455,8 +457,21 @@
      [:eol "\n"]]
 
     ol
-    (->> (util/split-lines ol)
-         (mapcat (fn [line] [[:space " "] [:lexical line] [:eol "\n"]])))
+    (let [lines (->> (util/split-lines ol))
+          line (first lines)]
+      (concat
+       (if (= line "")
+         [[:eol "\n"]]
+         [[:space " "]
+          [:lexical line]
+          [:eol "\n"]])
+       (->> lines
+            rest
+            (mapcat
+             (fn [line]
+               [[:space " "]
+                [:lexical line]
+                [:eol "\n"]])))))
 
     :else
     (util/error :not-an-object object)))
@@ -477,7 +492,6 @@
          (and anon (= (rdf/kn "anon") (en/get-datatype env (::rdf/pi quad))))
          (concat
           [[:symbol ":"]
-           [:space " "]
            [:eol "\n"]])
 
          anon
@@ -486,7 +500,6 @@
            [:space " "]
            [:name (en/iri->name env (rdf/kn "anon"))]
            [:symbol ":"]
-           [:space " "]
            [:eol "\n"]])
 
          :else
