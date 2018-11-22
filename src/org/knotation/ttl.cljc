@@ -1,5 +1,6 @@
 (ns org.knotation.ttl
   (:require [clojure.string :as string]
+            [clojure.zip :as zip]
 
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
@@ -59,226 +60,237 @@
   nil)
 
 (defn render-subject-start
-  [{:keys [::en/env ::rdf/subject ::depth ::list-item ::terminal] :or {env {}} :as state}]
-  (str
-   (cond
-     list-item "("
-     (and (rdf/blank? subject) (= depth 0)) subject
-     (rdf/blank? subject) "["
-     :else (render-iri env subject))
-   terminal))
+  [{:keys [::en/env ::rdf/subject ::lexical ::terminal] :or {env {}} :as state}]
+  (str (or lexical
+           (when (rdf/blank? subject) subject)
+           (render-iri env subject))
+       terminal))
 
 (defn render-subject-end
-  [{:keys [::rdf/subject ::depth ::list-item ::terminal] :or {depth 0} :as state}]
-  (when (> depth 0)
+  [{:keys [::rdf/subject ::depth ::lexical ::terminal] :or {depth 0} :as state}]
+  (when (and lexical terminal)
     (apply
      str
      (concat
-      (repeat depth "  ")
-      [(cond
-         list-item ")"
-         (rdf/blank? subject) "]"
-         :else "")
-       terminal]))))
+      (repeat (dec depth) "  ")
+      [lexical terminal]))))
 
 (defn render-statement
-  [{:keys [::en/env ::rdf/quad ::silent ::predicate ::object ::depth ::initial ::terminal]
+  [{:keys [::en/env ::rdf/quad ::predicate ::object ::depth ::initial ::terminal]
     :or {env {} depth 1}
     :as state}]
-  (when-not silent
-    (apply
-     str
-     (concat
-      (repeat depth "  ")
-      [initial]
-      (if predicate
-        [predicate]
-        [(render-iri env (::rdf/pi quad)) " "])
-      (if object
-        [object]
-        [(render-object env quad)])
-      [terminal]))))
+  (apply
+   str
+   (concat
+    (repeat depth "  ")
+    [initial]
+    (if predicate
+      [predicate]
+      [(render-iri env (::rdf/pi quad)) " "])
+    (if object
+      [object]
+      [(render-object env quad)
+       terminal]))))
 
 (defn render-state
   "Given a state, return a state with optional ::st/output."
-  [{:keys [::st/event] :as state}]
-  (st/output
-   state
-   :ttl
-   (case event
-     ::st/blank (render-blank state)
-     ::st/prefix (render-prefix state)
-     ::st/base (render-base state)
-     ::st/stanza-start (render-stanza-start state)
-     ::st/stanza-end (render-stanza-end state)
-     ::st/subject-start (render-subject-start state)
-     ::st/subject-end (render-subject-end state)
-     ::st/statement (render-statement state))))
+  [{:keys [::st/event ::silent] :as state}]
+  (if silent
+    state
+    (st/output
+     state
+     :ttl
+     (case event
+       ::st/blank (render-blank state)
+       ::st/prefix (render-prefix state)
+       ::st/base (render-base state)
+       ::st/stanza-start (render-stanza-start state)
+       ::st/stanza-end (render-stanza-end state)
+       ::st/subject-start (render-subject-start state)
+       ::st/subject-end (render-subject-end state)
+       ::st/statement (render-statement state)
+       (util/throw-exception "Bad event" event "in state" state)))))
 
-(declare inner-sort-statements)
+;; # Tree Representation
+;;
+;; Process the Turltle nodes as a tree using clojure.zip.
+;; First we create a zipper using a vector of ::st/children states.
+;; Then we build the tree by inserting nested children.
+;; Then we flatten the tree with a depth-first traversal,
+;; inserting subject-start and subject-end states,
+;; handling anonymous nodes,
+;; and keeping RDF list elements at the same depth.
 
-(defn annotate-nested
-  "When the object of a statement is a blank node
-   that points to a branch of this stanza,
-   annotate the statement
-   then recurse to that branch."
-  [{:keys [::subjects ::lists ::list-items ::depth] :as coll} subject state ob]
-  ; bump this subject to the top of the list of subjects
-  (let [coll (assoc coll ::subjects (concat [ob] (remove #{ob} subjects)))]
-    (cond
-      ; statement is a "first" list item with nested object
-      (-> state ::rdf/quad ::rdf/pi (= (rdf/rdf "first")))
-      (-> coll
-          (update ::states conj (assoc state ::predicate "" ::object ""))
-          (update ::states conj {::st/event ::st/subject-start
-                                 ::rdf/subject ob
-                                 ::list-item (boolean (find lists ob))
-                                 ::depth depth})
-          (update ::depth inc)
-          inner-sort-statements)
+(defn state-tree
+  "Given a state, return a zipper using ::st/children."
+  [state]
+  (zip/zipper
+   (constantly true)
+   ::st/children
+   (fn [node children] (assoc node ::st/children children))
+   state))
 
-      ; statement is a "rest" list item: do not indent!
-      (-> state ::rdf/quad ::rdf/pi (= (rdf/rdf "rest")))
-      (-> coll
-          (update ::states conj (assoc state ::silent true))
-          inner-sort-statements)
-
-      :else
-      (-> coll
-          (update ::states conj (assoc state ::object ""))
-          (update ::states conj {::st/event ::st/subject-start
-                                 ::rdf/subject ob
-                                 ::list-item (boolean (find lists ob))
-                                 ::depth depth})
-          (update ::depth inc)
-          inner-sort-statements))))
-
-(defn annotate-state
-  "Annotate a single state by marking it as nested, last, or a list item,
-   then recurse to the next state."
-  [{:keys [::subjects ::annotations ::depth] :as coll} subject state]
-  (let [last? (= state (last (get coll subject)))
-        coll (update coll subject rest) ; remove this state
-        state (merge state {::depth depth} (when last? {::last true}))
-        ob (-> state ::rdf/quad ::rdf/ob)]
-    (if (and ob (find coll ob) (not (contains? annotations ob)))
-      (annotate-nested coll subject state ob)
-      ; object is not nested
-      (let [state
-            (cond
-              (-> state ::rdf/quad ::rdf/pi (= (rdf/rdf "first")))
-              (assoc state ::predicate "")
-
-              (-> state ::rdf/quad ::rdf/pi (= (rdf/rdf "rest")))
-              (assoc state ::silent true)
-
-              :else
-              state)]
-        (-> coll
-            (update ::states conj state)
-            inner-sort-statements)))))
-
-(defn annotate-subject
-  "Annotate a subject, either by annotating its next remaining state,
-   or annotating it as complete and recursing to the next subject."
-  [{:keys [::subjects ::lists ::list-items ::depth] :as coll} subject]
-  (if-let [state (first (get coll subject))]
-    (annotate-state coll subject state)
-
-    ; no more states for this subject
-    (let [coll (-> coll
-                   (dissoc subject)
-                   (assoc ::subjects (remove #{subject} subjects)))
-          subject-end {::st/event ::st/subject-end
-                       ::list-item (boolean (find lists subject))
-                       ::depth (dec depth)
-                       ::rdf/subject subject}
-          next-subject (second subjects)]
-      (cond
-        ; There's another top-level subject to handle
-        (and next-subject (= depth 1))
-        (-> coll
-            (update ::states conj subject-end)
-            (update ::states conj {::st/event ::st/blank ::depth 0})
-            (update ::states conj {::st/event ::st/subject-start
-                                   ::rdf/subject next-subject
-                                   ::depth 0})
-            inner-sort-statements)
-
-        ; subject is an item inside a list: do not unindent!
-        (and (contains? list-items subject) (not (find lists subject)))
-        (inner-sort-statements coll)
-
-        :else
-        (-> coll
-            (update ::states conj subject-end)
-            (update ::depth dec)
-            inner-sort-statements)))))
-
-(defn inner-sort-statements
-  "Given a map from subjects to sequences of their states,
-   plus :subjects and ::states sequences,
-   a :lists map and a ::depth integer,
-   recursively loop through the :subjects and add to :states,
-   in the order and depth that Turtle expects."
+(defn annotate-statement
+  "Given a map from subjects to their states,
+   with a current subject and state,
+   return that state ready to render."
   [{:keys [::subjects] :as coll}]
-  (if-let [subject (first subjects)]
-    (annotate-subject coll subject)
-    coll))
+  (let [subject (first subjects)
+        state (first (get coll subject))
+        pi (-> state ::rdf/quad ::rdf/pi)
+        state (cond
+                (= (rdf/rdf "first") pi)
+                (assoc state ::predicate "" ::terminal "\n")
+                (= state (last (get coll subject)))
+                (if (-> coll ::tree zip/path count (> 2))
+                  (assoc state ::terminal "\n")
+                  (assoc state ::terminal " .\n"))
+                :else
+                (assoc state ::terminal " ;\n"))]
+    (assoc state ::silent (= (rdf/rdf "rest") pi))))
+
+(defn annotate-subject-start
+  "Given a map from subjects to their states,
+   with a current subject and state,
+   return a ::st/subject-start state ready to render."
+  [{:keys [::subjects ::tree] :as coll}]
+  (let [subject (first subjects)
+        state (first (get coll subject))
+        quad (::rdf/quad state)
+        pi (::rdf/pi quad)
+        parent (zip/node tree)
+        list-item? (contains? #{(rdf/rdf "first") (rdf/rdf "rest")} pi)
+        list-head? (and parent (->> parent ::rdf/quad ::rdf/pi (not= (rdf/rdf "rest"))))]
+    {::st/event ::st/subject-start
+     ::rdf/stanza (::rdf/zn quad)
+     ::rdf/subject subject
+     ::silent (and list-item? (not list-head?))
+     ::lexical (when (-> tree zip/path count (> 1))
+                 (if list-item? "(" "["))
+     ::terminal "\n"}))
+
+(defn annotate-subject-end
+  "Given a map from subjects to their states,
+   with a current subject and state,
+   return a ::st/subject-end state ready to render."
+  [{:keys [::subjects ::tree] :as coll}]
+  (let [subject (first subjects)
+        state (-> tree zip/down zip/rightmost zip/node)
+        quad (::rdf/quad state)
+        pi (::rdf/pi quad)
+        parent (zip/node tree)
+        list-item? (contains? #{(rdf/rdf "first") (rdf/rdf "rest")} pi)
+        list-end? (and (= (rdf/rdf "rest") pi) (= (rdf/rdf "nil") (::rdf/oi quad)))]
+    {::st/event ::st/subject-end
+     ::rdf/stanza (::rdf/zn quad)
+     ::rdf/subject subject
+     ::silent (and list-item? (not list-end?))
+     ::lexical (when (-> tree zip/path count (> 1))
+                 (if list-item? ")" "]"))
+      ; copy the terminal from the first ancestor statement that's not a list
+     ::terminal (->> tree
+                     zip/path
+                     (filter ::rdf/quad)
+                     (drop-while #(= (rdf/rdf "rest") (-> % ::rdf/quad ::rdf/pi)))
+                     first
+                     ::terminal)}))
+
+(defn build-tree
+  "Given a map from subjects to their states,
+   with a sequence of ::subjects to process,
+   a set of ::annotations,
+   and a state-tree at ::tree,
+   recursively insert states into the tree
+   in the order Turtle should render them,
+   and return the updated collection."
+  [{:keys [::annotations] :as coll}]
+  (loop [coll coll]
+    (if-let [subject (first (::subjects coll))]
+      (recur
+       (if-let [state (first (get coll subject))]
+         (let [state (annotate-statement coll)
+               coll (if (->> coll ::tree zip/node ::rdf/subject (= subject))
+                      coll
+                      (-> coll
+                          (update ::tree zip/append-child (annotate-subject-start coll))
+                          (update ::tree zip/down)
+                          (update ::tree zip/rightmost)))
+               ob (-> state ::rdf/quad ::rdf/ob)]
+           (if (and ob (find coll ob) (not (contains? annotations ob)))
+             ; descend into a nested subject
+             (-> coll
+                 (update ::tree zip/append-child (assoc state ::object ""))
+                 (update subject rest)
+                 (update ::tree zip/down)
+                 (update ::tree zip/rightmost)
+                 (assoc ::subjects (->> coll ::subjects (remove #{ob}) (concat [ob]))))
+
+             ; just add the state
+             (-> coll
+                 (update ::tree zip/append-child state)
+                 (update subject rest))))
+
+         ; no more states for this subject, ascend the tree
+         (-> coll
+             (update ::tree zip/append-child (annotate-subject-end coll))
+             (update ::tree zip/up)
+             (#(if (->> % ::tree zip/up) (update % ::tree zip/up) %))
+             (update ::subjects #(remove #{subject} %)))))
+
+      ; no more subjects
+      coll)))
+
+(defn flatten-tree
+  "Given a state-tree, return a flat sequence of states."
+  [state-tree]
+  (loop [states []
+         loc state-tree]
+    (if (zip/end? loc)
+      states
+      (recur
+       (concat
+        states
+        (when (and (= 1 (count (zip/path loc))) (zip/left loc))
+          [{::st/event ::st/blank}])
+        [(-> loc
+             zip/node
+             (dissoc ::st/children)
+             (assoc
+              ; depth not counting lists
+              ::depth
+              (->> loc
+                   zip/path
+                   (map ::rdf/quad)
+                   (map ::rdf/pi)
+                   (remove nil?)
+                   (remove #{(rdf/rdf "rest")})
+                   count
+                   inc)))])
+       (zip/next loc)))))
 
 (defn sort-statements
-  [grouped-states lists annotations subjects]
-  (concat
-   (when-let [s (first subjects)]
-     [{::st/event ::st/subject-start ::rdf/stanza s ::rdf/subject s ::depth 0}])
-   (-> grouped-states
-       (assoc ::states []
-              ::subjects subjects
-              ::lists lists
-              ::list-items (-> lists vals flatten set)
-              ::annotations annotations
-              ::depth 1)
-       inner-sort-statements
-       ::states)))
-
-(defn annotate-terminal
-  "Given a state, add the right :terminal annotation."
-  [{:keys [::st/event ::depth ::last ::object] :as state}]
-  (cond
-    object
-    state
-
-    (= ::st/statement event)
-    (cond
-      last
-      (if (= 1 depth)
-        (assoc state ::terminal " .\n")
-        (assoc state ::terminal "\n"))
-
-      (-> state ::rdf/quad ::rdf/pi (= (rdf/rdf "first")))
-      (assoc state ::terminal "\n")
-
-      :else
-      (assoc state ::terminal " ;\n"))
-
-    (= ::st/subject-start event)
-    (assoc state ::terminal "\n")
-
-    (= ::st/subject-end event)
-    (if (= 1 depth)
-      (assoc state ::terminal " ;\n")
-      (assoc state ::terminal "\n"))
-
-    :else
-    state))
+  "Given a map from subjects to their states,
+   a set of annotations,
+   and a sequence of subjects,
+   return a sequence of states ready to be rendered."
+  [grouped-states annotations subjects]
+  (-> grouped-states
+      (assoc ::tree (state-tree st/default-state)
+             ::subjects subjects
+             ::annotations annotations)
+      build-tree
+      ::tree
+      zip/root
+      state-tree
+      flatten-tree
+      rest))
 
 (defn sort-stanza
   "Given a sequence of states for a single stanza,
    reorder and annotate them as required."
   [states]
-  (let [zn (-> states first ::rdf/quad ::rdf/zn)
-        grouped (group-by st/get-subject states)
-        lists (->> states (map ::rdf/quad) rdf/collect-lists)
+  (let [zn (->> states (map ::rdf/stanza) first)
+        grouped (group-by ::rdf/subject states)
         annotations (->> states
                          (map ::rdf/quad)
                          (filter #(= (rdf/owl "annotatedSource") (::rdf/pi %)))
@@ -290,8 +302,7 @@
          (remove #{zn})
          (concat [zn])
          (remove nil?)
-         (sort-statements (dissoc grouped nil) lists annotations)
-         (map annotate-terminal)
+         (sort-statements (dissoc grouped nil) annotations)
          (concat (get grouped nil)))))
 
 (defn render-stanza

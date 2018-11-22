@@ -81,21 +81,31 @@
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ol "after"}}])
 
 (def test-sorting-after
-  [{::st/event ::st/subject-start ::rdf/subject "s"}
+  [{::st/event ::st/subject-start ::rdf/stanza "s" ::rdf/subject "s"}
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ol "before"}}
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ob "_:b0"}}
-   {::st/event ::st/subject-start ::rdf/subject "_:b0"}
+   {::st/event ::st/subject-start ::rdf/stanza "s" ::rdf/subject "_:b0"}
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :sb "_:b0" :pi (rdf/rdf "first") :ol "1"}}
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :sb "_:b0" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}}
-   {::st/event ::st/subject-end ::rdf/subject "_:b0"}
+   {::st/event ::st/subject-end ::rdf/stanza "s" ::rdf/subject "_:b0"}
    {::st/event ::st/statement ::rdf/quad #::rdf{:zn "s" :si "s" :pi "p" :ol "after"}}
-   {::st/event ::st/subject-end ::rdf/subject "s"}])
+   {::st/event ::st/subject-end ::rdf/stanza "s" ::rdf/subject "s"}])
+
+(defn assign-subject
+  [state]
+  (if (::rdf/quad state)
+    (assoc state
+           ::rdf/stanza (-> state ::rdf/quad ::rdf/zn)
+           ::rdf/subject (or (-> state ::rdf/quad ::rdf/si)
+                             (-> state ::rdf/quad ::rdf/sb)))
+    state))
 
 (deftest test-sorting
   (->> test-sorting-before
+       (map assign-subject)
        ttl/sort-stanza
-       (map #(select-keys % [::st/event ::rdf/quad ::rdf/subject]))
-       (= test-sorting-after)
+       (map #(select-keys % [::st/event ::rdf/quad ::rdf/stanza ::rdf/subject]))
+       (= (map assign-subject test-sorting-after))
        is))
 
 (def test-input-edn
@@ -154,7 +164,9 @@
     ::rdf/subject "http://example.com/s"
     ::en/env test-output-env
     ::st/location #::st{:line-number 5 :column-number 1}
-    ::ttl/depth 0
+    ::ttl/depth 1
+    ::ttl/silent false
+    ::ttl/lexical nil
     ::ttl/terminal "\n"
     ::st/output
     #::st{:format :ttl
@@ -171,6 +183,7 @@
     ::en/env test-output-env
     ::st/location #::st{:line-number 6 :column-number 1}
     ::ttl/depth 1
+    ::ttl/silent false,
     ::ttl/terminal " ;\n"
     ::st/output
     #::st{:format :ttl
@@ -187,7 +200,7 @@
     ::en/env test-output-env
     ::st/location #::st{:line-number 7 :column-number 1}
     ::ttl/depth 1
-    ::ttl/last true
+    ::ttl/silent false,
     ::ttl/terminal " .\n"
     ::st/output
     #::st{:format :ttl
@@ -199,9 +212,10 @@
     ::rdf/subject "http://example.com/s"
     ::en/env test-output-env
     ::st/location #::st{:line-number 7 :column-number 1}
-    ::ttl/depth 0
-    ::ttl/list-item false
-    ::ttl/terminal "\n"}])
+    ::ttl/depth 1
+    ::ttl/silent false,
+    ::ttl/lexical nil
+    ::ttl/terminal nil}])
 
 (deftest test-edn->edn
   (->> test-input-edn

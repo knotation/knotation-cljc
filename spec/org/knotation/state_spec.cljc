@@ -56,6 +56,7 @@
                                 ::rdf/quad
                                 ::st/output]))
 (s/def ::st/states (s/coll-of ::st/state))
+(s/def ::st/children ::st/states)
 
 (s/fdef st/step-location
         :args (s/cat :location ::st/location)

@@ -162,7 +162,7 @@
 (defn update-state
   "Given a previous state and the current state,
    use the previous state to assign an environment to the current state."
-  [{:keys [::en/env ::location ::quad-stack] :or {env en/default-env} :as previous-state}
+  [{:keys [::en/env ::location ::next-subject ::quad-stack] :or {env en/default-env} :as previous-state}
    {:keys [::event ::rdf/quad] :as state}]
   (strip-state
    (merge
@@ -179,7 +179,10 @@
     (when-let [s (or (::rdf/zn quad) (::rdf/stanza state) (::rdf/stanza previous-state))]
       {::rdf/stanza s})
     (when-let [s (or (::rdf/si quad) (::rdf/sb quad) (::rdf/subject state) (::rdf/subject previous-state))]
-      {::rdf/subject s}))))
+      {::rdf/subject s})
+    ; override subject
+    (when next-subject
+      {::rdf/subject next-subject}))))
 
 (defn update-states
   [previous-state states]
@@ -262,7 +265,7 @@
             (cond
               (nil? state)
               {:results stored}
-              (and si (not= si stanza))
+              (and si stanza (not= si stanza))
               {:results stored
                :stored [state]
                :stanza si}

@@ -59,25 +59,32 @@
         :args (s/cat :state ::st/state)
         :ret (s/nilable ::rdf/subject))
 
-(s/fdef ttl/inner-sort-statements
+(s/fdef ttl/state-tree
+        :args (s/cat :state ::st/state)
+        :ret vector?)
+
+(s/fdef ttl/annotate-statement
+        :args (s/cat :coll map?)
+        :ret ::st/state)
+
+(s/fdef ttl/annotate-subject-start
+        :args (s/cat :coll map?)
+        :ret ::st/state)
+
+(s/fdef ttl/annotate-subject-start
+        :args (s/cat :coll map?)
+        :ret ::st/state)
+
+(s/fdef ttl/build-tree
         :args (s/cat :coll map?)
         :ret map?)
 
-(s/fdef ttl/annotate-nested
-        :args (s/cat :coll map? :subject ::rdf/subject :state ::st/state :object ::rdf/ob)
-        :ret map?)
-
-(s/fdef ttl/annotate-state
-        :args (s/cat :coll map? :subject ::rdf/subject :state ::st/state)
-        :ret map?)
-
-(s/fdef ttl/annotate-subject
-        :args (s/cat :coll map? :subject ::rdf/subject)
-        :ret map?)
+(s/fdef ttl/flatten-tree
+        :args (s/cat :state-tree vector?)
+        :ret ::st/states)
 
 (s/fdef ttl/sort-statements
         :args (s/cat :grouped-states (s/map-of ::rdf/subject ::st/states)
-                     :lists (s/map-of ::rdf/bnode (s/coll-of ::rdf/bnode))
                      :annotations (s/coll-of ::rdf/bnode)
                      :subjects (s/coll-of ::rdf/subject))
         :ret ::st/states)
@@ -85,10 +92,6 @@
 (s/fdef ttl/sort-stanza
         :args (s/cat :states ::st/states)
         :ret ::st/states)
-
-(s/fdef ttl/annotate-terminal
-        :args (s/cat :state ::st/state)
-        :ret ::st/state)
 
 (s/fdef ttl/render-stanza
         :args (s/cat :previous-states ::st/states :states ::st/states)
