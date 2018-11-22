@@ -625,48 +625,49 @@
    a :lists map and a ::depth integer,
    recursively loop through the :subjects and add to :states,
    in the order and depth that Turtle expects."
-  [{:keys [::subjects ::annotations ::quad-annotations ::depth ::subject-depth] :as coll}]
-  (if-let [subject (first subjects)]
-    (let [coll (if (find subject-depth subject)
-                 coll
-                 (assoc-in coll [::subject-depth subject] depth))]
-      (if-let [state (first (get coll subject))]
-        (let [state (assoc state ::depth (get-in coll [::subject-depth subject]))
-              state (if (contains? annotations subject) (annotate-annotation state) state)
-              quad (::rdf/quad state)
-              anns (get quad-annotations (::rdf/quad state))
-              ob (::rdf/ob quad)
-              anon? (and ob (contains? (set subjects) ob))
-              state (if anon? (assoc state ::anon true) state)
-              coll (-> coll
-                       (update ::states conj state)
-                       (update subject rest))]
-          (cond
-            ; anonymous object: insert this state then switch to that subject
-            anon?
-            (-> coll
-                (assoc ::subjects (concat [ob] subjects))
-                (update ::depth inc)
-                inner-sort-statements)
+  [coll]
+  (loop [{:keys [::subjects ::annotations ::quad-annotations ::depth ::subject-depth] :as coll} coll]
+    (if-let [subject (first subjects)]
+      (recur
+       (let [coll (if (find subject-depth subject)
+                    coll
+                    (assoc-in coll [::subject-depth subject] depth))]
+         (if-let [state (first (get coll subject))]
+           (let [state (assoc state ::depth (get-in coll [::subject-depth subject]))
+                 state (if (contains? annotations subject) (annotate-annotation state) state)
+                 quad (::rdf/quad state)
+                 anns (get quad-annotations (::rdf/quad state))
+                 ob (::rdf/ob quad)
+                 anon? (and ob (contains? (set subjects) ob))
+                 state (if anon? (assoc state ::anon true) state)
+                 coll (-> coll
+                          (update ::states conj state)
+                          (update subject rest))]
+             (cond
+               ; anonymous object: insert this state then switch to that subject
+               anon?
+               (-> coll
+                   (assoc ::subjects (concat [ob] subjects))
+                   (update ::depth inc))
 
-            ; state with annotations: insert this state then switch to those subjects
-            anns
-            (-> coll
-                (assoc ::subjects (concat anns subjects))
-                (update ::depth inc)
-                inner-sort-statements)
+               ; state with annotations: insert this state then switch to those subjects
+               anns
+               (-> coll
+                   (assoc ::subjects (concat anns subjects))
+                   (update ::depth inc))
 
-            ; state without annotations
-            :else
-            (inner-sort-statements coll)))
+               ; state without annotations
+               :else
+               coll))
 
-        ; no more states for this subject
-        (-> coll
-            (dissoc subject)
-            (assoc ::subjects (rest subjects))
-            (assoc ::depth (get subject-depth subject))
-            inner-sort-statements)))
-    coll))
+           ; no more states for this subject
+           (-> coll
+               (dissoc subject)
+               (assoc ::subjects (rest subjects))
+               (assoc ::depth (get subject-depth subject))))))
+
+      ; no more subjects
+      coll)))
 
 (defn sort-statements
   [grouped-states annotations quad-annotations subjects]
