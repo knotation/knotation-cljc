@@ -24,17 +24,13 @@
        (= line)
        is))
 
-(defn normalize-trailing-newlines [s]
-  (str (clojure.string/trim s) "\n"))
-
 (defn test-before-after
   [before after]
   (->> before
        (kn/read-input st/default-state)
        (kn/render-states st/default-state)
        st/render-output-string
-       normalize-trailing-newlines
-       (= (normalize-trailing-newlines after))
+       (= after)
        is))
 
 (defn test-roundtrip
@@ -75,8 +71,7 @@ kn:template-content:
 : ex:1
 ex:foo: bar
 kn:apply-template: ex:template
- short name: Bar
-"
+ short name: Bar"
    "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
@@ -92,34 +87,29 @@ ex:label: Foo Bar
 "))
 
 (deftest test-annotations
-  #_(testing "Annotations with no valid targets show up as errors"
-      (let [res (->> "@prefix ex: <http://example.com/>
-
-> ex:p: This annotation has no target and should therefore error"
-                     util/split-lines
-                     (api/read-lines :kn nil))]
-        (is (api/any-errors? res))
-        (is (->> (nth res 3) api/error-type (= :no-annotation-target)))))
   (test-roundtrip "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:s
 ex:a: A
-> ex:b: B")
+> ex:b: B
+")
   (test-roundtrip "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:s
 ex:p; kn:link: ex:o
 > ex:a; kn:link: ex:b
->> ex:c; kn:link: ex:d")
+>> ex:c; kn:link: ex:d
+")
   (test-roundtrip "@prefix ex: <http://example.com/>
 
 : ex:s
 ex:p: A
 > ex:p: B is an annotation on A
 >> ex:p: C is an annotation on B
-> ex:p: D is an annotation on A")
+> ex:p: D is an annotation on A
+")
   (test-roundtrip "@prefix ex: <http://example.com/>
 
 : ex:s
@@ -128,4 +118,5 @@ ex:p: A
   that includes a multi-line string
 >> ex:p: C is an annotation on B
    that likewise includes a multi-line string
-> ex:p: D is an annotation on A"))
+> ex:p: D is an annotation on A
+"))

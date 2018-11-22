@@ -1,6 +1,5 @@
 (ns org.knotation.state
   (:require [clojure.string :as string]
-            [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]))
 
@@ -47,7 +46,7 @@
   "Given a start location and a content string,
    return an end location."
   [{:keys [::line-number ::column-number] :as start} content]
-  (let [lines (util/split-lines content)]
+  (let [lines (string/split content #"\n" -1)] ; NOTE: NOT util/split-lines
     {::line-number (-> lines count dec (+ line-number))
      ::column-number
      (if (second lines)

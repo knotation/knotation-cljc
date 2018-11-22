@@ -457,7 +457,7 @@
      [:eol "\n"]]
 
     ol
-    (let [lines (->> (util/split-lines ol))
+    (let [lines (string/split ol #"\n" -1) ; NOTE: NOT util/split-lines
           line (first lines)]
       (concat
        (if (= line "")
@@ -533,7 +533,7 @@
         (fn [previous-state line]
           (-> previous-state
               (select-keys [::st/event ::st/location])
-              (st/input :kn (str line "\n"))
+              (st/input :kn line)
               (assoc ::st/event ::st/parse ::st/parse (parse-line line))))
         previous-state)
        rest

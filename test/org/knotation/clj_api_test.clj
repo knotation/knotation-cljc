@@ -23,7 +23,8 @@
 ex:p; kn:link: ex:o
 ex:p: o
 ex:p; ex:d: o
-ex:p; @en: o")
+ex:p; @en: o
+")
 
 (def test-0-ttl
   "@prefix kn: <https://knotation.org/kn/> .
@@ -51,7 +52,8 @@ rdfs:label: o
 p; kn:link: o
 p: o
 p; ex:d: o
-p; @en: o")
+p; @en: o
+")
 
 (def test-A-ttl
   "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -77,7 +79,8 @@ ex:s
 
 : ex:s
 ex:p; kn:link: ex:o
-> ex:a; kn:link: ex:b")
+> ex:a; kn:link: ex:b
+")
 
 (def test-1-ttl
   "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -104,7 +107,8 @@ _:b0
 ex:a: A
 > ex:b: B
 >> ex:c: C
-> ex:d: D")
+> ex:d: D
+")
 
 (def test-2-ttl
   "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -205,18 +209,13 @@ ex:s
   ex:p \"after\" .
 ")
 
-; TODO: This should not be required.
-(defn normalize-trailing-newlines [s]
-  (str (clojure.string/trim s) "\n"))
-
 (defn test-kn-roundtrip
   [s]
   (->> s
        (api/read-string :kn nil)
        (kn/render-states st/default-state)
        st/render-output-string
-       normalize-trailing-newlines
-       (= (normalize-trailing-newlines s))
+       (= s)
        is))
 
 (deftest test-kn
@@ -259,8 +258,7 @@ ex:s
        (api/read-string :ttl nil)
        (kn/render-states st/default-state)
        st/render-output-string
-       normalize-trailing-newlines
-       (= (normalize-trailing-newlines k))
+       (= k)
        is))
 
 (defn test-kn-ttl-roundtrip

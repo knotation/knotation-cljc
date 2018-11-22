@@ -3,14 +3,12 @@
             #?(:clj [clojure.data.json :as json])))
 
 (defn split-lines
-  "Split a string on newlines."
-  ;; NOTE: This function is intentionally defined to not drop
-  ;;       trailing newlines in the target string. The default
-  ;;       clojure.string/split-lines has that undesirable behavior
-  ;;       so we don't use it.
-  ;; TODO: There must be a better way of doing this. re-seq?
+  "Split a string on newlines,
+   keeping the newline with the string."
   [s]
-  (string/split s #"\n" -1))
+  (->> s
+       (re-seq #".*\n?")
+       butlast))
 
 (defn surround
   [before after xs]
