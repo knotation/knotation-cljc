@@ -124,6 +124,48 @@
                [tail (reverse (conj heads tail))])))
          (into {}))))
 
+; # OWL Annotations
+;
+; OWL annotations use three quads to pick out a triple,
+; and then make a statement about it.
+
+(defn annotation-subjects
+  "Given a sequence of states,
+   return a set of the subjects that represent OWL annotations."
+  [quads]
+  (->> quads
+       (filter #(= (owl "annotatedSource") (::pi %)))
+       (map ::sb)
+       set))
+
+(defn annotation-target
+  "Given the quads for an OWL annotation,
+   return the quad that is the target of the annotation."
+  [quads]
+  (let [source (->> quads (filter #(= (owl "annotatedSource") (::pi %))) first)
+        property (->> quads (filter #(= (owl "annotatedProperty") (::pi %))) first)
+        target (->> quads (filter #(= (owl "annotatedTarget") (::pi %))) first)]
+    (merge
+     (if (::oi source) {::si (::oi source)} {::sb (::ob source)})
+     {::pi (::oi property)}
+     (select-keys target [::zn ::oi ::ob ::ol ::di ::lt]))))
+
+(defn annotation-targets
+  "Given a set of the subjects for OWL annotations
+   and a sequence of states,
+   return a map from quads to vectors of subjects
+   for the OWL annotations that annotation that quad."
+  [annotations quads]
+  (->> quads
+       (filter #(contains? annotations (::sb %)))
+       (group-by ::sb)
+       (map (fn [[sb quads]] [(annotation-target quads) sb]))
+       (remove nil?)
+       (reduce
+        (fn [coll [quad sb]]
+          (update coll quad (fnil conj []) sb))
+        {})))
+
 ; # Stanzas
 ;
 ; We often want to process all the quads for a given subject IRI.

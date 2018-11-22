@@ -76,6 +76,20 @@
 
 (s/def ::rdf/objects-subjects (s/map-of ::rdf/bnode ::rdf/subject))
 
+;; # OWL Annotations
+
+(s/fdef rdf/annotation-subjects
+        :args (s/cat :quads ::rdf/quads)
+        :ret (s/coll-of ::rdf/bnode :type set?))
+
+(s/fdef rdf/annotation-target
+        :args (s/cat :quads ::rdf/quads)
+        :ret ::rdf/quad)
+
+(s/fdef rdf/annotation-targets
+        :args (s/cat :annotations (s/coll-of ::rdf/bnode :type set?) :quads ::rdf/quads)
+        :ret (s/map-of ::rdf/quad (s/coll-of ::rdf/bnode :type vector?)))
+
 ;; # Stanzas
 
 (s/fdef rdf/objects-subjects

@@ -685,31 +685,9 @@
   [states]
   (let [zn (-> states first ::rdf/stanza)
         grouped (group-by ::rdf/subject states)
-        annotations (->> states
-                         (map ::rdf/quad)
-                         (filter #(= (rdf/owl "annotatedSource") (::rdf/pi %)))
-                         (map ::rdf/sb)
-                         set)
-        quad-annotations
-        (->> states
-             (filter ::rdf/quad)
-             (map ::rdf/quad)
-             (filter #(->> % ::rdf/sb (contains? annotations)))
-             (group-by ::rdf/sb)
-             (map
-              (fn [[sb quads]]
-                (let [source (->> quads (filter #(= (rdf/owl "annotatedSource") (::rdf/pi %))) first)
-                      property (->> quads (filter #(= (rdf/owl "annotatedProperty") (::rdf/pi %))) first)
-                      target (->> quads (filter #(= (rdf/owl "annotatedTarget") (::rdf/pi %))) first)]
-                  [(merge
-                    (if (::rdf/oi source) {::rdf/si (::rdf/oi source)} {::rdf/sb (::rdf/ob source)})
-                    {::rdf/pi (::rdf/oi property)}
-                    (select-keys target [::rdf/zn ::rdf/oi ::rdf/ob ::rdf/ol ::rdf/di ::rdf/lt]))
-                   sb])))
-             (reduce
-              (fn [coll [quad sb]]
-                (update coll quad (fnil conj []) sb))
-              {}))]
+        quads (->> states (map ::rdf/quad) (remove nil?))
+        annotations (rdf/annotation-subjects quads)
+        quad-annotations (rdf/annotation-targets annotations quads)]
     (concat
      (when zn
        [(-> states
