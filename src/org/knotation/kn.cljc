@@ -133,7 +133,7 @@
     :else
     (util/error :unrecognized-declaration-line line)))
 
-; A subject line start with ': ' followed by the name of the subjects
+; A subject line start with ': ' followed by the name of the subject
 
 (defn parse-subject
   "Given a subject line (string), return a parse."
@@ -183,7 +183,7 @@
   [line]
   (if-let [[_ lexical] (re-matches #" (.*)\n?" line)]
     [::indented-line
-     [:space " "]
+     [:indent " "]
      [:lexical lexical]
      [:eol "\n"]]
     (util/error :not-an-indented-line line)))
@@ -262,6 +262,10 @@
         {::rdf/ob content}
         {::rdf/oi (en/name->iri env content)})
 
+      "https://knotation.org/kn/anon"
+      {::rdf/ob (rdf/random-blank-node)
+       ::rdf/di datatype}
+
       "https://knotation.org/kn/omn"
       (let [res (omn/read-class-string env content)]
         (merge
@@ -276,6 +280,18 @@
 
     :else #::rdf{:ol content}))
 
+(defn read-content
+  "Given a parse, return a content string."
+  [parse]
+  (->> parse
+       rest
+       (filter #(contains? #{:lexical :eol} (first %)))
+       (#(if (= :eol (->> % last first))
+           (butlast %)
+           %))
+       (map second)
+       string/join))
+
 (defn read-object
   "Read the object part of a statement, with its language or datatype,
    and using the default language for its predicate,
@@ -285,44 +301,23 @@
    env
    (or language (en/get-language env predicate-iri))
    (or datatype-iri (en/get-datatype env predicate-iri))
-   (->> parse
-        rest
-        (filter #(contains? #{:lexical :eol} (first %)))
-        (#(if (= :eol (->> % last first))
-            (butlast %)
-            %))
-        (map second)
-        string/join)))
+   (read-content parse)))
 
-(defn expand-template
-  "Given a state for a statement, return a sequence of states.
-   If the predicate is kn:apply-template
-   then use string substitution to fill in the template,
-   and read the template as a sequence of states."
-  [{:keys [::en/env ::rdf/quad] :as state}]
-  (if (= (::rdf/pi quad) "https://knotation.org/kn/apply-template")
-    (let [value (::rdf/ol quad)
-          template-iri (->> value
-                            string/split-lines
-                            first
-                            string/trim
-                            (en/name->iri env))
-          value-map (->> value
-                         string/split-lines
-                         rest
-                         (map #(string/split % #": "))
-                         (into {}))]
-      (if-let [content (en/get-template-content env template-iri)]
-        (->> (string/replace
-              content
-              #"\{(.*?)\}"
-              (fn [[_ x]] (get value-map x "UNKNOWN")))
-             util/split-lines
-             rest
-             (read-lines state)
-             (concat
-              [(assoc-in state [::rdf/quad ::rdf/pi] (rdf/kn "applied-template"))]))
-        [(st/error state :unrecognized-template template-iri)]))
+(defn expand-anonymous
+  "Given a state, return a sequence of states.
+   If this is an anonymous subject,
+   that means recursively reading the content."
+  [{:keys [::st/parse ::rdf/quad] :as state}]
+  (if (= (::rdf/di quad) "https://knotation.org/kn/anon")
+    (->> parse
+         read-content
+         util/split-lines
+         rest
+         (read-lines
+          (assoc state
+                 ::rdf/subject (::rdf/ob quad)
+                 ::rdf/quad (dissoc quad ::rdf/di)))
+         (concat [state]))
     [state]))
 
 (defn expand-annotation
@@ -357,6 +352,37 @@
              (map #(assoc % ::rdf/zn stanza ::rdf/sb bn))
              (map #(assoc state ::rdf/subject bn ::rdf/quad %)))))))
 
+(defn expand-template
+  "Given a state for a statement, return a sequence of states.
+   If the predicate is kn:apply-template
+   then use string substitution to fill in the template,
+   and read the template as a sequence of states."
+  [{:keys [::en/env ::rdf/quad] :as state}]
+  (if (= (::rdf/pi quad) "https://knotation.org/kn/apply-template")
+    (let [value (::rdf/ol quad)
+          template-iri (->> value
+                            string/split-lines
+                            first
+                            string/trim
+                            (en/name->iri env))
+          value-map (->> value
+                         string/split-lines
+                         rest
+                         (map #(string/split % #": "))
+                         (into {}))]
+      (if-let [content (en/get-template-content env template-iri)]
+        (->> (string/replace
+              content
+              #"\{(.*?)\}"
+              (fn [[_ x]] (get value-map x "UNKNOWN")))
+             util/split-lines
+             rest
+             (read-lines state)
+             (concat
+              [(assoc-in state [::rdf/quad ::rdf/pi] (rdf/kn "applied-template"))]))
+        [(st/error state :unrecognized-template template-iri)]))
+    [state]))
+
 (defn read-statement
   "Given a state with a ::st/parse for a statement,
    return a sequence of states for the statement, any expanded templates,
@@ -385,8 +411,11 @@
                 {::rdf/zn stanza
                  ::rdf/pi predicate-iri})
                (assoc state ::st/event ::st/statement ::rdf/quad)
-               expand-annotation
-               (mapcat expand-template))
+               expand-anonymous
+               (mapcat expand-annotation)
+               (mapcat expand-template)
+               ; append a ::st/next-subject key
+               ((fn [states] (concat (butlast states) [(assoc (last states) ::st/next-subject subject)]))))
 
           [(st/error state :unrecognized-object parse)])
         [(st/error state :unrecognized-datatype datatype-name)])
@@ -434,16 +463,37 @@
 
 (defn render-statement
   "Given a ::st/statement state, return a parse."
-  [{:keys [::silent ::en/env ::rdf/quad ::depth] :as state}]
+  [{:keys [::anon ::annotation ::en/env ::rdf/quad ::depth] :as state}]
   (if-let [pi (::rdf/pi quad)]
     (if-let [predicate-name (en/iri->name env pi)]
       (concat
        [::statement-block]
-       (when (and depth (> depth 0)) [[:arrows (apply str (concat (repeat depth ">") [" "]))]])
+       (when (and depth (> depth 0))
+         (if annotation
+           [[:arrows (apply str (concat (repeat depth ">") [" "]))]]
+           [[:indent (apply str (concat (repeat depth " ")))]]))
        [[:name predicate-name]]
-       (render-datatype env pi quad)
-       [[:symbol ":"]]
-       (render-object env quad))
+       (cond
+         (and anon (= (rdf/kn "anon") (en/get-datatype env (::rdf/pi quad))))
+         (concat
+          [[:symbol ":"]
+           [:space " "]
+           [:eol "\n"]])
+
+         anon
+         (concat
+          [[:symbol ";"]
+           [:space " "]
+           [:name (en/iri->name env (rdf/kn "anon"))]
+           [:symbol ":"]
+           [:space " "]
+           [:eol "\n"]])
+
+         :else
+         (concat
+          (render-datatype env pi quad)
+          [[:symbol ":"]]
+          (render-object env quad))))
       (st/error state :invalid-predicate-iri pi))
     (st/error state :not-a-statement-state)))
 
@@ -509,7 +559,9 @@
   [initial-state lines]
   (->> lines
        (parse-lines initial-state)
-       (read-parses initial-state)))
+       (read-parses initial-state)
+       st/insert-subject-events
+       st/insert-stanza-events))
 
 (defn read-input
   "Given an initial state and a string,
@@ -543,15 +595,16 @@
   "Given a state for an annotation,
    return a state, maybe with a ::silent key."
   [{:keys [::rdf/quad] :as state}]
-  (if quad
-    (if (contains? #{(rdf/rdf "type")
-                     (rdf/owl "annotatedSource")
-                     (rdf/owl "annotatedProperty")
-                     (rdf/owl "annotatedTarget")}
-                   (::rdf/pi quad))
-      (assoc state ::silent true)
-      state)
-    (assoc state ::silent true)))
+  (let [state (assoc state ::annotation true)]
+    (if quad
+      (if (contains? #{(rdf/rdf "type")
+                       (rdf/owl "annotatedSource")
+                       (rdf/owl "annotatedProperty")
+                       (rdf/owl "annotatedTarget")}
+                     (::rdf/pi quad))
+        (assoc state ::silent true)
+        state)
+      (assoc state ::silent true))))
 
 (defn inner-sort-statements
   "Given a map from subjects to sequences of their states,
@@ -565,20 +618,36 @@
                  coll
                  (assoc-in coll [::subject-depth subject] depth))]
       (if-let [state (first (get coll subject))]
-        (let [state (assoc state ::depth depth)
+        (let [state (assoc state ::depth (get-in coll [::subject-depth subject]))
               state (if (contains? annotations subject) (annotate-annotation state) state)
+              quad (::rdf/quad state)
+              anns (get quad-annotations (::rdf/quad state))
+              ob (::rdf/ob quad)
+              anon? (and ob (contains? (set subjects) ob))
+              state (if anon? (assoc state ::anon true) state)
               coll (-> coll
                        (update ::states conj state)
                        (update subject rest))]
-          (if-let [anns (get quad-annotations (::rdf/quad state))]
-              ; state with annotations: insert this state then switch to those subjects
+          (cond
+            ; anonymous object: insert this state then switch to that subject
+            anon?
+            (-> coll
+                (assoc ::subjects (concat [ob] subjects))
+                (update ::depth inc)
+                inner-sort-statements)
+
+            ; state with annotations: insert this state then switch to those subjects
+            anns
             (-> coll
                 (assoc ::subjects (concat anns subjects))
                 (update ::depth inc)
                 inner-sort-statements)
-              ; state without annotations
+
+            ; state without annotations
+            :else
             (inner-sort-statements coll)))
-          ; no more states for this subject
+
+        ; no more states for this subject
         (-> coll
             (dissoc subject)
             (assoc ::subjects (rest subjects))
@@ -591,8 +660,6 @@
   (-> grouped-states
       (assoc ::states []
              ::subjects subjects
-              ;::lists lists
-              ;::list-items (-> lists vals flatten set)
              ::annotations annotations
              ::quad-annotations quad-annotations
              ::depth 0)
@@ -603,9 +670,8 @@
   "Given a sequence of states for one stanza,
    return them in the required order for Knotation rendering."
   [states]
-  (let [zn (-> states first ::rdf/quad ::rdf/zn)
+  (let [zn (-> states first ::rdf/stanza)
         grouped (group-by ::rdf/subject states)
-        lists (->> states (map ::rdf/quad) rdf/collect-lists)
         annotations (->> states
                          (map ::rdf/quad)
                          (filter #(= (rdf/owl "annotatedSource") (::rdf/pi %)))
@@ -632,8 +698,13 @@
                 (update coll quad (fnil conj []) sb))
               {}))]
     (concat
+     (when zn
+       [(-> states
+            first
+            (select-keys [::en/env ::st/location ::rdf/graph])
+            (assoc ::st/event ::st/subject-start ::rdf/stanza zn ::rdf/subject zn))])
      (->> states
-          (map st/get-subject)
+          (map ::rdf/subject)
           distinct
           (remove #{zn})
           (concat [zn])
@@ -646,6 +717,7 @@
    return a sequence of states with rendered :output."
   [previous-states states]
   (->> states
+       (remove #(= ::st/subject-start (::st/event %)))
        sort-stanza
        (reductions
         (fn [previous-state state]
