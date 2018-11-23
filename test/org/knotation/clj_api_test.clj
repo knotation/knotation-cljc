@@ -71,12 +71,14 @@
   (test-kn-roundtrip ex/basic-datatypes-kn)
   (test-kn-roundtrip ex/basic-labels-kn)
   (test-kn-roundtrip ex/anonymous-subjects-kn)
+  (test-kn-roundtrip ex/basic-lists-kn)
   (test-kn-roundtrip ex/basic-annotations-kn)
   (test-kn-roundtrip ex/nested-annotations-kn))
 
 (deftest test-ttl
   (test-ttl-roundtrip ex/basic-datatypes-ttl)
   (test-ttl-roundtrip ex/anonymous-subjects-ttl)
+  (test-ttl-roundtrip ex/basic-lists-ttl)
   (test-ttl-roundtrip ex/mixed-lists-ttl)
   (test-ttl-roundtrip ex/basic-annotations-ttl)
   (test-ttl-roundtrip ex/nested-annotations-ttl))
@@ -88,6 +90,7 @@
   (test-kn-ttl-roundtrip ex/basic-datatypes-kn     ex/basic-datatypes-ttl)
   (test-kn-ttl-roundtrip ex/basic-labels-kn        ex/basic-labels-ttl)
   (test-kn-ttl-roundtrip ex/anonymous-subjects-kn  ex/anonymous-subjects-ttl)
+  (test-kn-ttl-roundtrip ex/basic-lists-kn         ex/basic-lists-ttl)
   (test-kn-ttl-roundtrip ex/basic-annotations-kn   ex/basic-annotations-ttl)
   (test-kn-ttl-roundtrip ex/nested-annotations-kn  ex/nested-annotations-ttl))
 

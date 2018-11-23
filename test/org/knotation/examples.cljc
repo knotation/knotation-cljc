@@ -104,6 +104,31 @@ ex:s
   ex:after \"after\" .
 ")
 
+; # Basic Lists
+
+(def basic-lists-kn
+  "@prefix kn: <https://knotation.org/kn/>
+@prefix ex: <http://example.com/>
+
+: ex:s
+ex:p; kn:list:
+ - A
+ - B
+ - C
+")
+
+(def basic-lists-ttl
+  "@prefix kn: <https://knotation.org/kn/> .
+@prefix ex: <http://example.com/> .
+
+ex:s
+  ex:p (
+    \"A\"
+    \"B\"
+    \"C\"
+  ) .
+")
+
 ; # Basic Annotations
 
 (def basic-annotations-kn
