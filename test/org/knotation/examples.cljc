@@ -8,6 +8,7 @@
 
 : ex:s
 ex:p; kn:link: ex:o
+ex:p; kn:link: _:b0
 ex:p: o
 ex:p; ex:d: o
 ex:p; @en: o
@@ -19,9 +20,18 @@ ex:p; @en: o
 
 ex:s
   ex:p ex:o ;
+  ex:p _:b0 ;
   ex:p \"o\" ;
   ex:p \"o\"^^ex:d ;
   ex:p \"o\"@en .
+")
+
+(def basic-datatypes-nt
+  "<http://example.com/s> <http://example.com/p> <http://example.com/o> .
+<http://example.com/s> <http://example.com/p> _:b0 .
+<http://example.com/s> <http://example.com/p> \"o\" .
+<http://example.com/s> <http://example.com/p> \"o\"^^<http://example.com/d> .
+<http://example.com/s> <http://example.com/p> \"o\"@en .
 ")
 
 ; # Basic Labels

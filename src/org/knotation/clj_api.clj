@@ -9,7 +9,8 @@
             [org.knotation.state :as st]
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
-            [org.knotation.ttl :as ttl]))
+            [org.knotation.ttl :as ttl]
+            [org.knotation.nq :as nq]))
 
 ; For Apache Jena's preferred file extnesions see
 ; https://jena.apache.org/documentation/io/#command-line-tools
@@ -102,6 +103,7 @@
   [fmt initial-state states]
   (let [initial-state (or initial-state st/default-state)]
     (case fmt
+      :nt (nq/render-states states)
       :ttl (ttl/render-states (get initial-state ::en/env en/default-env) states)
       :kn (kn/render-states initial-state states)
       (throw (Exception. (format "Unsupported write format '%s'" fmt))))))
