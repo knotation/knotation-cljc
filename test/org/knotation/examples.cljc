@@ -129,6 +129,43 @@ ex:s
   ) .
 ")
 
+; # Mixed Lists
+
+(def mixed-lists-ttl
+  "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix ex: <http://example.com/> .
+
+ex:s
+  ex:p \"before\" ;
+  ex:p _:b0 ;
+  ex:p [
+    ex:p \"inner\" ;
+    ex:p [
+      ex:p \"innermost\"
+    ] ;
+    ex:p \"innerafter\"
+  ] ;
+  ex:p (
+    ex:a
+    ex:b
+    ex:c
+    ex:d
+  ) ;
+  ex:p (
+    ex:a
+    (
+      ex:b
+      ex:c
+    )
+    [
+      ex:p ex:x ;
+      ex:p ex:y
+    ]
+    ex:d
+  ) ;
+  ex:p \"after\" .
+")
+
 ; # Basic Annotations
 
 (def basic-annotations-kn
@@ -201,41 +238,4 @@ _:b2
   owl:annotatedProperty ex:a ;
   owl:annotatedTarget \"A\" ;
   ex:d \"D\" .
-")
-
-; # Mixed Lists
-
-(def mixed-lists-ttl
-  "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix ex: <http://example.com/> .
-
-ex:s
-  ex:p \"before\" ;
-  ex:p _:b0 ;
-  ex:p [
-    ex:p \"inner\" ;
-    ex:p [
-      ex:p \"innermost\"
-    ] ;
-    ex:p \"innerafter\"
-  ] ;
-  ex:p (
-    ex:a
-    ex:b
-    ex:c
-    ex:d
-  ) ;
-  ex:p (
-    ex:a
-    (
-      ex:b
-      ex:c
-    )
-    [
-      ex:p ex:x ;
-      ex:p ex:y
-    ]
-    ex:d
-  ) ;
-  ex:p \"after\" .
 ")
