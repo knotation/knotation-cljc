@@ -9,8 +9,7 @@
             [org.knotation.state :as st]
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
-            [org.knotation.ttl :as ttl]
-            [org.knotation.api :as api]))
+            [org.knotation.ttl :as ttl]))
 
 ; For Apache Jena's preferred file extnesions see
 ; https://jena.apache.org/documentation/io/#command-line-tools
@@ -96,49 +95,55 @@
 
 ; Render Output
 
+(defn render-states
+  "Given a format keyword, an initial state (or nil),
+   a sequence of state maps,
+   return a sequence of rendered states."
+  [fmt initial-state states]
+  (let [initial-state (or initial-state st/default-state)]
+    (case fmt
+      :ttl (ttl/render-states (get initial-state ::en/env en/default-env) states)
+      :kn (kn/render-states initial-state states)
+      (throw (Exception. (format "Unsupported write format '%s'" fmt))))))
+
 (defn render-output
-  "Given a format keyword, an initial environment (or nil),
+  "Given a format keyword, an initial state (or nil),
    a sequence of state maps, and an output-stream,
    write strings to the output stream."
-  [fmt env states output]
-  (case fmt
-    :edn
-    (with-open [w (java.io.PrintWriter. output)]
+  [fmt initial-state states output]
+  (with-open [w (java.io.PrintWriter. output)]
+    (if (= :edn fmt)
       (doseq [state states]
-        (.println w (pr-str state))))
-    :ttl
-    (with-open [w (java.io.PrintWriter. output)]
-      (.print w (api/render-to :ttl env states)))
-    :kn
-    (with-open [w (java.io.PrintWriter. output)]
-      (.print w (api/render-to :kn env states)))
-    ;else
-    (throw (Exception. (format "Unsupported write format '%s'" fmt)))))
+        (.println w (pr-str state)))
+      (doseq [line (st/render-output (render-states fmt initial-state states))]
+        (.print w line)))))
 
-(def render-string
-  "Given a format keyword, an initial environment (or nil),
+(defn render-string
+  "Given a format keyword, an initial state (or nil),
    and a sequence of state maps,
    return a string."
-  api/render-to)
+  [fmt initial-state states]
+  (let [string-writer (java.io.StringWriter.)]
+    (render-output fmt initial-state states string-writer)
+    (.toString string-writer)))
 
 (defn render-file
-  "Given a format keyword, an initial environment (or nil),
+  "Given a format keyword, an initial state (or nil),
    a sequence of state maps, and a file,
    write strings to the file."
-  [fmt env states file]
-  (let [fmt (or fmt :ttl)]
-    (try
-      (render-output fmt env states (io/output-stream file))
-      (catch Exception e
-        (throw (Exception. (format "Failed to render to file '%s'" file) e))))))
+  [fmt initial-state states file]
+  (try
+    (render-output fmt initial-state states (io/output-stream file))
+    (catch Exception e
+      (throw (Exception. (format "Failed to render to file '%s'" file) e)))))
 
 (defn render-path
-  "Given a format keyword, an initial environment (or nil),
+  "Given a format keyword (or nil to detect), an initial state (or nil),
    a sequence of state maps, and a file path string,
    write strings to the file."
-  [fmt env states path]
+  [fmt initial-state states path]
   (let [fmt (or fmt (path-format path))]
     (try
-      (render-output fmt env states (io/output-stream path))
+      (render-output fmt initial-state states (io/output-stream path))
       (catch Exception e
         (throw (Exception. (format "Failed to render to path '%s'" path) e))))))
