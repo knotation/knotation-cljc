@@ -3,7 +3,8 @@
   :url "https://github.com/knotation/knotation-cljc"
   :license {:name "BSD 3-Clause License"
             :url "http://opensource.org/licenses/BSD-3-Clause"}
-  :plugins [[lein-cljsbuild "1.1.6"]]
+  :plugins [[lein-cljsbuild "1.1.6"]
+            [lein-doo "0.1.10"]]
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/clojurescript "1.9.946"]
                  [org.clojure/data.json "0.2.6"]
@@ -18,7 +19,15 @@
                         :compiler {:output-to "resources/knotation.js"
                                    :optimizations :whitespace
                                    :pretty-print true}
-                        :jar true}]}
+                        :jar true}
+                        {:id "test"
+                         :source-paths ["src/org/knotation/cljs_api.cljs" 
+                                        "test/org/knotation/runner.cljs"]
+                         :compiler {:asset-path "resources"
+                                    :output-to "resources/knotation-testable.js"
+                                    :output-dir "resources"
+                                    :main org.knotation.runner
+                                    :optimizations :none}}]}
   :source-paths ["src" "spec"]
   :main org.knotation.cli
   :aot [org.knotation.cli])
