@@ -325,12 +325,20 @@
     (= (::rdf/di quad) "https://knotation.org/kn/list")
     (->> (string/split (read-content parse) #"\n" -1)
          rest
-         (map #(subs % 2))
+         (map (fn [line]
+                (str (rdf/rdf "first")
+                     (case (first line)
+                       \~ "; "
+                       \- ": "
+                       " ")
+                     (subs line 2))))
+         (read-lines (assoc state ::rdf/quad (dissoc quad ::rdf/di)))
+         (filter ::rdf/quad)
          (#(concat % [nil]))
          (reduce
-          (fn [states line]
-            (if line
-              (->> [{::rdf/pi (rdf/rdf "first") ::rdf/ol line}
+          (fn [states state]
+            (if state
+              (->> [(dissoc (::rdf/quad state) ::rdf/si)
                     {::rdf/pi (rdf/rdf "rest") ::rdf/ob (rdf/random-blank-node)}]
                    (map #(assoc %
                                 ::rdf/zn (-> states last ::rdf/quad ::rdf/zn)
@@ -513,11 +521,20 @@
   (if-let [pi (::rdf/pi quad)]
     (if-let [predicate-name (en/iri->name env pi)]
       (if list-item?
-        (concat
-         [::indented-line]
-         [[:indent " "]
-          [:symbol "-"]]
-         [(render-object env quad)])
+        (if (or (nil? (::rdf/di quad)) (= (rdf/xsd "string") (::rdf/di quad)))
+          (concat
+           [::indented-line
+            [:indent " "]
+            [:symbol "-"]]
+           (render-object env quad))
+          (concat
+           [::indented-line
+            [:indent " "]
+            [:symbol "~"]]
+           (rest (render-datatype env pi quad))
+           [[:symbol ":"]]
+           (render-object env quad)))
+
         (concat
          [::statement-block]
          (when (and depth (> depth 0))
