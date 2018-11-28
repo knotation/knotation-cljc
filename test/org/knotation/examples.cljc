@@ -129,6 +129,35 @@ ex:s
   ) .
 ")
 
+; # Typed Lists
+
+(def typed-lists-kn
+  "@prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+@prefix kn: <https://knotation.org/kn/>
+@prefix ex: <http://example.com/>
+
+: ex:s
+ex:p; kn:list:
+ - A
+ ~ xsd:integer: 2
+ ~ xsd:float: 3.0
+ - D
+")
+
+(def typed-lists-ttl
+  "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix kn: <https://knotation.org/kn/> .
+@prefix ex: <http://example.com/> .
+
+ex:s
+  ex:p (
+    \"A\"
+    \"2\"^^xsd:integer
+    \"3.0\"^^xsd:float
+    \"D\"
+  ) .
+")
+
 ; # Mixed Lists
 
 (def mixed-lists-ttl
