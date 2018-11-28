@@ -160,8 +160,39 @@ ex:s
 
 ; # Mixed Lists
 
+(def mixed-lists-kn
+  "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+@prefix kn: <https://knotation.org/kn/>
+@prefix ex: <http://example.com/>
+
+: ex:s
+ex:p: before
+ex:p; kn:link: _:b0
+ex:p; kn:anon:
+ ex:p: inner
+ ex:p; kn:anon:
+  ex:p: innermost
+ ex:p: innerafter
+ex:p; kn:list:
+ ~ kn:link: ex:a
+ ~ kn:link: ex:b
+ ~ kn:link: ex:c
+ ~ kn:link: ex:d
+ex:p; kn:list:
+ ~ kn:link: ex:a
+ ~ kn:list:
+  ~ kn:link: ex:b
+  ~ kn:link: ex:c
+ ~ kn:anon:
+  ex:p; kn:link: ex:x
+  ex:p; kn:link: ex:y
+ ~ kn:link: ex:d
+ex:p: after
+")
+
 (def mixed-lists-ttl
   "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix kn: <https://knotation.org/kn/> .
 @prefix ex: <http://example.com/> .
 
 ex:s

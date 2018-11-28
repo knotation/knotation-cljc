@@ -17,6 +17,8 @@
        (map (fn [[k v & xs]] [k v]))
        (into {})))
 
+(declare parse-lines)
+(declare read-parse)
 (declare read-lines)
 
 ; A blank line contains nothing except an optional line ending.
@@ -309,7 +311,7 @@
   "Given a state, return a sequence of states.
    If this is an anonymous subject,
    that means recursively reading the content."
-  [{:keys [::st/parse ::rdf/quad] :as state}]
+  [{:keys [::st/parse ::rdf/quad ::rdf/stanza] :as state}]
   (cond
     (= (::rdf/di quad) "https://knotation.org/kn/anon")
     (->> parse
@@ -325,38 +327,62 @@
     (= (::rdf/di quad) "https://knotation.org/kn/list")
     (->> (string/split (read-content parse) #"\n" -1)
          rest
-         (map (fn [line]
-                (str (rdf/rdf "first")
-                     (case (first line)
-                       \~ "; "
-                       \- ": "
-                       " ")
-                     (subs line 2))))
-         (read-lines (assoc state ::rdf/quad (dissoc quad ::rdf/di)))
-         (filter ::rdf/quad)
+         (map
+          (fn [line]
+            (case (first line)
+              \~ (str (rdf/rdf "first") "; " (subs line 2))
+              \- (str (rdf/rdf "first") ": " (subs line 2))
+              line)))
+         (parse-lines state)
+         (map #(read-parse (st/update-state state %)))
          (#(concat % [nil]))
          (reduce
-          (fn [states state]
-            (if state
-              (->> [(dissoc (::rdf/quad state) ::rdf/si)
-                    {::rdf/pi (rdf/rdf "rest") ::rdf/ob (rdf/random-blank-node)}]
-                   (map #(assoc %
-                                ::rdf/zn (-> states last ::rdf/quad ::rdf/zn)
-                                ::rdf/sb (-> states last ::rdf/quad ::rdf/ob)))
-                   (map #(assoc (last states) ::rdf/quad % ::rdf/subject (::rdf/sb %)))
-                   (concat states))
-              (concat
-               (butlast states)
-               [(-> states
-                    last
-                    (update-in [::rdf/quad] dissoc ::rdf/ob)
-                    (assoc-in [::rdf/quad ::rdf/oi] (rdf/rdf "nil")))])))
-          [(assoc
-            state
-            ::rdf/quad
-            (-> quad
-                (select-keys [::rdf/zn ::rdf/si ::rdf/sb ::rdf/pi])
-                (assoc ::rdf/ob (rdf/random-blank-node))))]))
+          (fn [previous-states current-states]
+            (let [quad (::rdf/quad (first current-states))
+                  sb (-> previous-states last last ::rdf/quad ::rdf/ob)]
+              (if current-states
+                (conj
+                 previous-states
+                 (concat
+                  ; update rdf:first
+                  [(assoc
+                    (first current-states)
+                    ::rdf/subject sb
+                    ::rdf/quad
+                    (-> current-states
+                        first
+                        ::rdf/quad
+                        (dissoc ::rdf/si)
+                        (assoc ::rdf/sb sb)))]
+                  ; add other states
+                  (rest current-states)
+                  ; add rdf:rest
+                  [(assoc
+                    state
+                    ::rdf/subject sb
+                    ::rdf/quad
+                    {::rdf/zn stanza
+                     ::rdf/sb sb
+                     ::rdf/pi (rdf/rdf "rest")
+                     ::rdf/ob (rdf/random-blank-node)})]))
+                ; update rdf:nil
+                (conj
+                 (vec (butlast previous-states))
+                 (conj
+                  (vec (butlast (last previous-states)))
+                  (-> previous-states
+                      last
+                      last
+                      (update-in [::rdf/quad] dissoc ::rdf/ob)
+                      (assoc-in [::rdf/quad ::rdf/oi] (rdf/rdf "nil"))))))))
+          ; start with first statement, pointing to a random blank node
+          [[(assoc
+             state
+             ::rdf/quad
+             (-> quad
+                 (select-keys [::rdf/zn ::rdf/si ::rdf/sb ::rdf/pi])
+                 (assoc ::rdf/ob (rdf/random-blank-node))))]])
+         (mapcat identity))
 
     :else
     [state]))
@@ -462,29 +488,40 @@
         [(st/error state :unrecognized-datatype datatype-name)])
       [(st/error state :unrecognized-predicate predicate-name)])))
 
+(defn render-datatype?
+  "True if this datatype should be rendered, otherwise false."
+  [env predicate-iri {::rdf/keys [oi ob ol di lt] :as object}]
+  (let [di (if (and (nil? di) (or oi ob)) "https://knotation.org/kn/link" di)]
+    (cond
+      (and di (= di (rdf/xsd "string"))) false ; ignore xsd:string
+      (and lt (not= lt (en/get-language env predicate-iri))) true ; default language
+      (and di (not= di (en/get-datatype env predicate-iri))) true ; default datatype
+      :else false)))
+
 (defn render-datatype
   "Render the datatype part of a statement.
    Handles default dataypes and languages."
   [env predicate-iri {::rdf/keys [oi ob ol di lt] :as object}]
-  (let [di (if (or oi ob) "https://knotation.org/kn/link" di)]
-    (cond
-      (and lt (not= lt (en/get-language env predicate-iri)))
-      [[:symbol ";"]
-       [:space " "]
-       [:name (str "@" lt)]]
-      (= di (rdf/xsd "string")) ; ignore xsd:string
-      []
-      (and di (not= di (en/get-datatype env predicate-iri)))
-      [[:symbol ";"]
-       [:space " "]
-       [:name (en/iri->name env di)]]
-      :else
-      [])))
+  (cond
+    (not (render-datatype? env predicate-iri object))
+    []
+
+    lt
+    [:name (str "@" lt)]
+
+    di
+    [:name (en/iri->name env di)]
+
+    (or oi ob)
+    [:name (en/iri->name env (rdf/kn "link"))]))
 
 (defn render-object
   "Render the lexical part of a statement."
   [env {::rdf/keys [oi ob ol di lt] :as object}]
   (cond
+    (contains? #{(rdf/kn "anon") (rdf/kn "list")} di)
+    [[:eol "\n"]]
+
     oi
     [[:space " "]
      [:lexical (en/iri->name env oi)]
@@ -517,63 +554,44 @@
 
 (defn render-statement
   "Given a ::st/statement state, return a parse."
-  [{:keys [::anon-ob? ::list-ob? ::list-item? ::annotation ::en/env ::rdf/quad ::depth] :as state}]
+  [{:keys [::list-item? ::annotation ::en/env ::rdf/quad ::depth] :as state}]
   (if-let [pi (::rdf/pi quad)]
     (if-let [predicate-name (en/iri->name env pi)]
-      (if list-item?
-        (if (or (nil? (::rdf/di quad)) (= (rdf/xsd "string") (::rdf/di quad)))
-          (concat
-           [::indented-line
-            [:indent " "]
-            [:symbol "-"]]
-           (render-object env quad))
-          (concat
-           [::indented-line
-            [:indent " "]
-            [:symbol "~"]]
-           (rest (render-datatype env pi quad))
-           [[:symbol ":"]]
-           (render-object env quad)))
+      (concat
+       ; Handle indentation
+       (cond
+         annotation
+         [::statement-block
+          [:arrows (apply str (concat (repeat depth ">") [" "]))]]
+         (> depth 0)
+         [::indented-line
+          [:indent (apply str (concat (repeat depth " ")))]]
+         :else
+         [::statement-block])
 
-        (concat
-         [::statement-block]
-         (when (and depth (> depth 0))
-           (if annotation
-             [[:arrows (apply str (concat (repeat depth ">") [" "]))]]
-             [[:indent (apply str (concat (repeat depth " ")))]]))
-         [[:name predicate-name]]
-         (cond
-           (and list-ob? (= (rdf/kn "list") (en/get-datatype env (::rdf/pi quad))))
-           (concat
-            [[:symbol ":"]
-             [:eol "\n"]])
+       ; Handle predicate or list item
+       (cond
+         (and list-item? (render-datatype? env pi quad))
+         [[:symbol "~"]
+          [:space " "]]
+         list-item?
+         [[:symbol "-"]]
+         :else
+         [[:name predicate-name]])
 
-           list-ob?
-           (concat
+       ; Handle datatype
+       (if (render-datatype? env pi quad)
+         (concat
+          (when-not list-item?
             [[:symbol ";"]
-             [:space " "]
-             [:name (en/iri->name env (rdf/kn "list"))]
-             [:symbol ":"]
-             [:eol "\n"]])
+             [:space " "]])
+          (render-datatype env pi quad)))
 
-           (and anon-ob? (= (rdf/kn "anon") (en/get-datatype env (::rdf/pi quad))))
-           (concat
-            [[:symbol ":"]
-             [:eol "\n"]])
+       (when-not (and list-item? (not (render-datatype? env pi quad)))
+         [[:symbol ":"]])
 
-           anon-ob?
-           (concat
-            [[:symbol ";"]
-             [:space " "]
-             [:name (en/iri->name env (rdf/kn "anon"))]
-             [:symbol ":"]
-             [:eol "\n"]])
-
-           :else
-           (concat
-            (render-datatype env pi quad)
-            [[:symbol ":"]]
-            (render-object env quad)))))
+       ; Handle object
+       (render-object env quad))
       (st/error state :invalid-predicate-iri pi))
     (st/error state :not-a-statement-state)))
 
@@ -698,25 +716,33 @@
       (recur
        (let [coll (if (find subject-depth subject)
                     coll
-                    (assoc-in coll [::subject-depth subject] depth))]
+                    (assoc-in coll [::subject-depth subject] depth))
+             depth (get-in coll [::subject-depth subject])
+             coll (assoc coll ::depth depth)]
          (if-let [state (first (get coll subject))]
-           (let [state (assoc state ::depth (get-in coll [::subject-depth subject]))
+           (let [state (assoc state ::depth depth)
                  state (if (contains? annotations subject) (annotate-annotation state) state)
                  quad (::rdf/quad state)
                  pi (::rdf/pi quad)
-                 state (if (= (rdf/rdf "first") pi) (assoc state ::list-item? true) state)
+                 list-item? (contains? #{(rdf/rdf "first") (rdf/rdf "rest")} pi)
+                 state (if list-item? (assoc state ::list-item? true) state)
                  state (if (= (rdf/rdf "rest") pi) (assoc state ::silent true) state)
                  anns (get quad-annotations (::rdf/quad state))
                  ob (::rdf/ob quad)
                  anon-ob? (and ob (contains? (set subjects) ob))
-                 state (if anon-ob? (assoc state ::anon-ob? true) state)
+                 state (if anon-ob? (assoc-in state [::rdf/quad ::rdf/di] (rdf/kn "anon")) state)
                  list-ob? (and ob (get coll ob) (->> (get coll ob) (map ::rdf/quad) (map ::rdf/pi) (filter #{(rdf/rdf "first") (rdf/rdf "rest")}) first boolean))
-                 state (if list-ob? (assoc state ::list-ob? true) state)
+                 state (if list-ob? (assoc-in state [::rdf/quad ::rdf/di] (rdf/kn "list")) state)
                  coll (-> coll
                           (update ::states conj state)
                           (update subject rest))]
              (cond
-               ; anonymous object: insert this state then switch to that subject
+               ; inner list object: insert this state then switch to that subject; do not indent!
+               (and list-ob? (= (rdf/rdf "rest") pi))
+               (-> coll
+                   (assoc ::subjects (concat [ob] subjects)))
+
+               ; anonymous object: insert this state then switch to that subject; indent
                anon-ob?
                (-> coll
                    (assoc ::subjects (concat [ob] subjects))
@@ -736,7 +762,7 @@
            (-> coll
                (dissoc subject)
                (assoc ::subjects (rest subjects))
-               (assoc ::depth (get subject-depth subject))))))
+               (assoc ::depth depth)))))
 
       ; no more subjects
       coll)))
