@@ -167,8 +167,8 @@
   (map
    (let [bs (atom {})]
      (fn [s]
-       (let [o (if (:ob s) (-intern-slot! bs s :ob) s)]
-         (if (:sb o) (-intern-slot! bs o :sb) o))))
+       (let [o (if (::rdf/ob s) (-intern-slot! bs s ::rdf/ob) s)]
+         (if (::rdf/sb o) (-intern-slot! bs o ::rdf/sb) o))))
    states))
 
 (defn reads-to?
@@ -179,91 +179,32 @@
 (deftest test-class-expression-readers
   (is (reads-to?
        "not foo"
-       [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
-        {:sb "a" :pi (rdf/owl "complementOf") :oi "http://example.com/foo"}]))
+       [#::rdf{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
+        #::rdf{:sb "a" :pi (rdf/owl "complementOf") :oi "http://example.com/foo"}]))
   (is (reads-to?
        "foo or bar"
-       [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
-        {:sb "a" :pi (rdf/rdf "unionOf") :ob "b"}
-        {:sb "b" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
-        {:sb "b" :pi (rdf/rdf "rest") :ob "c"}
-        {:sb "c" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
-        {:sb "c" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}]))
+       [#::rdf{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
+        #::rdf{:sb "a" :pi (rdf/rdf "unionOf") :ob "b"}
+        #::rdf{:sb "b" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
+        #::rdf{:sb "b" :pi (rdf/rdf "rest") :ob "c"}
+        #::rdf{:sb "c" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
+        #::rdf{:sb "c" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}]))
   (is (reads-to?
        "'has part' some foo"
-       [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
-        {:sb "a" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
-        {:sb "a" :pi (rdf/owl "someValuesFrom") :oi "http://example.com/foo"}]))
+       [#::rdf{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
+        #::rdf{:sb "a" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
+        #::rdf{:sb "a" :pi (rdf/owl "someValuesFrom") :oi "http://example.com/foo"}]))
   (is (reads-to?
        "'has part' some (foo or bar)"
-       [{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
-        {:sb "a" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
-        {:sb "a" :pi (rdf/owl "someValuesFrom") :ob "b"}
-        {:sb "b" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
-        {:sb "b" :pi (rdf/rdf "unionOf") :ob "c"}
-        {:sb "c" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
-        {:sb "c" :pi (rdf/rdf "rest") :ob "d"}
-        {:sb "d" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
-        {:sb "d" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}])))
-
-;; (def ex-list-branch
-;;   [{::rdf/subject {::rdf/bnode "_:1"}
-;;     ::rdf/predicate {::rdf/iri (rdf/rdf "first")}
-;;     ::rdf/object {::rdf/literal "1"}}
-;;    {::rdf/subject {::rdf/bnode "_:1"}
-;;     ::rdf/predicate {::rdf/iri (rdf/rdf "rest")}
-;;     ::rdf/object
-;;     {::rdf/bnode "_:2"
-;;      ::rdf/pairs
-;;      [{::rdf/predicate {::rdf/iri (rdf/rdf "first")}
-;;        ::rdf/object {::rdf/literal "2"}}
-;;       {::rdf/predicate {::rdf/iri (rdf/rdf "rest")}
-;;        ::rdf/object
-;;        {::rdf/bnode "_:3"
-;;         ::rdf/pairs
-;;         [{::rdf/predicate {::rdf/iri (rdf/rdf "first")}
-;;           ::rdf/object {::rdf/literal "3"}}
-;;          {::rdf/predicate {::rdf/iri (rdf/rdf "rest")}
-;;           ::rdf/object {::rdf/iri (rdf/rdf "nil")}}]}}]}}])
-
-;; (def ex-list
-;;   (->> [1 2 3]
-;;        (map str)
-;;        (map (fn [x] {::rdf/literal x}))))
-
-;; (def ex-long-list
-;;   (->> (range 1 10000)
-;;        (map str)
-;;        (map (fn [x] {::rdf/literal x}))))
-
-;; (deftest test-branch->list
-;;   (is (=  ex-list
-;;           (->> ex-list-branch
-;;                omn/branch->list))))
-
-;; (deftest test-list->branch
-;;   (is (= ex-list
-;;          (->> ex-list
-;;               omn/list->branch
-;;               ::rdf/pairs
-;;               omn/branch->list)))
-;;   (is (= ex-list
-;;          (->> ex-list-branch
-;;               ;; (mapcat rdf/unbranch-quad)
-;;               (map ::rdf/object)
-;;               (filter ::rdf/literal))))
-;;   (is (= ex-long-list
-;;          (->> ex-long-list
-;;               omn/list->branch
-;;               ::rdf/pairs
-;;               omn/branch->list)))
-;;   (is (= ex-long-list
-;;          (->> ex-long-list
-;;               omn/list->branch
-;;               (assoc {} ::rdf/object)
-;;               ;; rdf/unbranch-quad
-;;               (map ::rdf/object)
-;;               (filter ::rdf/literal)))))
+       [#::rdf{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
+        #::rdf{:sb "a" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
+        #::rdf{:sb "a" :pi (rdf/owl "someValuesFrom") :ob "b"}
+        #::rdf{:sb "b" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
+        #::rdf{:sb "b" :pi (rdf/rdf "unionOf") :ob "c"}
+        #::rdf{:sb "c" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
+        #::rdf{:sb "c" :pi (rdf/rdf "rest") :ob "d"}
+        #::rdf{:sb "d" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
+        #::rdf{:sb "d" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}])))
 
 ;; (defn test-round-trip
 ;;   [content]

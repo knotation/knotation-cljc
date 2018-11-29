@@ -741,7 +741,6 @@
           state (first states)
           quad (::rdf/quad state)
           pi (::rdf/pi quad)]
-      (println "LIST" quad)
       (if (and state (contains? #{(rdf/rdf "first") (rdf/rdf "rest")} pi))
         (recur
          (let [state (if (= (rdf/rdf "rest") pi)
