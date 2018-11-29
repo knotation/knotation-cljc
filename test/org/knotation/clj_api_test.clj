@@ -75,7 +75,8 @@
   (test-kn-roundtrip ex/typed-lists-kn)
   (test-kn-roundtrip ex/mixed-lists-kn)
   (test-kn-roundtrip ex/basic-annotations-kn)
-  (test-kn-roundtrip ex/nested-annotations-kn))
+  (test-kn-roundtrip ex/nested-annotations-kn)
+  (test-kn-roundtrip ex/basic-manchester-kn))
 
 (deftest test-ttl
   (test-ttl-roundtrip ex/basic-datatypes-ttl)
@@ -84,7 +85,8 @@
   (test-ttl-roundtrip ex/typed-lists-ttl)
   (test-ttl-roundtrip ex/mixed-lists-ttl)
   (test-ttl-roundtrip ex/basic-annotations-ttl)
-  (test-ttl-roundtrip ex/nested-annotations-ttl))
+  (test-ttl-roundtrip ex/nested-annotations-ttl)
+  (test-ttl-roundtrip ex/basic-manchester-ttl))
 
 (deftest test-nt
   (test-nt-roundtrip ex/basic-datatypes-nt))
@@ -97,7 +99,8 @@
   (test-kn-ttl-roundtrip ex/typed-lists-kn         ex/typed-lists-ttl)
   (test-kn-ttl-roundtrip ex/mixed-lists-kn         ex/mixed-lists-ttl)
   (test-kn-ttl-roundtrip ex/basic-annotations-kn   ex/basic-annotations-ttl)
-  (test-kn-ttl-roundtrip ex/nested-annotations-kn  ex/nested-annotations-ttl))
+  (test-kn-ttl-roundtrip ex/nested-annotations-kn  ex/nested-annotations-ttl)
+  (test-kn-ttl-roundtrip ex/basic-manchester-kn    ex/basic-manchester-ttl))
 
 (deftest test-kn-nt
   (is (= ex/basic-datatypes-nt (kn->nt ex/basic-datatypes-kn))))

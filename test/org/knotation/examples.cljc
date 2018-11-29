@@ -299,3 +299,55 @@ _:b2
   owl:annotatedTarget \"A\" ;
   ex:d \"D\" .
 ")
+
+; # Manchester Syntax
+
+(def basic-manchester-kn
+  "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+@prefix owl: <http://www.w3.org/2002/07/owl#>
+@prefix kn: <https://knotation.org/kn/>
+@prefix ex: <http://example.com/>
+
+: ex:frog
+rdfs:label: frog
+
+: ex:heart
+rdfs:label: heart
+
+: ex:in-taxon
+rdfs:label: in taxon
+
+: ex:frog-heart
+rdfs:subClassOf; kn:omn: heart and ('in taxon' some frog)
+")
+
+(def basic-manchester-ttl
+  "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix kn: <https://knotation.org/kn/> .
+@prefix ex: <http://example.com/> .
+
+ex:frog
+  rdfs:label \"frog\" .
+
+ex:heart
+  rdfs:label \"heart\" .
+
+ex:in-taxon
+  rdfs:label \"in taxon\" .
+
+ex:frog-heart
+  rdfs:subClassOf [
+    rdf:type owl:Class ;
+    rdf:intersectionOf (
+      ex:heart
+      [
+        rdf:type owl:Restriction ;
+        owl:onProperty ex:in-taxon ;
+        owl:someValuesFrom ex:frog
+      ]
+    )
+  ] .
+")
