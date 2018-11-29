@@ -678,12 +678,12 @@
            ::st/blank (render-blank state)
            ::st/comment (render-comment state)
            ::st/prefix (render-prefix state)
-           ::st/graph-start state ; TODO
-           ::st/graph-end state
-           ::st/stanza-start state
-           ::st/stanza-end state
+           ::st/graph-start [] ; TODO
+           ::st/graph-end []
+           ::st/stanza-start []
+           ::st/stanza-end []
            ::st/subject-start (render-subject state)
-           ::st/subject-end state
+           ::st/subject-end []
            ::st/statement (render-statement state)
            (util/throw-exception :bad-state state))
          st/render-parse
