@@ -3,7 +3,8 @@
             [instaparse.core :as insta] ;; #?(:clj :refer :cljs :refer-macros) [defparser]
             [org.knotation.util :as util :refer [throw-exception]]
             [org.knotation.rdf :as rdf]
-            [org.knotation.environment :as en]))
+            [org.knotation.environment :as en]
+            [org.knotation.state :as st]))
 
 (def manchester-grammar "
 CLASS_EXPRESSION = '(' SPACE? CLASS_EXPRESSION SPACE? ')' SPACE?
@@ -111,3 +112,83 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
   (->> string
        parse-class-expression
        (read-class-expression env)))
+
+(declare sort-statements)
+
+(defn sort-list
+  [coll]
+  (loop [{:keys [::rdf/subjects] :as coll} coll]
+    (let [subject (first subjects)
+          states (get coll subject)
+          state (first states)
+          quad (::rdf/quad state)
+          pi (::rdf/pi quad)]
+      (if (and state (contains? #{(rdf/rdf "first") (rdf/rdf "rest")} pi))
+        (recur
+         (let [state (if (= (rdf/rdf "rest") pi)
+                       (if (::rdf/ob quad)
+                         (assoc state ::st/exact [[:space " "]
+                                                  [:keyword "and"]
+                                                  [:space " "]])
+                         (assoc state ::st/silent true))
+                       state)
+               state (if (and (= (rdf/rdf "first") pi) (::rdf/ob quad))
+                       (assoc state ::st/silent true)
+                       state)
+               coll (-> coll
+                        (update ::st/states conj (assoc state ::omn true))
+                        (update subject rest))]
+           (if-let [ob (when (= (rdf/rdf "rest") pi) (::rdf/ob quad))]
+             (assoc coll ::rdf/subjects (concat [ob] subjects))
+             (if-let [ob (when (= (rdf/rdf "first") pi) (::rdf/ob quad))]
+               (-> coll
+                   (assoc ::rdf/subjects (concat [ob] subjects))
+                   sort-statements)
+               coll))))
+        coll))))
+
+(defn sort-statements
+  [{:keys [::rdf/subjects] :as coll}]
+  (let [subject (first subjects)
+        states (get coll subject)
+        state (first states)
+        rdf-type (->> states (map ::rdf/quad) (filter #(= (rdf/rdf "type") (::rdf/pi %))) first ::rdf/oi)]
+    (cond
+      (= (rdf/owl "Class") rdf-type)
+      (let [rdf-type (->> states (filter #(= (rdf/rdf "type") (-> % ::rdf/quad ::rdf/pi))) first)
+            intersection-of (->> states (filter #(= (rdf/rdf "intersectionOf") (-> % ::rdf/quad ::rdf/pi))) first)
+            ob (-> intersection-of ::rdf/quad ::rdf/ob)]
+        (if intersection-of
+          (-> coll
+              (update ::st/states conj (assoc rdf-type ::st/silent true))
+              (update ::st/states conj (assoc intersection-of ::st/silent true))
+              (update subject (partial remove #{rdf-type}))
+              (update subject (partial remove #{intersection-of}))
+              (assoc ::rdf/subjects (concat [ob] subjects))
+              (update ::st/depth inc)
+              sort-list)
+          (-> coll
+              (update ::st/states conj (assoc rdf-type ::st/silent true))
+              (update subject rest))))
+
+      (= (rdf/owl "Restriction") rdf-type)
+      (let [rdf-type (->> states (filter #(= (rdf/rdf "type") (-> % ::rdf/quad ::rdf/pi))) first)
+            on-property (->> states (filter #(= (rdf/owl "onProperty") (-> % ::rdf/quad ::rdf/pi))) first)
+            some-values (->> states (filter #(= (rdf/owl "someValuesFrom") (-> % ::rdf/quad ::rdf/pi))) first)]
+        (-> coll
+            (update ::st/states conj (assoc rdf-type ::st/silent true))
+            (update ::st/states conj (assoc on-property
+                                            ::st/before [[:symbol "("]]
+                                            ::omn true))
+            (update ::st/states conj (assoc some-values
+                                            ::st/before [[:space " "]
+                                                         [:keyword "some"]
+                                                         [:space " "]]
+                                            ::omn true
+                                            ::st/after [[:symbol ")"]]))
+            (update subject (partial remove #{rdf-type}))
+            (update subject (partial remove #{on-property}))
+            (update subject (partial remove #{some-values}))))
+
+      :else
+      coll)))

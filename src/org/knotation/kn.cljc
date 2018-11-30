@@ -563,7 +563,7 @@
 
 (defn render-statement
   "Given a ::st/statement state, return a parse."
-  [{:keys [::list-item? ::annotation ::en/env ::rdf/quad ::depth ::exact ::omn ::before ::after] :as state}]
+  [{:keys [::list-item? ::annotation ::en/env ::rdf/quad ::st/depth ::st/exact ::omn/omn ::st/before ::st/after] :as state}]
   (if-let [pi (::rdf/pi quad)]
     (if-let [predicate-name (en/iri->name env pi)]
       (cond
@@ -698,7 +698,7 @@
 
 (defn render-state
   "Given a state, render it and return the updated state."
-  [{:keys [::silent ::st/event] :as state}]
+  [{:keys [::st/silent ::st/event] :as state}]
   (if silent
     state
     (->> (case event
@@ -718,7 +718,7 @@
 
 (defn annotate-annotation
   "Given a state for an annotation,
-   return a state, maybe with a ::silent key."
+   return a state, maybe with a ::st/silent key."
   [{:keys [::rdf/quad] :as state}]
   (let [state (assoc state ::annotation true)]
     (if quad
@@ -727,113 +727,33 @@
                        (rdf/owl "annotatedProperty")
                        (rdf/owl "annotatedTarget")}
                      (::rdf/pi quad))
-        (assoc state ::silent true)
+        (assoc state ::st/silent true)
         state)
-      (assoc state ::silent true))))
-
-(declare omn-sort-statements)
-
-(defn omn-sort-list
-  [coll]
-  (loop [{:keys [::rdf/subjects] :as coll} coll]
-    (let [subject (first subjects)
-          states (get coll subject)
-          state (first states)
-          quad (::rdf/quad state)
-          pi (::rdf/pi quad)]
-      (if (and state (contains? #{(rdf/rdf "first") (rdf/rdf "rest")} pi))
-        (recur
-         (let [state (if (= (rdf/rdf "rest") pi)
-                       (if (::rdf/ob quad)
-                         (assoc state ::exact [[:space " "]
-                                               [:keyword "and"]
-                                               [:space " "]])
-                         (assoc state ::silent true))
-                       state)
-               state (if (and (= (rdf/rdf "first") pi) (::rdf/ob quad))
-                       (assoc state ::silent true)
-                       state)
-               coll (-> coll
-                        (update ::st/states conj (assoc state ::omn true))
-                        (update subject rest))]
-           (if-let [ob (when (= (rdf/rdf "rest") pi) (::rdf/ob quad))]
-             (assoc coll ::rdf/subjects (concat [ob] subjects))
-             (if-let [ob (when (= (rdf/rdf "first") pi) (::rdf/ob quad))]
-               (-> coll
-                   (assoc ::rdf/subjects (concat [ob] subjects))
-                   omn-sort-statements)
-               coll))))
-        coll))))
-
-(defn omn-sort-statements
-  [{:keys [::rdf/subjects] :as coll}]
-  (let [subject (first subjects)
-        states (get coll subject)
-        state (first states)
-        rdf-type (->> states (map ::rdf/quad) (filter #(= (rdf/rdf "type") (::rdf/pi %))) first ::rdf/oi)]
-    (cond
-      (= (rdf/owl "Class") rdf-type)
-      (let [rdf-type (->> states (filter #(= (rdf/rdf "type") (-> % ::rdf/quad ::rdf/pi))) first)
-            intersection-of (->> states (filter #(= (rdf/rdf "intersectionOf") (-> % ::rdf/quad ::rdf/pi))) first)
-            ob (-> intersection-of ::rdf/quad ::rdf/ob)]
-        (if intersection-of
-          (-> coll
-              (update ::st/states conj (assoc rdf-type ::silent true))
-              (update ::st/states conj (assoc intersection-of ::silent true))
-              (update subject (partial remove #{rdf-type}))
-              (update subject (partial remove #{intersection-of}))
-              (assoc ::rdf/subjects (concat [ob] subjects))
-              (update ::depth inc)
-              omn-sort-list)
-          (-> coll
-              (update ::st/states conj (assoc rdf-type ::silent true))
-              (update subject rest))))
-
-      (= (rdf/owl "Restriction") rdf-type)
-      (let [rdf-type (->> states (filter #(= (rdf/rdf "type") (-> % ::rdf/quad ::rdf/pi))) first)
-            on-property (->> states (filter #(= (rdf/owl "onProperty") (-> % ::rdf/quad ::rdf/pi))) first)
-            some-values (->> states (filter #(= (rdf/owl "someValuesFrom") (-> % ::rdf/quad ::rdf/pi))) first)]
-        (-> coll
-            (update ::st/states conj (assoc rdf-type ::silent true))
-            (update ::st/states conj (assoc on-property
-                                            ::before [[:symbol "("]]
-                                            ::omn true))
-            (update ::st/states conj (assoc some-values
-                                            ::before [[:space " "]
-                                                      [:keyword "some"]
-                                                      [:space " "]]
-                                            ::omn true
-                                            ::after [[:symbol ")"]]))
-            (update subject (partial remove #{rdf-type}))
-            (update subject (partial remove #{on-property}))
-            (update subject (partial remove #{some-values}))))
-
-      :else
-      coll)))
+      (assoc state ::st/silent true))))
 
 (defn inner-sort-statements
   "Given a map from subjects to sequences of their states,
    plus ::rdf/subjects and ::st/states sequences,
-   a :lists map and a ::depth integer,
+   a :lists map and a ::st/depth integer,
    recursively loop through the ::rdf/subjects and add to :states,
    in the order and depth that Turtle expects."
   [coll]
-  (loop [{:keys [::rdf/subjects ::annotations ::quad-annotations ::depth ::subject-depth] :as coll} coll]
+  (loop [{:keys [::rdf/subjects ::annotations ::quad-annotations ::st/depth ::subject-depth] :as coll} coll]
     (if-let [subject (first subjects)]
       (recur
        (let [coll (if (find subject-depth subject)
                     coll
                     (assoc-in coll [::subject-depth subject] depth))
              depth (get-in coll [::subject-depth subject])
-             coll (assoc coll ::depth depth)]
+             coll (assoc coll ::st/depth depth)]
          (if-let [state (first (get coll subject))]
-           (let [state (assoc state ::depth depth)
+           (let [state (assoc state ::st/depth depth)
                  state (if (contains? annotations subject) (annotate-annotation state) state)
                  quad (::rdf/quad state)
                  pi (::rdf/pi quad)
                  list-item? (contains? #{(rdf/rdf "first") (rdf/rdf "rest")} pi)
                  state (if list-item? (assoc state ::list-item? true) state)
-                 state (if (= (rdf/rdf "rest") pi) (assoc state ::silent true) state)
+                 state (if (= (rdf/rdf "rest") pi) (assoc state ::st/silent true) state)
                  anns (get quad-annotations (::rdf/quad state))
                  ob (::rdf/ob quad)
                  anon-ob? (and ob (contains? (set subjects) ob))
@@ -856,10 +776,10 @@
                omn-ob?
                (-> coll
                    (assoc ::rdf/subjects (concat [ob] subjects))
-                   omn-sort-statements
+                   omn/sort-statements
                    ; append a newline
                    ((fn [{:keys [::st/states] :as coll}]
-                      (update-in coll [::st/states (dec (count states)) ::after] (fnil conj []) [:eol "\n"]))))
+                      (update-in coll [::st/states (dec (count states)) ::st/after] (fnil conj []) [:eol "\n"]))))
 
                ; inner list object: insert this state then switch to that subject; do not indent!
                (and list-ob? (= (rdf/rdf "rest") pi))
@@ -870,13 +790,13 @@
                anon-ob?
                (-> coll
                    (assoc ::rdf/subjects (concat [ob] subjects))
-                   (update ::depth inc))
+                   (update ::st/depth inc))
 
                ; state with annotations: insert this state then switch to those subjects
                anns
                (-> coll
                    (assoc ::rdf/subjects (concat anns subjects))
-                   (update ::depth inc))
+                   (update ::st/depth inc))
 
                ; state without annotations
                :else
@@ -886,7 +806,7 @@
            (-> coll
                (dissoc subject)
                (assoc ::rdf/subjects (rest subjects))
-               (assoc ::depth depth)))))
+               (assoc ::st/depth depth)))))
 
       ; no more subjects
       coll)))
@@ -898,7 +818,7 @@
              ::rdf/subjects subjects
              ::annotations annotations
              ::quad-annotations quad-annotations
-             ::depth 0)
+             ::st/depth 0)
       inner-sort-statements
       ::st/states))
 
