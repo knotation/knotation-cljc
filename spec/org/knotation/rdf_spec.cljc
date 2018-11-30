@@ -16,6 +16,7 @@
 (s/def ::rdf/datatype ::rdf/iri)
 (s/def ::rdf/language string?) ; TODO: could be tighter
 
+(s/def ::rdf/subjects (s/coll-of ::rdf/subject))
 
 (s/def ::rdf/gi ::rdf/graph)
 (s/def ::rdf/zn ::rdf/stanza)

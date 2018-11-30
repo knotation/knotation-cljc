@@ -735,7 +735,7 @@
 
 (defn omn-sort-list
   [coll]
-  (loop [{:keys [::subjects] :as coll} coll]
+  (loop [{:keys [::rdf/subjects] :as coll} coll]
     (let [subject (first subjects)
           states (get coll subject)
           state (first states)
@@ -757,16 +757,16 @@
                         (update ::states conj (assoc state ::omn true))
                         (update subject rest))]
            (if-let [ob (when (= (rdf/rdf "rest") pi) (::rdf/ob quad))]
-             (assoc coll ::subjects (concat [ob] subjects))
+             (assoc coll ::rdf/subjects (concat [ob] subjects))
              (if-let [ob (when (= (rdf/rdf "first") pi) (::rdf/ob quad))]
                (-> coll
-                   (assoc ::subjects (concat [ob] subjects))
+                   (assoc ::rdf/subjects (concat [ob] subjects))
                    omn-sort-statements)
                coll))))
         coll))))
 
 (defn omn-sort-statements
-  [{:keys [::subjects] :as coll}]
+  [{:keys [::rdf/subjects] :as coll}]
   (let [subject (first subjects)
         states (get coll subject)
         state (first states)
@@ -782,7 +782,7 @@
               (update ::states conj (assoc intersection-of ::silent true))
               (update subject (partial remove #{rdf-type}))
               (update subject (partial remove #{intersection-of}))
-              (assoc ::subjects (concat [ob] subjects))
+              (assoc ::rdf/subjects (concat [ob] subjects))
               (update ::depth inc)
               omn-sort-list)
           (-> coll
@@ -813,12 +813,12 @@
 
 (defn inner-sort-statements
   "Given a map from subjects to sequences of their states,
-   plus :subjects and ::states sequences,
+   plus ::rdf/subjects and ::states sequences,
    a :lists map and a ::depth integer,
-   recursively loop through the :subjects and add to :states,
+   recursively loop through the ::rdf/subjects and add to :states,
    in the order and depth that Turtle expects."
   [coll]
-  (loop [{:keys [::subjects ::annotations ::quad-annotations ::depth ::subject-depth] :as coll} coll]
+  (loop [{:keys [::rdf/subjects ::annotations ::quad-annotations ::depth ::subject-depth] :as coll} coll]
     (if-let [subject (first subjects)]
       (recur
        (let [coll (if (find subject-depth subject)
@@ -855,7 +855,7 @@
              (cond
                omn-ob?
                (-> coll
-                   (assoc ::subjects (concat [ob] subjects))
+                   (assoc ::rdf/subjects (concat [ob] subjects))
                    omn-sort-statements
                    ; append a newline
                    ((fn [{:keys [::states] :as coll}]
@@ -864,18 +864,18 @@
                ; inner list object: insert this state then switch to that subject; do not indent!
                (and list-ob? (= (rdf/rdf "rest") pi))
                (-> coll
-                   (assoc ::subjects (concat [ob] subjects)))
+                   (assoc ::rdf/subjects (concat [ob] subjects)))
 
                ; anonymous object: insert this state then switch to that subject; indent
                anon-ob?
                (-> coll
-                   (assoc ::subjects (concat [ob] subjects))
+                   (assoc ::rdf/subjects (concat [ob] subjects))
                    (update ::depth inc))
 
                ; state with annotations: insert this state then switch to those subjects
                anns
                (-> coll
-                   (assoc ::subjects (concat anns subjects))
+                   (assoc ::rdf/subjects (concat anns subjects))
                    (update ::depth inc))
 
                ; state without annotations
@@ -885,7 +885,7 @@
            ; no more states for this subject
            (-> coll
                (dissoc subject)
-               (assoc ::subjects (rest subjects))
+               (assoc ::rdf/subjects (rest subjects))
                (assoc ::depth depth)))))
 
       ; no more subjects
@@ -895,7 +895,7 @@
   [grouped-states annotations quad-annotations subjects]
   (-> grouped-states
       (assoc ::states []
-             ::subjects subjects
+             ::rdf/subjects subjects
              ::annotations annotations
              ::quad-annotations quad-annotations
              ::depth 0)
