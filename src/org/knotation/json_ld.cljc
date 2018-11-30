@@ -1,6 +1,6 @@
 (ns org.knotation.json-ld
-  (:require [clojure.data.json :as json]
-            [org.knotation.rdf :as rdf]
+  (:require [org.knotation.rdf :as rdf]
+            [org.knotation.util :as util]
             [org.knotation.environment :as en]))
 
 (defn render-object
@@ -59,6 +59,6 @@
 
 (defn render-stanza
   [env si states]
-  (json/write-str
+  (util/edn->json
    (render-stanza-edn env si states)
    :escape-slash false))
