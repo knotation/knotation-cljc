@@ -754,7 +754,7 @@
                        (assoc state ::silent true)
                        state)
                coll (-> coll
-                        (update ::states conj (assoc state ::omn true))
+                        (update ::st/states conj (assoc state ::omn true))
                         (update subject rest))]
            (if-let [ob (when (= (rdf/rdf "rest") pi) (::rdf/ob quad))]
              (assoc coll ::rdf/subjects (concat [ob] subjects))
@@ -778,15 +778,15 @@
             ob (-> intersection-of ::rdf/quad ::rdf/ob)]
         (if intersection-of
           (-> coll
-              (update ::states conj (assoc rdf-type ::silent true))
-              (update ::states conj (assoc intersection-of ::silent true))
+              (update ::st/states conj (assoc rdf-type ::silent true))
+              (update ::st/states conj (assoc intersection-of ::silent true))
               (update subject (partial remove #{rdf-type}))
               (update subject (partial remove #{intersection-of}))
               (assoc ::rdf/subjects (concat [ob] subjects))
               (update ::depth inc)
               omn-sort-list)
           (-> coll
-              (update ::states conj (assoc rdf-type ::silent true))
+              (update ::st/states conj (assoc rdf-type ::silent true))
               (update subject rest))))
 
       (= (rdf/owl "Restriction") rdf-type)
@@ -794,16 +794,16 @@
             on-property (->> states (filter #(= (rdf/owl "onProperty") (-> % ::rdf/quad ::rdf/pi))) first)
             some-values (->> states (filter #(= (rdf/owl "someValuesFrom") (-> % ::rdf/quad ::rdf/pi))) first)]
         (-> coll
-            (update ::states conj (assoc rdf-type ::silent true))
-            (update ::states conj (assoc on-property
-                                         ::before [[:symbol "("]]
-                                         ::omn true))
-            (update ::states conj (assoc some-values
-                                         ::before [[:space " "]
-                                                   [:keyword "some"]
-                                                   [:space " "]]
-                                         ::omn true
-                                         ::after [[:symbol ")"]]))
+            (update ::st/states conj (assoc rdf-type ::silent true))
+            (update ::st/states conj (assoc on-property
+                                            ::before [[:symbol "("]]
+                                            ::omn true))
+            (update ::st/states conj (assoc some-values
+                                            ::before [[:space " "]
+                                                      [:keyword "some"]
+                                                      [:space " "]]
+                                            ::omn true
+                                            ::after [[:symbol ")"]]))
             (update subject (partial remove #{rdf-type}))
             (update subject (partial remove #{on-property}))
             (update subject (partial remove #{some-values}))))
@@ -813,7 +813,7 @@
 
 (defn inner-sort-statements
   "Given a map from subjects to sequences of their states,
-   plus ::rdf/subjects and ::states sequences,
+   plus ::rdf/subjects and ::st/states sequences,
    a :lists map and a ::depth integer,
    recursively loop through the ::rdf/subjects and add to :states,
    in the order and depth that Turtle expects."
@@ -850,7 +850,7 @@
                                    boolean))
                  state (if omn-ob? (assoc-in state [::rdf/quad ::rdf/di] (rdf/kn "omn")) state)
                  coll (-> coll
-                          (update ::states conj state)
+                          (update ::st/states conj state)
                           (update subject rest))]
              (cond
                omn-ob?
@@ -858,8 +858,8 @@
                    (assoc ::rdf/subjects (concat [ob] subjects))
                    omn-sort-statements
                    ; append a newline
-                   ((fn [{:keys [::states] :as coll}]
-                      (update-in coll [::states (dec (count states)) ::after] (fnil conj []) [:eol "\n"]))))
+                   ((fn [{:keys [::st/states] :as coll}]
+                      (update-in coll [::st/states (dec (count states)) ::after] (fnil conj []) [:eol "\n"]))))
 
                ; inner list object: insert this state then switch to that subject; do not indent!
                (and list-ob? (= (rdf/rdf "rest") pi))
@@ -894,13 +894,13 @@
 (defn sort-statements
   [grouped-states annotations quad-annotations subjects]
   (-> grouped-states
-      (assoc ::states []
+      (assoc ::st/states []
              ::rdf/subjects subjects
              ::annotations annotations
              ::quad-annotations quad-annotations
              ::depth 0)
       inner-sort-statements
-      ::states))
+      ::st/states))
 
 (defn sort-stanza
   "Given a sequence of states for one stanza,
