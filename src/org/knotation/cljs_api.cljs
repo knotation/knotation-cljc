@@ -19,10 +19,9 @@
   (let [initial-state (or initial-state st/default-state)]
     (case input-format
       ; TODO: more read formats
-      :kn (kn/read-lines initial-state (util/split-lines content))
-      :else 
-      (util/throw-error 
-        (format "Unable to read input format '%s'" input-format)))))
+      :kn (kn/read-lines initial-state (util/get-lines content))
+      (util/throw-exception 
+        (str "Unable to read input format: " input-format)))))
 
 (defn read-input
   "Given a format keyword, an initial state (or nil for the default state), and 
@@ -37,17 +36,15 @@
 (defn render-states
   "Given a format keyword, an environment (or nil), and a sequence of state
    maps, return a sequence of rendered states."
-  [fmt env states]
-  (let [env (or env en/default-env)]
+  [fmt initial-state states]
+  (let [initial-state (or initial-state st/default-state)]
     (case fmt
-      :kn (kn/render-states env states)
-      :ttl (ttl/render-states env states)))
-      :else 
-      (util/throw-error (format "Unable to render output format '%s'" fmt)))
+      :kn (kn/render-states initial-state states)
+      :ttl (ttl/render-states (get initial-state ::en/env en/default-env) states)
+      (util/throw-exception (str "Unable to render output format: " fmt)))))
 
 (defn render-output
   "Given a format keyword, an environment (or nil), and a sequence of state
    maps, return the string output of the states."
-  [fmt env states]
-  (let [env (or env en/default-env)]
-    (st/render-output-string (render-states fmt env states))))
+  [fmt initial-state states]
+  (st/render-output-string (render-states fmt initial-state states)))
