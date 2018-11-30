@@ -319,7 +319,7 @@ rdfs:label: heart
 rdfs:label: in taxon
 
 : ex:frog-heart
-rdfs:subClassOf; kn:omn: heart and ('in taxon' some frog)
+rdfs:subClassOf; kn:omn: heart and 'in taxon' some frog
 ")
 
 (def basic-manchester-ttl

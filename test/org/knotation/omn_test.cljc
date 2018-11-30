@@ -4,11 +4,12 @@
             [#?(:clj orchestra.spec.test :cljs cljs.spec.test.alpha) :as stest]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
+            [org.knotation.state :as st]
             [org.knotation.omn :as omn]))
 
 (stest/instrument)
 
-(def env-1
+(def ex-env
   (-> en/blank-env
       (en/add-label "foo" (rdf/ex "foo"))
       (en/add-label "bar" (rdf/ex "bar"))
@@ -55,7 +56,8 @@
            [:CLASS_EXPRESSION
             [:NEGATION
              "not" " "
-             [:LABEL "" "foo" ""]]])))
+             [:CLASS_EXPRESSION
+              [:LABEL "" "foo" ""]]]])))
 
   (testing "Some"
     (is (= (omn/parse-class-expression "'has part' some foo")
@@ -76,7 +78,8 @@
              [:CLASS_EXPRESSION
               [:NEGATION
                "not" " "
-               [:LABEL "" "foo" ""]]]]])))
+               [:CLASS_EXPRESSION
+                [:LABEL "" "foo" ""]]]]]])))
 
   (testing "Complex axiom"
     (is (= (omn/parse-class-expression "'is about' some
@@ -154,78 +157,80 @@
                  ")"]]]
               ")"]]]))))
 
-(defn -intern-slot!
-  [atm state key]
-  (let [blank (get state key)]
-    (assoc
-     state key
-     (or (get @atm blank)
-         (get (swap! atm #(assoc % blank (str (count %)))) blank)))))
-
-(defn replace-blanks
-  [states]
-  (map
-   (let [bs (atom {})]
-     (fn [s]
-       (let [o (if (::rdf/ob s) (-intern-slot! bs s ::rdf/ob) s)]
-         (if (::rdf/sb o) (-intern-slot! bs o ::rdf/sb) o))))
-   states))
-
 (defn reads-to?
   [string maps]
-  (= (replace-blanks maps)
-     (replace-blanks (omn/read-class-string env-1 string))))
+  (= (rdf/sequential-blank-nodes maps)
+     (rdf/sequential-blank-nodes (omn/read-class-string ex-env string))))
 
 (deftest test-class-expression-readers
   (is (reads-to?
+       "foo"
+       [#::rdf{:oi "http://example.com/foo"}]))
+  (is (reads-to?
        "not foo"
-       [#::rdf{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
-        #::rdf{:sb "a" :pi (rdf/owl "complementOf") :oi "http://example.com/foo"}]))
+       [#::rdf{:ob "_:b0"}
+        #::rdf{:sb "_:b0" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
+        #::rdf{:sb "_:b0" :pi (rdf/owl "complementOf") :oi "http://example.com/foo"}]))
   (is (reads-to?
        "foo or bar"
-       [#::rdf{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
-        #::rdf{:sb "a" :pi (rdf/rdf "unionOf") :ob "b"}
-        #::rdf{:sb "b" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
-        #::rdf{:sb "b" :pi (rdf/rdf "rest") :ob "c"}
-        #::rdf{:sb "c" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
-        #::rdf{:sb "c" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}]))
+       [#::rdf{:ob "_:b0"}
+        #::rdf{:sb "_:b0" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
+        #::rdf{:sb "_:b0" :pi (rdf/rdf "unionOf") :ob "_:b1"}
+        #::rdf{:sb "_:b1" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
+        #::rdf{:sb "_:b1" :pi (rdf/rdf "rest") :ob "_:b2"}
+        #::rdf{:sb "_:b2" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
+        #::rdf{:sb "_:b2" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}]))
   (is (reads-to?
        "'has part' some foo"
-       [#::rdf{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
-        #::rdf{:sb "a" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
-        #::rdf{:sb "a" :pi (rdf/owl "someValuesFrom") :oi "http://example.com/foo"}]))
+       [#::rdf{:ob "_:b0"}
+        #::rdf{:sb "_:b0" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
+        #::rdf{:sb "_:b0" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
+        #::rdf{:sb "_:b0" :pi (rdf/owl "someValuesFrom") :oi "http://example.com/foo"}]))
   (is (reads-to?
        "'has part' some (foo or bar)"
-       [#::rdf{:sb "a" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
-        #::rdf{:sb "a" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
-        #::rdf{:sb "a" :pi (rdf/owl "someValuesFrom") :ob "b"}
-        #::rdf{:sb "b" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
-        #::rdf{:sb "b" :pi (rdf/rdf "unionOf") :ob "c"}
-        #::rdf{:sb "c" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
-        #::rdf{:sb "c" :pi (rdf/rdf "rest") :ob "d"}
-        #::rdf{:sb "d" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
-        #::rdf{:sb "d" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}])))
+       [#::rdf{:ob "_:b0"}
+        #::rdf{:sb "_:b0" :pi (rdf/rdf "type") :oi (rdf/owl "Restriction")}
+        #::rdf{:sb "_:b0" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
+        #::rdf{:sb "_:b0" :pi (rdf/owl "someValuesFrom") :ob "_:b1"}
+        #::rdf{:sb "_:b1" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
+        #::rdf{:sb "_:b1" :pi (rdf/rdf "unionOf") :ob "_:b2"}
+        #::rdf{:sb "_:b2" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
+        #::rdf{:sb "_:b2" :pi (rdf/rdf "rest") :ob "_:b3"}
+        #::rdf{:sb "_:b3" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
+        #::rdf{:sb "_:b3" :pi (rdf/rdf "rest") :oi (rdf/rdf "nil")}])))
 
-;; (defn test-round-trip
-;;   [content]
-;;   (->> content
-;;        omn/parse-class-expression
-;;        (omn/convert-class-expression env-1)
-;;        (omn/render-class-expression env-1)
-;;        omn/write-class-expression
-;;        (= content)
-;;        is))
+(defn render-expression
+  [s]
+  (->> s
+       omn/parse-class-expression
+       (omn/read-class-expression ex-env)
+       rdf/sequential-blank-nodes
+       (#(concat [(merge #::rdf{:si "s" :pi "p"} (first %))]
+                 (rest %)))
+       (map #(assoc st/default-state
+                    ::st/event ::st/statement
+                    ::en/env ex-env
+                    ::rdf/subject (or (::rdf/si %) (::rdf/sb %))
+                    ::rdf/quad %))
+       omn/render-states))
 
-;; (deftest test-round-trips
-;;   (test-round-trip "foo")
-;;   (test-round-trip "'foo bar'")
-;;   (test-round-trip "not foo")
-;;   (test-round-trip "foo or bar")
-;;   (test-round-trip "foo or foo or foo")
-;;   (test-round-trip "foo and bar")
-;;   (test-round-trip "'has part' some foo")
-;;   (test-round-trip "'has part' only foo")
-;;   (test-round-trip "'has part' some (foo or bar)")
-;;   ; TODO: handle brackets and indentation better
-;;   (test-round-trip "'is about' some ('material entity' and 'has role' some 'evaluant role')")
-;;   (test-round-trip "has_specified_output some ('information content entity' and 'is about' some ('material entity' and 'has role' some 'evaluant role'))"))
+(defn test-round-trip
+  [s]
+  (->> s
+       render-expression
+       (= s)
+       is))
+
+(deftest test-round-trips
+  (test-round-trip "foo")
+  (test-round-trip "'foo bar'")
+  (test-round-trip "not foo")
+  (test-round-trip "foo or bar")
+  (test-round-trip "foo or foo or foo")
+  (test-round-trip "foo and bar")
+  (test-round-trip "not (foo or bar)")
+  (test-round-trip "'has part' some foo")
+  (test-round-trip "'has part' only foo")
+  (test-round-trip "'has part' some (foo or bar)")
+  (test-round-trip "'is about' some ('material entity' and 'has role' some 'evaluant role')")
+  (test-round-trip "has_specified_output some ('information content entity' and 'is about' some ('material entity' and 'has role' some 'evaluant role'))"))

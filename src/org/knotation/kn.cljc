@@ -382,11 +382,11 @@
          (mapcat identity))
 
     (= (rdf/kn "omn") (::rdf/di quad))
-    (let [quad (dissoc quad ::rdf/di)
-          res (omn/read-class-string env (read-content parse))]
+    (let [res (omn/read-class-string env (read-content parse))]
       (->> res
+           rest
            (map #(assoc % ::rdf/zn stanza))
-           (concat [(assoc quad ::rdf/ob (-> res first ::rdf/sb))])
+           (concat [(-> quad (dissoc ::rdf/di) (merge (first res)))])
            (map #(assoc state ::rdf/stanza stanza ::rdf/quad %))
            (map #(assoc % ::rdf/subject (st/get-subject %)))))
 
@@ -563,26 +563,17 @@
 
 (defn render-statement
   "Given a ::st/statement state, return a parse."
-  [{:keys [::list-item? ::annotation ::en/env ::rdf/quad ::st/depth ::st/exact ::omn/omn ::st/before ::st/after] :as state}]
+  [{:keys [::list-item? ::annotation ::en/env ::rdf/quad ::st/depth ::omn/omn ::omn/last] :or {depth 0} :as state}]
   (if-let [pi (::rdf/pi quad)]
     (if-let [predicate-name (en/iri->name env pi)]
       (cond
-        exact
-        exact
-
         omn
-        (let [name (en/iri->name env (::rdf/oi quad))]
-          (concat
-           before
-           (if (re-find #"\s" name)
-             [[:symbol "'"] [:lexical name] [:symbol "'"]]
-             [[:lexical name]])
-           after))
+        (if last
+          (concat (omn/render-statement state) [[:eol "\n"]])
+          (omn/render-statement state))
 
         :else
         (concat
-         before
-
          ; Handle indentation
          (cond
            annotation
@@ -616,9 +607,8 @@
            [[:symbol ":"]])
 
          ; Handle object
-         (render-object env quad)
+         (render-object env quad)))
 
-         after))
       (st/error state :invalid-predicate-iri pi))
     (st/error state :not-a-statement-state)))
 
@@ -773,13 +763,12 @@
                           (update ::st/states conj state)
                           (update subject rest))]
              (cond
+               ; Manchester expression: insert all its states
                omn-ob?
                (-> coll
-                   (assoc ::rdf/subjects (concat [ob] subjects))
+                   (assoc ::rdf/subjects [ob])
                    omn/sort-statements
-                   ; append a newline
-                   ((fn [{:keys [::st/states] :as coll}]
-                      (update-in coll [::st/states (dec (count states)) ::st/after] (fnil conj []) [:eol "\n"]))))
+                   (assoc ::rdf/subjects subjects))
 
                ; inner list object: insert this state then switch to that subject; do not indent!
                (and list-ob? (= (rdf/rdf "rest") pi))
