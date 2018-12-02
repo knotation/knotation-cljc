@@ -23,13 +23,31 @@
       (util/throw-exception 
         (str "Unable to read input format: " input-format)))))
 
+(defn read-strings
+  "Given a format keyword, an initial state (or nil for the default state), and 
+   a sequence of inputs (strings), read each input in order, accumulating state,
+   and return a sequence of states."
+   [input-format initial-state inputs]
+   (->> inputs
+    (reductions
+      (fn [previous-states input]
+        (read-string input-format (last previous-states) input))
+      [(or initial-state st/default-state)])
+    rest 
+    (mapcat identity)))
+
 (defn read-input
   "Given a format keyword, an initial state (or nil for the default state), and 
-   a thing to read from (string or collection of strings), return a lazy 
-   sequence or states."
+   and input thing (either a string or a collection of strings), return a lazy
+   sequence of states."
   [input-format initial-state thing]
-  (let [initial-state (or initial-state st/default-state)]
-    (read-string input-format initial-state thing)))
+  (cond
+    (string? thing)
+    (read-string input-format initial-state thing)
+    (and (coll? thing) (every? string? thing))
+    (read-strings input-format initial-state thing)
+    :else 
+    (util/throw-exception (str "Unable to read input type: " (type thing)))))
 
 ; Render Output
 
@@ -40,11 +58,14 @@
   (let [initial-state (or initial-state st/default-state)]
     (case fmt
       :kn (kn/render-states initial-state states)
-      :ttl (ttl/render-states (get initial-state ::en/env en/default-env) states)
+      :ttl 
+      (->> states
+           st/sequential-blank-nodes
+           (ttl/render-states (get initial-state ::en/env en/default-env)))
       (util/throw-exception (str "Unable to render output format: " fmt)))))
 
 (defn render-output
   "Given a format keyword, an environment (or nil), and a sequence of state
    maps, return the string output of the states."
   [fmt initial-state states]
-  (st/render-output-string (render-states fmt initial-state states)))
+    (st/render-output-string (render-states fmt initial-state states)))

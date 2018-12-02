@@ -1,4 +1,5 @@
-(ns org.knotation.rdf)
+(ns org.knotation.rdf
+  (:require [clojure.string :as string]))
 
 ; # Namespaces
 
@@ -13,7 +14,7 @@
 
 (defn blank?
   [s]
-  (and (string? s) (clojure.string/starts-with? s "_:")))
+  (and (string? s) (string/starts-with? s "_:")))
 
 (defn random-blank-node
   "Return a random blank node (UUID)."

@@ -1,7 +1,7 @@
 (ns org.knotation.omn
   (:require [clojure.string :as string]
             [instaparse.core :as insta] ;; #?(:clj :refer :cljs :refer-macros) [defparser]
-            [org.knotation.util :as util :refer [throw-exception]]
+            [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]))

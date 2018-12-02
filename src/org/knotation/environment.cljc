@@ -91,7 +91,7 @@
       (label->iri env input)
       (curie->iri env input)
       (when (http-url? input) input)
-      (util/throw-exception "Unknown name " input " in environment " env)))
+      nil))
 
 (defn find-prefix
   "Given an environment and an IRI,

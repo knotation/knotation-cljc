@@ -2,13 +2,15 @@
   (:require [clojure.string :as string]
             #?(:clj [clojure.data.json :as json])))
 
+(defn get-lines
+  [s]
+  (re-seq #".*\n?" s))
+
 (defn split-lines
   "Split a string on newlines,
    keeping the newline with the string."
   [s]
-  (->> s
-       (re-seq #".*\n?")
-       butlast))
+  (butlast (get-lines s)))
 
 (defn surround
   [before after xs]
