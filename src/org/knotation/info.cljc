@@ -15,9 +15,11 @@
   (apply
    str
    (concat
-    ["Line " (str (::st/line-number input))]
+    ["Line " (str (or (::st/line-number input) (-> input ::st/start ::st/line-number)))]
     (when (::st/source input)
       [" of " (::st/source input)]))))
+
+(def title-states [::st/error ::st/comment ::st/space ::st/prefix ::st/graph-start ::st/graph-end ::st/subject-start ::st/subject-end ::st/statement ::st/header])
 
 (defn title
   [{:keys [::st/event] :as state}]
@@ -231,15 +233,18 @@
        nil)]
 
     ::st/header default
+    ""))
 
-    default))
+
 
 (defn status
   [state]
-  (concat
-   [[:h3 (title state)]]
-   [[:p (position state) "."]]
-   (status-message state)))
+  (if-let [event (get state ::st/event)]
+    (if (contains? (set title-states) event)
+      (concat
+       [[:h3 (title state)]]
+       [[:p (position state) "."]]
+       (status-message state)))))
 
 (defn help
   [state]

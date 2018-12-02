@@ -8,7 +8,7 @@
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
             [org.knotation.ttl :as ttl]
-            [org.knotation.api :as api]))
+            [org.knotation.info :as info]))
 
 ; Read input
 
@@ -62,10 +62,21 @@
       (->> states
            st/sequential-blank-nodes
            (ttl/render-states (get initial-state ::en/env en/default-env)))
-      (util/throw-exception (str "Unable to render output format: " fmt)))))
+      (util/throw-exception "Unable to read input format: " fmt))))
 
 (defn render-output
   "Given a format keyword, an environment (or nil), and a sequence of state
    maps, return the string output of the states."
   [fmt initial-state states]
-    (st/render-output-string (render-states fmt initial-state states)))
+    (case fmt
+      :md
+      (string/join "\n"
+        (reduce
+          (fn [v s]
+            (conj v (info/markdown (info/help s)))) [] states))
+      :html
+      (string/join "\n"
+        (reduce
+          (fn [v s]
+            (conj v (info/html (info/help s)))) [] states))
+      (st/render-output-string (render-states fmt initial-state states))))

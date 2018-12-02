@@ -8,7 +8,6 @@
   [s]
   (->> s
       (api/read-input :kn nil)
-      st/sequential-blank-nodes
       (api/render-output :kn nil)))
 
 (defn kn->ttl
@@ -16,27 +15,31 @@
   (->> s
       (api/read-input :kn nil)
       st/sequential-blank-nodes
-      (api/render-output :ttl nil)))
+      (api/render-output :ttl :nil)))
 
 (defn test-kn-roundtrip
   [s]
-  (is (= s (kn->kn s))))
+  (let [out (kn->kn s)]
+    (.log js/console out)
+    (is (= s out))))
 
 (defn test-kn-ttl-roundtrip
   [k t]
-  (is (= t (kn->ttl k))))
+  (let [out (kn->ttl k)]
+    (.log js/console out)
+    (is (= t out))))
 
 (deftest test-kn
-  (test-kn-roundtrip ex/basic-datatypes-kn)
+  ;;(test-kn-roundtrip ex/basic-datatypes-kn))
   (test-kn-roundtrip ex/basic-labels-kn))
-  ;;(test-kn-roundtrip ex/anonymous-subjects-kn))
-  ;;(test-kn-roundtrip ex/basic-lists-kn)
-  ;;(test-kn-roundtrip ex/basic-annotations-kn)
-  ;;(test-kn-roundtrip ex/nested-annotations-kn))
+    ;;(test-kn-roundtrip ex/anonymous-subjects-kn)
+    ;;(test-kn-roundtrip ex/basic-lists-kn)
+    ;;(test-kn-roundtrip ex/basic-annotations-kn)
+    ;;(test-kn-roundtrip ex/nested-annotations-kn)))
 
 (deftest test-kn-ttl
-  (test-kn-ttl-roundtrip ex/basic-datatypes-kn     ex/basic-datatypes-ttl)
-  (test-kn-ttl-roundtrip ex/basic-labels-kn        ex/basic-labels-ttl))
+  (test-kn-ttl-roundtrip ex/basic-datatypes-kn     ex/basic-datatypes-ttl))
+    ;;(test-kn-ttl-roundtrip ex/basic-labels-kn        ex/basic-labels-ttl)
     ;;(test-kn-ttl-roundtrip ex/anonymous-subjects-kn  ex/anonymous-subjects-ttl)
     ;;(test-kn-ttl-roundtrip ex/basic-lists-kn         ex/basic-lists-ttl)
     ;;(test-kn-ttl-roundtrip ex/basic-annotations-kn   ex/basic-annotations-ttl)
