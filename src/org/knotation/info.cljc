@@ -11,17 +11,31 @@
 (def default ["No information available"])
 
 (defn position
+  "Given a state with an input key, determine the line position of the state."
   [{:keys [::st/input] :as state}]
   (apply
    str
    (concat
-    ["Line " (str (or (::st/line-number input) (-> input ::st/start ::st/line-number)))]
+    ["Line " 
+     (str (or (::st/line-number input) (-> input ::st/start ::st/line-number)))]
     (when (::st/source input)
       [" of " (::st/source input)]))))
 
-(def title-states [::st/error ::st/comment ::st/space ::st/prefix ::st/graph-start ::st/graph-end ::st/subject-start ::st/subject-end ::st/statement ::st/header])
+;; collection of events that will be rendered in INFO
+(def title-events 
+  [::st/error 
+   ::st/comment 
+   ::st/space 
+   ::st/prefix 
+   ::st/graph-start 
+   ::st/graph-end 
+   ::st/subject-start 
+   ::st/subject-end 
+   ::st/statement 
+   ::st/header])
 
 (defn title
+  "Given a state with an event key, generate a title for the event."
   [{:keys [::st/event] :as state}]
   (case event
     ::st/error "Error"
@@ -35,33 +49,52 @@
     ::st/statement "Statement"
     ::st/header "Header"))
 
+(defn bnode?
+  "Given a subject, determine if it is a blank node."
+  [subject]
+  (and
+    (string? subject)
+    (re-matches #"_:\S+" subject)))
+
+(defn iri?
+  "Given a subject, determine if it is an IRI."
+  [subject]
+  (and 
+    (string? subject)
+    (re-matches #"\S+" subject) 
+    (not (string/starts-with? subject "_:"))))
+
 (defn subject-status
-  [{:keys [::en/env ::rdf/subject] :as state}]
+  "Given a state with subject and environment keys, build an info message for 
+   the subject."
+  [{:keys [::rdf/subject ::en/env] :as state}]
   [:p
    "Subject"
    (vec
     (concat
      [:ul]
-     (when-let [label (get-in env [::en/iri-label (::rdf/iri subject)])]
+     (when-let [label (get-in env [::en/iri-label subject])]
        [[:li "Label: " label]])
-     (when (::rdf/iri subject)
-       [[:li "IRI: " (::rdf/iri subject)]])
-     (when (::rdf/bnode subject)
-       [[:li "Blank Node " (::rdf/bnode subject)]])))])
+     (when (iri? subject)
+       [[:li "IRI: " subject]])
+     (when (bnode? subject)
+       [[:li "Blank Node " subject]])))])
 
 (defn predicate-status
-  [{:keys [::en/env ::rdf/predicate] :as state}]
-  (let [iri (::rdf/iri predicate)
-        default-datatype (get-in env [::en/predicate-datatype iri])
-        default-language (get-in env [::en/predicate-language iri])]
+  "Given a state with a quad and an environment, build an info message for the 
+   predicate."
+  [{:keys [::en/env ::rdf/quad] :as state}]
+  (let [predicate (::rdf/pi quad)
+        default-datatype (get-in env [::en/predicate-datatype predicate])
+        default-language (get-in env [::en/predicate-language predicate])]
     [:p
      "Predicate"
      (vec
       (concat
        [:ul]
-       (when-let [label (get-in env [::en/iri-label iri])]
+       (when-let [label (get-in env [::en/iri-label predicate])]
          [[:li "Label: " label]])
-       [[:li "IRI: " iri]]
+       [[:li "IRI: " predicate]]
        (when-let [label (get-in env [::en/iri-label default-datatype])]
          [[:li "Default Datatype Label: " label]])
        (when default-datatype
@@ -70,8 +103,14 @@
          [[:li "Default Language: " default-language]])))]))
 
 (defn object-status
-  [{:keys [::en/env ::rdf/object] :as state}]
-  (let [{:keys [::rdf/iri ::rdf/bnode ::rdf/lexical ::rdf/language ::rdf/datatype]} object]
+  "Given a state with a quad and an environment, build an info message for the 
+   object."
+  [{:keys [::en/env ::rdf/quad] :as state}]
+  (let [iri (::rdf/oi quad)
+        bnode (::rdf/ob quad)
+        lexical (::rdf/ol quad)
+        language (::rdf/lt quad)
+        datatype (::rdf/di quad)]
     [:p
      "Object"
      (vec
@@ -84,9 +123,11 @@
        (when lexical
          (cond
            (> (count lexical) max-length)
-           [[:li "Lexical value (truncated): " (subs lexical 0 max-length) " ..."]]
+           [[:li "Lexical value (truncated): " 
+             (subs lexical 0 max-length) " ..."]]
            (re-find #"\n" lexical)
-           [[:li "Lexical value (truncated): " (-> lexical string/split-lines first) " ..."]]
+           [[:li "Lexical value (truncated): " 
+             (-> lexical string/split-lines first) " ..."]]
            :else
            [[:li "Lexical value: " lexical]]))
        (when language [[:li "Language: " language]])
@@ -95,6 +136,8 @@
        (when datatype [[:li "Datatype IRI: " datatype]])))]))
 
 (defn status-message
+  "Given a state with (maybe) event, error, and comment keys, build a message 
+   about the state."
   [{:keys [::st/event ::st/error ::st/comment] :as state}]
   (case event
     ::st/error [[:p (::st/error-message error)]]
@@ -105,10 +148,12 @@
     ::st/graph-end nil
     ::st/subject-start [(subject-status state)]
     ::st/subject-end [(subject-status state)]
-    ::st/statement [(subject-status state) (predicate-status state) (object-status state)]
+    ::st/statement 
+    [(subject-status state) (predicate-status state) (object-status state)]
     ::st/header nil
     ["No status information available."]))
 
+;; TODO: update this method for new processing
 (defn help-message
   [{:keys [::st/event] :as state}]
   (case event
@@ -235,18 +280,18 @@
     ::st/header default
     ""))
 
-
-
 (defn status
+  "Given a state, return a status message about the state."
   [state]
   (if-let [event (get state ::st/event)]
-    (if (contains? (set title-states) event)
+    (if (contains? (set title-events) event)
       (concat
        [[:h3 (title state)]]
        [[:p (position state) "."]]
        (status-message state)))))
 
 (defn help
+  "Given a state, return a help message about the state."
   [state]
   (concat
    (status state)
@@ -255,6 +300,7 @@
 ;(println (markdown (help org.knotation.kn-test/x)))
 
 (defn node->markdown
+  "Given a hiccup node, convert it to markdown."
   [item]
   (if (vector? item)
     (let [[tag & more] item]
@@ -267,6 +313,7 @@
     item))
 
 (defn markdown
+  "Given a hiccup vector, convert the input to markdown."
   [hiccup]
   (->> hiccup
        (into [:div])
@@ -275,6 +322,7 @@
        (apply str)))
 
 (defn node->html
+  "Given a hiccup node, convert it to HTML."
   [item]
   (if (vector? item)
     (let [[tag & more] item]
@@ -285,6 +333,7 @@
     item))
 
 (defn html
+  "Given a hiccup vector, convert the input to HTML."
   [hiccup]
   (->> hiccup
        (into [:div])
@@ -293,6 +342,7 @@
        (apply str)))
 
 (defn node->text
+  "Given a hiccup node, convert it to text."
   [item]
   (if (vector? item)
     (let [[tag & more] item]
@@ -304,6 +354,7 @@
     item))
 
 (defn text
+  "Given a hiccup vector, convert the input to text."
   [hiccup]
   (->> hiccup
        (into [:div])
