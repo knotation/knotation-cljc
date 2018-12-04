@@ -102,5 +102,5 @@
         :ret ::st/states)
 
 (s/fdef ttl/render-states
-        :args (s/cat :env ::en/env :states ::st/states)
+        :args (s/cat :previous-state ::st/state :states ::st/states)
         :ret ::st/states)

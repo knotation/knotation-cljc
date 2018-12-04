@@ -104,7 +104,7 @@
   (let [initial-state (or initial-state st/default-state)]
     (case fmt
       :nt (nq/render-states states)
-      :ttl (ttl/render-states (get initial-state ::en/env en/default-env) states)
+      :ttl (ttl/render-states initial-state states)
       :kn (kn/render-states initial-state states)
       (throw (Exception. (format "Unsupported write format '%s'" fmt))))))
 

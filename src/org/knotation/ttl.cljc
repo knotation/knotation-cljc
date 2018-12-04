@@ -320,7 +320,7 @@
        rest))
 
 (defn render-states
-  [env states]
+  [previous-state states]
   (->> states
        (filter #(contains? #{::st/prefix ::st/base ::st/statement} (::st/event %)))
        (partition-by ::rdf/stanza)
@@ -328,5 +328,5 @@
        (reductions
         (fn [previous-stanza stanza]
           (render-stanza previous-stanza stanza))
-        [(assoc env ::st/event ::st/default)])
+        [previous-state])
        (mapcat identity)))

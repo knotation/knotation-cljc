@@ -219,7 +219,7 @@
 
 (deftest test-edn->edn
   (->> test-input-edn
-       (ttl/render-states {})
+       (ttl/render-states st/default-state)
        rest
        (= test-output-edn)
        is))

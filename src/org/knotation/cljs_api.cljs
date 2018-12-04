@@ -61,7 +61,7 @@
       :ttl 
       (->> states
            st/sequential-blank-nodes
-           (ttl/render-states (get initial-state ::en/env en/default-env)))
+           (ttl/render-states initial-state))
       (util/throw-exception "Unable to read input format: " fmt))))
 
 (defn render-output
