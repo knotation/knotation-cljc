@@ -328,5 +328,5 @@
        (reductions
         (fn [previous-stanza stanza]
           (render-stanza previous-stanza stanza))
-        [])
+        [{::en/env env}])
        (mapcat identity)))
