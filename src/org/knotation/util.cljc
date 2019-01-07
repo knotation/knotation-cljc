@@ -3,6 +3,8 @@
             #?(:clj [clojure.data.json :as json])))
 
 (defn get-lines
+  "Given a string, return a lazy sequence of lines
+   including the line ending character."
   [s]
   (re-seq #".*\n?" s))
 
