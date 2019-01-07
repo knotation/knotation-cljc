@@ -39,6 +39,7 @@
     (case input-format
       (:nt :ttl :rdfxml) (jena/read-input input-format initial-state input-stream)
       :kn (kn/read-lines initial-state (line-seq (io/reader input-stream)))
+      :tsv (tsv/read-lines initial-state (line-seq (io/reader input-stream)))
       (throw (Exception. (format "Unsupported read format '%s'" input-format))))))
 
 (defn read-string

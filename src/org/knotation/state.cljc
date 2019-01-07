@@ -51,7 +51,7 @@
      ::column-number
      (if (second lines)
        (-> lines last count)
-       (-> lines first count dec (+ column-number)))}))
+       (-> lines first count (+ column-number)))}))
 
 ;; # Input and Output
 
@@ -329,7 +329,7 @@
            (when (-> states first ::rdf/subject)
              [(-> states
                   first
-                  (select-keys [::en/env ::location ::rdf/stanza ::rdf/subject])
+                  (select-keys [::en/env ::location ::rdf/stanza ::rdf/subject ::input])
                   (assoc ::event ::subject-start))])
            (remove #(contains? #{::subject-start ::subject-end} (::event %)) states)
            (when (-> states first ::rdf/subject)

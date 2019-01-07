@@ -14,8 +14,8 @@ Options:
   -f FORMAT, -r FORMAT  --from=FORMAT, --read=FORMAT
   -t FORMAT, -w FORMAT  --to=FORMAT, --write=FORMAT
   -o FILENAME           --output=FILENAME
-  -v                    --version
   -s                    --sequential-blank-nodes
+  -v                    --version
   -h                    --help")
 
 (defn version
