@@ -1,4 +1,4 @@
-(defproject org.knotation/knotation-cljc "001"
+(defproject org.knotation/knotation-cljc "0.4.0-SNAPSHOT"
   :clojurescript? true
   :description "A library for working with Knotation format."
   :url "https://github.com/knotation/knotation-cljc"
@@ -23,11 +23,11 @@
                                          :pretty-print true}}
                        :test {:id "test"
                               :source-paths ["src/org/knotation" "test/org/knotation/runner.cljs" "test/org/knotation/cljs_api_test.cljs"]
-                              :compiler {:asset-path "resources"
+                              :compiler {:asset-path "resources"}
                                     :output-to "resources/knotation-testable.js"
                                     :output-dir "resources"
                                     :main org.knotation.runner
-                                    :optimizations :none}}}}
+                                    :optimizations :none}}}
   :source-paths ["src" "spec"]
   :main org.knotation.cli
   :aot [org.knotation.cli])
