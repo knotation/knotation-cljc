@@ -441,7 +441,7 @@
           value-map (->> value
                          string/split-lines
                          rest
-                         (map #(string/split % #": "))
+                         (map #(string/split % #": " 2))
                          (into {}))]
       (if-let [content (en/get-template-content env template-iri)]
         (->> (string/replace
