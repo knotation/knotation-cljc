@@ -9,7 +9,7 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/clojurescript "1.9.946"]
                  [org.clojure/data.json "0.2.6"]
-                 [org.clojure/tools.cli "0.3.5"]
+                 [org.clojure/tools.cli "0.4.1"]
 
                  [org.apache.jena/jena-arq "3.6.0"]
                  [org.slf4j/slf4j-nop "1.7.12"]
