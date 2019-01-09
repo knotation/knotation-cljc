@@ -1,93 +1,110 @@
 (ns org.knotation.rdf-spec
-  (:require [#?(:clj clojure.spec.alpha :cljs cljs.spec.alpha) :as s]
+  (:require [clojure.spec.alpha :as s]
+            [clojure.string :as string]
+
             [org.knotation.rdf :as rdf]))
 
-; TODO: tighten IRI
-(s/def ::rdf/iri (s/and string?  #(re-matches #"\S+" %)))
+(s/def ::rdf/iri (s/and string?  #(re-matches #"\S+" %) #(not (string/starts-with? % "_:"))))
 (s/def ::rdf/bnode (s/and string? #(re-matches #"_:\S+" %)))
 (s/def ::rdf/lexical string?)
 (s/def ::rdf/language-tag (s/and string? #(re-matches #"@\S+" %)))
-(s/def ::rdf/language (s/and string? #(re-matches #"\S+" %)))
+
+(s/def ::rdf/graph ::rdf/iri)
+(s/def ::rdf/subject (s/or :iri ::rdf/iri :bnode ::rdf/bnode))
+(s/def ::rdf/stanza ::rdf/subject)
+(s/def ::rdf/predicate ::rdf/iri)
 (s/def ::rdf/datatype ::rdf/iri)
+(s/def ::rdf/language string?) ; TODO: could be tighter
 
-(s/def ::rdf/language-tag-or-datatype
-  (s/or :language ::rdf/language-tag
-        :datatype ::rdf/datatype))
+(s/def ::rdf/subjects (s/coll-of ::rdf/subject))
 
-(s/def ::rdf/iri-node
-  (s/and
-   (s/keys :req [::rdf/iri])
-   #(not-any? % [::rdf/bnode ::rdf/lexical ::rdf/language ::rdf/datatype])))
+(s/def ::rdf/gi ::rdf/graph)
+(s/def ::rdf/zn ::rdf/stanza)
+(s/def ::rdf/si ::rdf/iri)
+(s/def ::rdf/sb ::rdf/bnode)
+(s/def ::rdf/pi ::rdf/iri)
+(s/def ::rdf/oi ::rdf/iri)
+(s/def ::rdf/ob ::rdf/bnode)
+(s/def ::rdf/ol ::rdf/lexical)
+(s/def ::rdf/di ::rdf/iri)
+(s/def ::rdf/lt ::rdf/language)
 
-(s/def ::rdf/blank-node
-  (s/and
-   (s/keys :req [::rdf/bnode])
-   #(not-any? % [::rdf/iri ::rdf/lexical ::rdf/language ::rdf/datatype])))
-
-(s/def ::rdf/link-node
-  (s/or
-   :iri-node ::rdf/iri-node
-   :blank-node ::rdf/blank-node))
-
-(s/def ::rdf/plain-literal-node
-  (s/and
-   (s/keys :req [::rdf/lexical])
-   #(not-any? % [::rdf/iri ::rdf/bnode ::rdf/language ::rdf/datatype])))
-
-(s/def ::rdf/language-literal-node
-  (s/and
-   (s/keys :req [::rdf/lexical ::rdf/language])
-   #(not-any? % [::rdf/iri ::rdf/bnode ::rdf/datatype])))
-
-(s/def ::rdf/typed-literal-node
-  (s/and
-   (s/keys :req [::rdf/lexical ::rdf/datatype])
-   #(not-any? % [::rdf/iri ::rdf/bnode ::rdf/language])))
-
-(s/def ::rdf/literal-node
-  (s/or
-   :plain-literal ::rdf/plain-literal-node
-   :language-literal ::rdf/language-literal-node
-   :typed-literal ::rdf/typed-literal-node))
-
-(s/def ::rdf/node
-  (s/or
-   :blank-node ::rdf/blank-node
-   :iri-node ::rdf/iri-node
-   :literal-node ::rdf/literal-node))
-
-(s/def ::rdf/graph-iri (s/or :default-graph nil? :named-graph ::rdf/iri))
-(s/def ::rdf/graph (s/or :default-graph nil? :named-graph ::rdf/iri-node))
-(s/def ::rdf/subject ::rdf/link-node)
-(s/def ::rdf/predicate ::rdf/iri-node)
-(s/def ::rdf/object ::rdf/node)
-
-(s/def ::rdf/triple (s/keys :req [::rdf/subject ::rdf/predicate ::rdf/object]))
+(s/def ::rdf/triple (s/keys :req [::rdf/pi]
+                            :opt [::rdf/zn
+                                  ::rdf/si ::rdf/sb
+                                  ::rdf/oi ::rdf/ob ::rdf/ol
+                                  ::rdf/di ::rdf/lt]))
 (s/def ::rdf/triples (s/coll-of ::rdf/triple))
 
-(s/def ::rdf/quad
-  (s/keys :req [::rdf/graph ::rdf/subject ::rdf/predicate ::rdf/object]))
+(s/def ::rdf/quad (s/keys :req [::rdf/pi]
+                          :opt [::rdf/gi
+                                ::rdf/zn
+                                ::rdf/si ::rdf/sb
+                                ::rdf/oi ::rdf/ob ::rdf/ol
+                                ::rdf/di ::rdf/lt]))
 (s/def ::rdf/quads (s/coll-of ::rdf/quad))
 
-(s/def ::rdf/graph-map
-  (s/map-of ::rdf/subject
-            (s/map-of ::rdf/predicate
-                      (s/coll-of ::rdf/object))))
-(s/def ::rdf/dataset-map
-  (s/map-of ::rdf/graph
-            (s/map-of ::rdf/subject
-                      (s/map-of ::rdf/predicate
-                                (s/coll-of ::rdf/object)))))
+; # Blank Nodes
 
-(s/def ::rdf/triple-seq
-  (s/cat :subject ::rdf/subject
-         :predicate ::rdf/predicate
-         :object ::rdf/object))
-(s/def ::rdf/triple-seqs (s/coll-of ::rdf/triple-seq))
+(s/fdef rdf/blank?
+        :args (s/cat :string string?)
+        :ret boolean?)
 
-(s/def ::rdf/quad-seq
-  (s/cat :graph ::rdf/graph
-         :subject ::rdf/subject
-         :predicate ::rdf/predicate
-         :object ::rdf/object))
-(s/def ::rdf/quad-seqs (s/coll-of ::rdf/quad-seq))
+(s/fdef rdf/random-blank-node
+        :ret ::rdf/bnode)
+
+(s/fdef rdf/replace-blank-node
+        :args (s/cat :coll map? :node (s/nilable ::rdf/subject))
+        :ret (s/tuple map? (s/nilable string?)))
+
+(s/fdef rdf/sequential-blank-nodes
+        :args (s/cat :maps (s/coll-of map?))
+        :ret (s/coll-of map?))
+
+(s/fdef rdf/rdf-anonymous-subject?
+        :args (s/cat :quads ::rdf/quads :subject ::rdf/bnode)
+        :ret boolean?)
+
+; # RDF Lists
+
+(s/fdef rdf/rdf-list?
+        :args (s/cat :quads ::rdf/quads :head ::rdf/subject)
+        :ret boolean?)
+
+(s/fdef rdf/collect-list
+        :args (s/cat :quads ::rdf/quads :head ::rdf/subject)
+        :ret ::rdf/quads)
+
+(s/def ::rdf/objects-subjects (s/map-of ::rdf/bnode ::rdf/subject))
+
+;; # OWL Annotations
+
+(s/fdef rdf/annotation-subjects
+        :args (s/cat :quads ::rdf/quads)
+        :ret (s/coll-of ::rdf/bnode :type set?))
+
+(s/fdef rdf/annotation-target
+        :args (s/cat :quads ::rdf/quads)
+        :ret ::rdf/quad)
+
+(s/fdef rdf/annotation-targets
+        :args (s/cat :annotations (s/coll-of ::rdf/bnode :type set?) :quads ::rdf/quads)
+        :ret (s/map-of ::rdf/quad (s/coll-of ::rdf/bnode :type vector?)))
+
+;; # Stanzas
+
+(s/fdef rdf/objects-subjects
+        :args (s/cat :quads ::rdf/quads)
+        :ret ::rdf/objects-subjects)
+
+(s/fdef rdf/find-stanza
+        :args (s/cat :objects-subjects ::rdf/objects-subjects :subject ::rdf/bnode)
+        :ret ::rdf/subject)
+
+(s/fdef rdf/assign-stanza
+        :args (s/cat :objects-subjects ::rdf/objects-subjects :quad ::rdf/quad)
+        :ret ::rdf/quad)
+
+(s/fdef rdf/assign-stanzas
+        :args (s/cat :quads ::rdf/quads)
+        :ret ::rdf/quads)

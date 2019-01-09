@@ -1,15 +1,11 @@
 (ns org.knotation.environment-test
   (:require [clojure.test :refer [deftest is testing]]
-            [#?(:clj clojure.spec.alpha :cljs cljs.spec.alpha) :as s]
-            [#?(:clj clojure.spec.test.alpha :cljs cljs.spec.test.alpha) :as stest]
-            [org.knotation.environment-spec]
-            [org.knotation.environment :as en]))
+            [orchestra.spec.test :as stest]
+
+            [org.knotation.environment :as en]
+            [org.knotation.environment-spec]))
 
 (stest/instrument)
-
-(deftest test-environments
-  (is (s/valid? ::en/env en/blank-env))
-  (is (s/valid? ::en/env en/default-env)))
 
 (deftest test-add-prefix
   (is (= {::en/prefix-iri {"ex" "https://example.com/"}

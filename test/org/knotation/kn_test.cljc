@@ -1,263 +1,35 @@
 (ns org.knotation.kn-test
   (:require [clojure.test :refer [deftest is testing]]
-            [#?(:clj clojure.spec.alpha :cljs cljs.spec.alpha) :as s]
-            [#?(:clj clojure.spec.test.alpha :cljs cljs.spec.test.alpha) :as stest]
+            [clojure.string :as string]
+            [orchestra.spec.test :as stest]
+
+            [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
             [org.knotation.state-spec]
-            [org.knotation.kn :as kn]))
+            [org.knotation.kn :as kn]
+            [org.knotation.kn-spec]))
 
 (stest/instrument)
 
-(def example-quad-ex-text-foo
-  {::st/event ::st/statement
-   ::rdf/graph nil
-   ::rdf/subject {::rdf/iri "https://example.com/foo"}
-   ::rdf/predicate {::rdf/iri "https://example.com/text"}
-   ::rdf/object {::rdf/lexical "Foo"}})
-
-(def example-quad-ex-text-en-foo
-  {::st/event ::st/statement
-   ::rdf/graph nil
-   ::rdf/subject {::rdf/iri "https://example.com/foo"}
-   ::rdf/predicate {::rdf/iri "https://example.com/text"}
-   ::rdf/object {::rdf/lexical "Foo" ::rdf/language "en"}})
-
-(def example-quad-ex-text-bar-foo
-  {::st/event ::st/statement
-   ::rdf/graph nil
-   ::rdf/subject {::rdf/iri "https://example.com/foo"}
-   ::rdf/predicate {::rdf/iri "https://example.com/text"}
-   ::rdf/object {::rdf/lexical "Foo"
-                 ::rdf/datatype "https://example.com/bar"}})
-
-(def example-quad-rdfs-label-foo
-  {::st/event ::st/statement
-   ::rdf/graph nil
-   ::rdf/subject {::rdf/iri "https://example.com/foo"}
-   ::rdf/predicate {::rdf/iri "http://www.w3.org/2000/01/rdf-schema#label"}
-   ::rdf/object {::rdf/lexical "Foo"}})
-
-(def example-quad-homepage
-  {::st/event ::st/statement
-   ::rdf/graph nil
-   ::rdf/subject {::rdf/iri "https://example.com/foo"}
-   ::rdf/predicate {::rdf/iri "https://example.com/homepage"}
-   ::rdf/object {::rdf/iri "https://example.com"}})
-
-(def example-quad-default-datatype
-  {::st/event ::st/statement
-   ::rdf/graph nil
-   ::rdf/subject {::rdf/iri "https://example.com/foo"}
-   ::rdf/predicate {::rdf/iri "https://knotation.org/predicate/default-datatype"}
-   ::rdf/object {::rdf/iri "https://knotation.org/datatype/link"}})
-
-(defn test-line
-  [line before-state after-fn]
-  (let [input {::st/format :knotation
-               ::st/line-number 1
-               ::st/lines [line]}]
-    (is (= (assoc (after-fn before-state) ::st/input input)
-           (kn/read-state (assoc before-state ::st/input input)))
-        (str "Testing line: " line))))
-
-(deftest test-read-state
-  (test-line
-   "@prefix ex: <https://example.com/>"
-   st/blank-state
-   #(-> %
-        (st/add-prefix "ex" "https://example.com/")
-        (assoc ::st/event ::st/prefix ::st/prefix "ex")))
-
-  (test-line
-   ": ex:foo"
-   (-> st/blank-state
-       (st/add-prefix "ex" "https://example.com/"))
-   #(assoc
-     %
-     ::st/event ::st/subject-start
-     ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-
-  (test-line
-   "ex:text: Foo"
-   (-> st/blank-state
-       (st/add-prefix "ex" "https://example.com/")
-       (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(merge % example-quad-ex-text-foo))
-
-  (test-line
-   "ex:text; @en: Foo"
-   (-> st/blank-state
-       (st/add-prefix "ex" "https://example.com/")
-       (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(merge % example-quad-ex-text-en-foo))
-
-  (test-line
-   "ex:text; ex:bar: Foo"
-   (-> st/blank-state
-       (st/add-prefix "ex" "https://example.com/")
-       (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(merge % example-quad-ex-text-bar-foo))
-
-  (test-line
-   "ex:text: Foo"
-   (-> st/blank-state
-       (st/add-prefix "ex" "https://example.com/")
-       (st/set-language "https://example.com/text" "en")
-       (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(merge % example-quad-ex-text-en-foo))
-
-  (test-line
-   "ex:text; @en: Foo"
-   (-> st/blank-state
-       (st/add-prefix "ex" "https://example.com/")
-       (st/set-language "https://example.com/text" "fr")
-       (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(merge % example-quad-ex-text-en-foo))
-
-  (test-line
-   "ex:text: Foo"
-   (-> st/blank-state
-       (st/add-prefix "ex" "https://example.com/")
-       (st/set-datatype "https://example.com/text"
-                        "https://example.com/bar")
-       (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(merge % example-quad-ex-text-bar-foo))
-
-  (test-line
-   "ex:text; ex:bar: Foo"
-   (-> st/blank-state
-       (st/add-prefix "ex" "https://example.com/")
-       (st/set-datatype "https://example.com/text"
-                        "https://example.com/bat")
-       (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(merge % example-quad-ex-text-bar-foo))
-
-  (test-line
-   "label: Foo"
-   (-> st/default-state
-       (st/add-prefix "ex" "https://example.com/")
-       (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(-> %
-        (st/add-label "Foo" "https://example.com/foo")
-        (merge example-quad-rdfs-label-foo)))
-
-  (test-line
-   "homepage: https://example.com"
-   (-> st/default-state
-       (st/add-label "homepage" "https://example.com/homepage")
-       (st/set-datatype "https://example.com/homepage" "https://knotation.org/datatype/link")
-       (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(merge % example-quad-homepage))
-
-  (test-line
-   "default datatype: https://knotation.org/datatype/link"
-   (-> st/default-state
-       (assoc ::rdf/subject {::rdf/iri "https://example.com/foo"}))
-   #(-> %
-        (st/set-datatype "https://example.com/foo" "https://knotation.org/datatype/link")
-        (merge example-quad-default-datatype))))
-
-(def base-1 st/blank-state)
-(def base-2
-  (-> st/blank-state
-      (st/add-prefix "ex" (rdf/ex))))
-
-(def lines
-  ["@prefix ex: <http://example.com/>"
-   ""
-   ": ex:s"
-   "ex:p; ex:d: Multiline"
-   " string"
-   ;""
-   " "
-   "  with spaces."
-   " "
-   ""])
-
-(def states
-  [(assoc base-2 ; TODO: Not quite right
-          ::st/event ::st/graph-start)
-   (assoc base-2
-          ::st/event ::st/prefix
-          ::st/input
-          {::st/format :kn
-           ::st/line-number 1
-           ::st/lines ["@prefix ex: <http://example.com/>"]}
-          ::st/prefix "ex")
-   (assoc base-2
-          ::st/event ::st/space
-          ::st/input
-          {::st/format :kn
-           ::st/line-number 2
-           ::st/lines [""]})
-   (assoc base-2
-          ::st/event ::st/subject-start
-          ::st/input
-          {::st/format :kn
-           ::st/line-number 3
-           ::st/lines [": ex:s"]}
-          ::rdf/subject {::rdf/iri (rdf/ex "s")})
-   (assoc base-2
-          ::st/event ::st/statement
-          ::st/input
-          {::st/format :kn
-           ::st/line-number 4
-           ::st/lines ["ex:p; ex:d: Multiline"
-                       " string"
-                       " "
-                       "  with spaces."
-                       " "]}
-          ::rdf/graph nil
-          ::rdf/subject {::rdf/iri (rdf/ex "s")}
-          ::rdf/predicate {::rdf/iri (rdf/ex "p")}
-          ::rdf/object {::rdf/lexical "Multiline
-string
-
- with spaces.
-"
-                        ::rdf/datatype (rdf/ex "d")})
-   (assoc base-2
-          ::st/event ::st/space
-          ::st/input
-          {::st/format :kn
-           ::st/line-number 9
-           ::st/lines [""]}
-          ::rdf/graph nil
-          ::rdf/subject {::rdf/iri (rdf/ex "s")})
-   (assoc base-2
-          ::st/event ::st/subject-end
-          ::rdf/graph nil
-          ::rdf/subject {::rdf/iri (rdf/ex "s")})
-   (assoc base-2
-          ::st/event ::st/graph-end
-          ::rdf/graph nil)])
-
-(deftest test-states
-  (is (s/valid? ::st/states states)))
-
-(deftest test-read-input
-  (is (= states
-         (kn/read-input en/blank-env {::st/lines lines}))))
-
-(deftest test-render-lines
-  (is (= lines
-         (->> states
-              kn/render-states
-              (map ::st/output)
-              (mapcat ::st/lines)))))
+(defn test-roundtrip-line
+  [parse-fn read-fn render-fn line]
+  (->> line
+       parse-fn
+       (assoc st/default-state ::st/parse)
+       read-fn
+       render-fn
+       st/render-parse
+       (= line)
+       is))
 
 (defn test-before-after
   [before after]
   (->> before
-       clojure.string/split-lines
-       (assoc {::st/line-number 1} ::st/lines)
-       (kn/read-input en/blank-env)
-       kn/render-states
-       (map ::st/output)
-       (mapcat ::st/lines)
-       (clojure.string/join "\n")
+       (kn/read-input st/default-state)
+       (kn/render-states st/default-state)
+       st/render-output-string
        (= after)
        is))
 
@@ -265,9 +37,18 @@ string
   [content]
   (test-before-after content content))
 
+(deftest test-roundtrip-lines
+  (test-roundtrip-line kn/parse-blank kn/read-blank kn/render-blank "\n")
+  (test-roundtrip-line kn/parse-comment kn/read-comment kn/render-comment "# Foo \n")
+  (test-roundtrip-line kn/parse-prefix kn/read-prefix kn/render-prefix "@prefix foo: <bar>\n")
+  (test-roundtrip-line kn/parse-subject kn/read-subject kn/render-subject ": <bar>\n")
+  (for [s ["<foo>: bar\n"
+           "<foo>; <bat>: bar\n"
+           "<foo>; @en: bar\n"]]
+    (test-roundtrip-line kn/parse-statement kn/read-statement (comp kn/render-statement first) s)))
+
 (deftest test-roundtrips
-  (test-roundtrip
-   "@prefix ex: <http://example.com/>
+  (test-roundtrip "@prefix ex: <http://example.com/>
 
 # comment
 
@@ -275,30 +56,67 @@ string
 ex:p; ex:d: Multiline
  string
  
-  with spaces."))
+ with spaces.
+"))
 
 (deftest test-templates
   (test-before-after
-   "@prefix knp: <https://knotation.org/predicate/>
+   "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:template
-knp:template-content: 
- ex:label: Foo {label}
+kn:template-content:
+ ex:label: Foo {short name}
 
 : ex:1
 ex:foo: bar
-knp:apply-template: ex:template
- label: Bar"
-   "@prefix knp: <https://knotation.org/predicate/>
+kn:apply-template: ex:template
+ short name: Bar"
+   "@prefix kn: <https://knotation.org/kn/>
 @prefix ex: <http://example.com/>
 
 : ex:template
-knp:template-content: 
- ex:label: Foo {label}
+kn:template-content:
+ ex:label: Foo {short name}
 
 : ex:1
 ex:foo: bar
-knp:applied-template: ex:template
- label: Bar
-ex:label: Foo Bar"))
+kn:applied-template: ex:template
+ short name: Bar
+ex:label: Foo Bar
+"))
+
+(deftest test-annotations
+  (test-roundtrip "@prefix kn: <https://knotation.org/kn/>
+@prefix ex: <http://example.com/>
+
+: ex:s
+ex:a: A
+> ex:b: B
+")
+  (test-roundtrip "@prefix kn: <https://knotation.org/kn/>
+@prefix ex: <http://example.com/>
+
+: ex:s
+ex:p; kn:link: ex:o
+> ex:a; kn:link: ex:b
+>> ex:c; kn:link: ex:d
+")
+  (test-roundtrip "@prefix ex: <http://example.com/>
+
+: ex:s
+ex:p: A
+> ex:p: B is an annotation on A
+>> ex:p: C is an annotation on B
+> ex:p: D is an annotation on A
+")
+  (test-roundtrip "@prefix ex: <http://example.com/>
+
+: ex:s
+ex:p: A
+> ex:p: B is an annotation on A
+  that includes a multi-line string
+>> ex:p: C is an annotation on B
+   that likewise includes a multi-line string
+> ex:p: D is an annotation on A
+"))

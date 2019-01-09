@@ -2,10 +2,17 @@
   (:require [clojure.string :as string]
             #?(:clj [clojure.data.json :as json])))
 
-(defn starts-with?
-  [target prefix]
-  (and (>= (count target) (count prefix))
-       (every? identity (map = target prefix))))
+(defn get-lines
+  "Given a string, return a lazy sequence of lines
+   including the line ending character."
+  [s]
+  (re-seq #".*\n?" s))
+
+(defn split-lines
+  "Split a string on newlines,
+   keeping the newline with the string."
+  [s]
+  (butlast (get-lines s)))
 
 (defn surround
   [before after xs]
@@ -29,6 +36,20 @@
   #?(:clj (json/write-str content)
      :cljs (.stringify js/JSON (clj->js content) nil 2)))
 
+(defn error
+  [error-type & info]
+  (->> info
+       (map str)
+       ;(concat [(get error-messages error-type "ERROR:")])
+       (string/join " ")
+       (assoc
+        {:org.knotation.state/error-type error-type}
+        :org.knotation.state/error-message)
+       (merge (when info {:org.knotation.state/error-info info}))
+       (assoc
+        {:org.knotation.state/event :org.knotation.state/error}
+        :org.knotation.state/error)))
+
 (defn throw-exception
   "Given a sequence of arguments,
     throw a cross-platform exception."
@@ -38,14 +59,3 @@
     (->> messages
          (map str)
          (string/join " ")))))
-
-(defmacro handler-case
-  [body & handlers]
-  `(try
-     ~body
-     ~@(map
-        (fn [[exception-type name & body]]
-          `(catch ~(if (= :default exception-type)
-                     #?(:clj Exception :cljs js/Error)
-                     exception-type) ~name ~@body))
-        handlers)))

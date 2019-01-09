@@ -1,23 +1,22 @@
 (ns org.knotation.cli
-  (:require [clojure.string :as string]
-            [clojure.pprint :as pp]
-            [org.knotation.util :refer [throw-exception]]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as string]
+            [clojure.tools.cli :refer [parse-opts]]
             [org.knotation.state :as st]
-            [org.knotation.api :as api])
+            [org.knotation.clj-api :as api])
   (:gen-class))
 
-; The Knotation CLI converts one or more input files to an output file.
-; The current implementation only handles NQuad output.
-; An input file without options is processed as an both environment and data.
-; The `-e` and `-d` options restrict processing to just environment or data.
-
-(def usage
-  "kn [OPTIONS] [FILES]
-  -e FILE      --env FILE
-  -d FILE      --data FILE
-  -v           --version
-  -h           --help
-")
+(def usage "kn [OPTIONS] [FILES]
+Input formats:  knotation, nquads, ntriples, owl (OWLXML), tsv
+Output formats: turtle, knotation, nquads, ntriples, owl (OWLXML),
+                rdfa, json (tree), dot
+Options:
+  -f FORMAT, -r FORMAT  --from=FORMAT, --read=FORMAT
+  -t FORMAT, -w FORMAT  --to=FORMAT, --write=FORMAT
+  -o FILENAME           --output=FILENAME
+  -s                    --sequential-blank-nodes
+  -v                    --version
+  -h                    --help")
 
 (defn version
   []
@@ -28,124 +27,58 @@
        .getImplementationVersion
        (or "DEVELOPMENT"))))
 
-(defn get-format
-  [path]
-  (cond
-    (re-find #"\.kn$" path) :kn
-    (re-find #"\.tsv$" path) :tsv
-    (re-find #"\.nq$" path) :nq
-    :else nil))
+(def cli-options
+  [["-f" "--from FORMAT" "Format for input"]
+   ["-r" "--read FORMAT" "Same as --from"]
+   ["-t" "--to FORMAT" "Format for output"]
+   ["-w" "--write FORMAT" "Same as --to"]
+   ["-o" "--output FILENAME" "File for output"]
+   ["-c" "--context FILENAME" "File for context"
+    :default []
+    :assoc-fn (fn [m k v] (update-in m [k] conj v))]
+   ["-s" "--sequential-blank-nodes" "Outputs sequential blank nodes instead of random ones. Useful for testing purposes."]
+   ["-v" "--version"]
+   ["-h" "--help"]])
 
-(defn lex
-  [arg]
-  (if (.startsWith arg "-")
-    (let [[_ flag value] (re-matches #"(-\S+)=(.*)" arg)
-          flag (or flag arg)]
-      [(case flag
-         ("-e" "--env") {::flag :env ::args 1}
-         ("-p" "--prefixes") {::flag :prefixes ::args 1}
-         ("-d" "--data") {::flag :data ::args 1}
-         ("-f" "--format") {::flag :format ::args 1}
-         ("-s" "--sort") {::flag :sort ::args 0}
-         ("--sbn" "--sequential-blank-nodes")
-         {::flag :sequential-blank-nodes ::args 0}
-         ("-E" "--reset-env") {::flag :reset-env ::args 0}
-         ("--dump") {::flag :dump ::args 0}
-         (throw-exception (str "Unknown option: " arg)))
-       (when value {::value value})])
-    [{::value arg}]))
+(defn error-msg [errors]
+  (str "The following errors occurred while parsing your command:\n\n"
+       (string/join \newline errors)))
 
-(defn lexer
+(defn exit [status msg]
+  (println msg)
+  (System/exit status))
+
+(defn run
+  "Given a sequence of command-line argument strings,
+   run and exit."
   [args]
-  (->> args
-       (mapcat lex)
-       (remove nil?)))
+  (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
+    (cond
+      (:help options) (println usage)
+      (:version options) (println (version))
+      errors (exit 1 (error-msg errors))
+      (= 0 (count arguments)) (exit 1 (error-msg ["Specify at least one FILE"]))
+      :else
+      (let [fmt (or (keyword (:to options))
+                    (keyword (:write options))
+                    (api/path-format (:output options)))
+            context (when (first (:context options))
+                      (->> options
+                           :context
+                           (api/read-paths nil nil)
+                           last
+                           st/make-context))
+            in-raw (api/read-paths
+                    (or (:from options) (:read options))
+                    context
+                    arguments)
+            in (if (:sequential-blank-nodes options)
+                 (st/sequential-blank-nodes in-raw)
+                 in-raw)
+            out (if (:output options)
+                  (io/file (:output options))
+                  System/out)]
+        (api/render-file fmt context in out)))))
 
-(defn group-args
-  [args]
-  (loop [done []
-         todo (lexer args)]
-    (let [{:keys [::args] :or {args 0} :as next} (first todo)]
-      (if-not next
-        done
-        (recur
-         (->> todo
-              (take (inc args))
-              (map #(dissoc % ::args))
-              (apply merge)
-              (conj done))
-         (drop (inc args) todo))))))
-
-(defn operation
-  [{:keys [::flag ::value] :as arg}]
-  (case flag
-    (nil :env :prefixes :data)
-    (merge
-     {::api/operation-type :read
-      ::st/source value
-      ::st/format (get-format value)
-      ::st/lines (line-seq (clojure.java.io/reader value))}
-     (when flag {::st/mode flag}))
-
-    :format
-    {::api/operation-type :render
-     ::st/format (keyword value)}
-
-    :sort
-    {::api/operation-type :sort}
-
-    :sequential-blank-nodes
-    {::api/operation-type :sequential-blank-nodes}
-
-    :reset-env
-    {::api/operation-type :reset-env}
-
-    :dump
-    {::api/operation-function
-     (fn [states]
-       (map #(do (println %) %) states))}))
-
-(defn operations
-  [args]
-  (let [operations (->> args group-args (map operation))]
-    (if (->> operations
-             (filter #(= :render (::api/operation-type %)))
-             first)
-      operations
-      (concat
-       operations
-       [{::api/operation-type :render}]))))
-
-(defn print-lines
-  [states]
-  (doseq [state states]
-    (when-let [message (-> state ::st/error ::st/error-message)]
-      (throw-exception (str "ERROR: " message)))
-    (when-let [lines (-> state ::st/output ::st/lines)]
-      (doseq [line lines]
-        (println line)))))
-
-(defn run-string
-  [s]
-  (->> (string/split s #"\s+")
-       group-args
-       (map operation)
-       api/run-operations))
-
-(defn -main
-  [& args]
-  (try
-    (when (some #{"-h" "--help"} args)
-      (println usage)
-      (System/exit 0))
-    (when (some #{"-v" "--version"} args)
-      (println (version))
-      (System/exit 0))
-    (->> args
-         operations
-         api/run-operations
-         print-lines)
-    (catch Exception e
-      (println e) ; TODO: remove
-      (println usage)
-      (System/exit 1))))
+(defn -main [& args]
+  (run args))

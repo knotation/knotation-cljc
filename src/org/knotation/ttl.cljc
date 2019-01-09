@@ -1,135 +1,332 @@
 (ns org.knotation.ttl
   (:require [clojure.string :as string]
+            [clojure.zip :as zip]
+
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
-            [org.knotation.state :as st]
-            [org.knotation.state-spec]
-            [org.knotation.link :as ln]
-            [org.knotation.object :as ob]
-            [org.knotation.format :as fm]
-            [org.knotation.omn :as omn]))
+            [org.knotation.state :as st]))
 
-(defn indent
-  [line]
-  (if (re-find #"^  " line)
-    (string/replace line #"^  " "    ")
-    line))
+(defn render-iri
+  "Given an environment and an IRI string,
+   return a CURIE or a wrapped IRI string."
+  [env iri]
+  (or (en/iri->curie env iri)
+      (en/iri->wrapped-iri iri)))
 
-(defn render-node
-  [env {:keys [::rdf/iri ::rdf/bnode ::rdf/lexical] :as node}]
-  (cond
-    iri (ln/iri->curie-or-wrapped-iri env iri)
-    bnode bnode
-    lexical (ob/object->turtle-object env node)))
+(defn render-lexical
+  [ol]
+  (if (re-find #"\n" ol)
+    (str "\"\"\"" ol "\"\"\"")
+    (str "\"" ol "\"")))
 
-(defn render-quad
-  [env {:keys [::rdf/predicate ::rdf/object] :as quad}]
-  (cond
-    (->> object ::rdf/pairs first ::rdf/predicate ::rdf/iri (= (rdf/rdf "first")))
-    (concat
-     [(str "  " (render-node env predicate) " (")]
-     (->> object
-          ::rdf/pairs
-          omn/branch->list
-          (mapcat
-           (fn [{:keys [::rdf/pairs] :as o}]
-             (if pairs
-               (->> pairs
-                    (mapcat (partial render-quad env))
-                    (map indent)
-                    (util/surround "  [" "  ]"))
-               [(str "  " (render-node env o))])))
-          (map indent))
-     ["  ) ;"])
+(defn render-object
+  "Given an environment, a sequence of states, and an object node,
+   return a (possibly nested) sequence of strings representing the object,
+   including nested lists and anonymous subjects."
+  [env {::rdf/keys [pi oi ob ol di lt] :as quad}]
+  (let [di (or di (en/get-datatype env pi))
+        lt (or lt (en/get-language env pi))]
+    (cond
+      oi (render-iri env oi)
 
-    (::rdf/pairs object)
-    (concat
-     [(str "  " (render-node env predicate) " [")]
-     (->> object
-          ::rdf/pairs
-          (mapcat (partial render-quad env))
-          (map indent))
-     ["  ] ;"])
+      ob ob
 
-    :else
-    (string/split
-     (->> [predicate object]
-          (remove nil?)
-          (map (partial render-node env))
-          (util/surround " " ";")
-          (string/join " "))
-     #"\n"
-     -1)))
+      (and di (not (contains? #{(rdf/xsd "string") (rdf/kn "link")} di)))
+      (str (render-lexical ol) "^^" (render-iri env di))
 
-(defn output-lines
-  [state lines]
-  (assoc
-   state
-   ::st/output
-   {::st/format :ttl
-    ::st/lines lines}))
+      lt (str (render-lexical ol) "@" lt)
+
+      ol (render-lexical ol))))
+
+(defn render-blank
+  [state]
+  "\n")
+
+(defn render-prefix
+  [{:keys [::en/prefix ::en/iri] :as state}]
+  (str "@prefix " prefix ": <" iri "> .\n"))
+
+(defn render-base
+  [{:keys [::en/base] :as state}]
+  (str "@base <" base "> .\n"))
+
+(defn render-stanza-start
+  [{:keys [::en/env ::rdf/subject] :or {env {}} :as state}]
+  nil)
+
+(defn render-stanza-end
+  [state]
+  nil)
+
+(defn render-subject-start
+  [{:keys [::en/env ::rdf/subject ::lexical ::terminal] :or {env {}} :as state}]
+  (str (or lexical
+           (when (rdf/blank? subject) subject)
+           (render-iri env subject))
+       terminal))
+
+(defn render-subject-end
+  [{:keys [::rdf/subject ::depth ::lexical ::terminal] :or {depth 0} :as state}]
+  (when (and lexical terminal)
+    (apply
+     str
+     (concat
+      (repeat (dec depth) "  ")
+      [lexical terminal]))))
+
+(defn render-statement
+  [{:keys [::en/env ::rdf/quad ::predicate ::object ::depth ::initial ::terminal]
+    :or {env {} depth 1}
+    :as state}]
+  (apply
+   str
+   (concat
+    (repeat depth "  ")
+    [initial]
+    (if predicate
+      [predicate]
+      [(render-iri env (::rdf/pi quad)) " "])
+    (if object
+      [object]
+      [(render-object env quad)
+       terminal]))))
 
 (defn render-state
-  [{:keys [::st/mode ::st/event ::en/env
-           ::st/comment ::st/prefix ::rdf/subject]
-    :as state}]
-  (case (if (= :env mode) nil event)
-    ::st/comment
-    (output-lines state [comment])
-
-    ::st/prefix
-    (output-lines
+  "Given a state, return a state with optional ::st/output."
+  [{:keys [::st/event ::silent] :as state}]
+  (if silent
+    state
+    (st/output
      state
-     [(str "@prefix " prefix ": <" (get-in env [::en/prefix-iri prefix]) "> .")])
+     :ttl
+     (case event
+       ::st/blank (render-blank state)
+       ::st/prefix (render-prefix state)
+       ::st/base (render-base state)
+       ::st/stanza-start (render-stanza-start state)
+       ::st/stanza-end (render-stanza-end state)
+       ::st/subject-start (render-subject-start state)
+       ::st/subject-end (render-subject-end state)
+       ::st/statement (render-statement state)
+       (util/throw-exception "Bad event" event "in state" state)))))
 
-    ::st/space
-    (output-lines state [""])
+;; # Tree Representation
+;;
+;; Process the Turltle nodes as a tree using clojure.zip.
+;; First we create a zipper using a vector of ::st/children states.
+;; Then we build the tree by inserting nested children.
+;; Then we flatten the tree with a depth-first traversal,
+;; inserting subject-start and subject-end states,
+;; handling anonymous nodes,
+;; and keeping RDF list elements at the same depth.
 
-    ::st/subject-start
-    (output-lines state [(render-node env subject)])
+(defn state-tree
+  "Given a state, return a zipper using ::st/children."
+  [state]
+  (zip/zipper
+   (constantly true)
+   ::st/children
+   (fn [node children] (assoc node ::st/children children))
+   state))
 
-    ::st/statement
-    (output-lines state (render-quad env state))
+(defn annotate-statement
+  "Given a map from subjects to their states,
+   with a current subject and state,
+   return that state ready to render."
+  [{:keys [::subjects] :as coll}]
+  (let [subject (first subjects)
+        state (first (get coll subject))
+        pi (-> state ::rdf/quad ::rdf/pi)
+        state (cond
+                (= (rdf/rdf "first") pi)
+                (assoc state ::predicate "" ::terminal "\n")
+                (= state (last (get coll subject)))
+                (if (-> coll ::tree zip/path count (> 2))
+                  (assoc state ::terminal "\n")
+                  (assoc state ::terminal " .\n"))
+                :else
+                (assoc state ::terminal " ;\n"))]
+    (assoc state ::silent (= (rdf/rdf "rest") pi))))
 
-    state))
+(defn annotate-subject-start
+  "Given a map from subjects to their states,
+   with a current subject and state,
+   return a ::st/subject-start state ready to render."
+  [{:keys [::subjects ::tree] :as coll}]
+  (let [subject (first subjects)
+        state (first (get coll subject))
+        quad (::rdf/quad state)
+        pi (::rdf/pi quad)
+        parent (zip/node tree)
+        list-item? (contains? #{(rdf/rdf "first") (rdf/rdf "rest")} pi)
+        list-head? (and parent (->> parent ::rdf/quad ::rdf/pi (not= (rdf/rdf "rest"))))]
+    {::st/event ::st/subject-start
+     ::rdf/stanza (::rdf/zn quad)
+     ::rdf/subject subject
+     ::silent (and list-item? (not list-head?))
+     ::lexical (when (-> tree zip/path count (> 1))
+                 (if list-item? "(" "["))
+     ::terminal "\n"}))
 
-(defn terminator
-  "Replace the final semi-colon of the final line for a stanza
-   with a period."
-  [states]
-  (let [states (vec states)
-        index (->> states
-                   (map-indexed vector)
-                   reverse
-                   (filter #(= ::st/statement (::st/event (second %))))
-                   first
-                   first)
-        lines (get-in states [index ::st/output ::st/lines])]
-    (if lines
-      (assoc-in
-       states
-       [index ::st/output ::st/lines]
+(defn annotate-subject-end
+  "Given a map from subjects to their states,
+   with a current subject and state,
+   return a ::st/subject-end state ready to render."
+  [{:keys [::subjects ::tree] :as coll}]
+  (let [subject (first subjects)
+        state (-> tree zip/down zip/rightmost zip/node)
+        quad (::rdf/quad state)
+        pi (::rdf/pi quad)
+        parent (zip/node tree)
+        list-item? (contains? #{(rdf/rdf "first") (rdf/rdf "rest")} pi)
+        list-end? (and (= (rdf/rdf "rest") pi) (= (rdf/rdf "nil") (::rdf/oi quad)))]
+    {::st/event ::st/subject-end
+     ::rdf/stanza (::rdf/zn quad)
+     ::rdf/subject subject
+     ::silent (and list-item? (not list-end?))
+     ::lexical (when (-> tree zip/path count (> 1))
+                 (if list-item? ")" "]"))
+      ; copy the terminal from the first ancestor statement that's not a list
+     ::terminal (->> tree
+                     zip/path
+                     (filter ::rdf/quad)
+                     (drop-while #(= (rdf/rdf "rest") (-> % ::rdf/quad ::rdf/pi)))
+                     first
+                     ::terminal)}))
+
+(defn build-tree
+  "Given a map from subjects to their states,
+   with a sequence of ::subjects to process,
+   a set of ::annotations,
+   and a state-tree at ::tree,
+   recursively insert states into the tree
+   in the order Turtle should render them,
+   and return the updated collection."
+  [{:keys [::annotations] :as coll}]
+  (loop [coll coll]
+    (if-let [subject (first (::subjects coll))]
+      (recur
+       (if-let [state (first (get coll subject))]
+         (let [state (annotate-statement coll)
+               coll (if (->> coll ::tree zip/node ::rdf/subject (= subject))
+                      coll
+                      (-> coll
+                          (update ::tree zip/append-child (annotate-subject-start coll))
+                          (update ::tree zip/down)
+                          (update ::tree zip/rightmost)))
+               ob (-> state ::rdf/quad ::rdf/ob)]
+           (if (and ob (find coll ob) (not (contains? annotations ob)))
+             ; descend into a nested subject
+             (-> coll
+                 (update ::tree zip/append-child (assoc state ::object ""))
+                 (update subject rest)
+                 (update ::tree zip/down)
+                 (update ::tree zip/rightmost)
+                 (assoc ::subjects (->> coll ::subjects (remove #{ob}) (concat [ob]))))
+
+             ; just add the state
+             (-> coll
+                 (update ::tree zip/append-child state)
+                 (update subject rest))))
+
+         ; no more states for this subject, ascend the tree
+         (-> coll
+             (update ::tree zip/append-child (annotate-subject-end coll))
+             (update ::tree zip/up)
+             (#(if (->> % ::tree zip/up) (update % ::tree zip/up) %))
+             (update ::subjects #(remove #{subject} %)))))
+
+      ; no more subjects
+      coll)))
+
+(defn flatten-tree
+  "Given a state-tree, return a flat sequence of states."
+  [state-tree]
+  (loop [states []
+         loc state-tree]
+    (if (zip/end? loc)
+      states
+      (recur
        (concat
-        (butlast lines)
-        [(clojure.string/replace (last lines) #";$" ".")]))
-      states)))
+        states
+        (when (and (= 1 (count (zip/path loc))) (zip/left loc))
+          [{::st/event ::st/blank}])
+        [(-> loc
+             zip/node
+             (dissoc ::st/children)
+             (assoc
+              ; depth not counting lists
+              ::depth
+              (->> loc
+                   zip/path
+                   (map ::rdf/quad)
+                   (map ::rdf/pi)
+                   (remove nil?)
+                   (remove #{(rdf/rdf "rest")})
+                   count
+                   inc)))])
+       (zip/next loc)))))
 
-(defn render-subject
+(defn sort-statements
+  "Given a map from subjects to their states,
+   a set of annotations,
+   and a sequence of subjects,
+   return a sequence of states ready to be rendered."
+  [grouped-states annotations subjects]
+  (-> grouped-states
+      (assoc ::tree (state-tree st/default-state)
+             ::subjects subjects
+             ::annotations annotations)
+      build-tree
+      ::tree
+      zip/root
+      state-tree
+      flatten-tree
+      rest))
+
+(defn sort-stanza
+  "Given a sequence of states for a single stanza,
+   reorder and annotate them as required."
   [states]
+  (let [zn (->> states (map ::rdf/stanza) first)
+        grouped (group-by ::rdf/subject states)
+        annotations (->> states
+                         (map ::rdf/quad)
+                         (filter #(= (rdf/owl "annotatedSource") (::rdf/pi %)))
+                         (map ::rdf/sb)
+                         set)]
+    (->> states
+         (map st/get-subject)
+         distinct
+         (remove #{zn})
+         (concat [zn])
+         (remove nil?)
+         (sort-statements (dissoc grouped nil) annotations)
+         (concat (get grouped nil)))))
+
+(defn render-stanza
+  "Given an environment and a sequence of states for a single stanza,
+   return a sequence of states with rendered :output."
+  [previous-states states]
   (->> states
-       (map render-state)
-       terminator))
+       sort-stanza
+       (reductions
+        (fn [previous-state state]
+          (->> state
+               (st/update-state previous-state)
+               render-state))
+        (or (last previous-states) st/default-state))
+       rest))
 
 (defn render-states
-  [states]
+  [previous-state states]
   (->> states
-       (partition-by ::rdf/subject)
-       (map render-subject)
-       (mapcat identity)
-       fm/number-output-lines))
-
-(fm/register!
- {::fm/name :ttl
-  ::fm/description "Turtle format"
-  ::fm/render render-states})
+       (filter #(contains? #{::st/prefix ::st/base ::st/statement} (::st/event %)))
+       (partition-by ::rdf/stanza)
+       (interpose [{::st/event ::st/blank}])
+       (reductions
+        (fn [previous-stanza stanza]
+          (render-stanza previous-stanza stanza))
+        [previous-state])
+       (mapcat identity)))
