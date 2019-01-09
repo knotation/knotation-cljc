@@ -17,7 +17,7 @@
 <s> <p> \"o\"@l .
 <s> <p> \"o\"^^<d> .
 _:s <p> _:o ."
-       (jena/read-string :nt nil)
+       (jena/read-string :nt st/default-state)
        st/sequential-blank-nodes
        (= [{::st/event ::st/stanza-start
             ::rdf/stanza "s"}
@@ -170,13 +170,13 @@ ex:s
     ::rdf/stanza "http://example.com/s"}])
 
 (->> test-ttl-string
-     (jena/read-string :ttl nil)
+     (jena/read-string :ttl st/default-state)
      st/sequential-blank-nodes
      (map println))
 
 (deftest test-ttl->edn
   (->> test-ttl-string
-       (jena/read-string :ttl nil)
+       (jena/read-string :ttl st/default-state)
        st/sequential-blank-nodes
        (= test-ttl-edn)
        is))
@@ -197,7 +197,7 @@ ex:s
         <ex:p rdf:datatype=\"http://example.com/d\">o</ex:p>
     </ex:foo>
 </rdf:RDF>"
-       (jena/read-string :rdfxml nil)
+       (jena/read-string :rdfxml st/default-state)
        (= [{::st/event ::st/prefix
             ::en/prefix "rdf"
             ::en/iri "http://www.w3.org/1999/02/22-rdf-syntax-ns#"}

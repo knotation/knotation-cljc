@@ -9,7 +9,7 @@
 (s/def ::rdf/lexical string?)
 (s/def ::rdf/language-tag (s/and string? #(re-matches #"@\S+" %)))
 
-(s/def ::rdf/graph (s/nilable ::rdf/iri))
+(s/def ::rdf/graph ::rdf/iri)
 (s/def ::rdf/subject (s/or :iri ::rdf/iri :bnode ::rdf/bnode))
 (s/def ::rdf/stanza ::rdf/subject)
 (s/def ::rdf/predicate ::rdf/iri)
