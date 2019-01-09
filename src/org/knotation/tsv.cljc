@@ -18,7 +18,7 @@
   "Given a header value, append a colon if necessary,
    and return the header value."
   [s]
-  (if (re-matches #"(:|;)\s*$" s) s (str s ":")))
+  (if (re-find #"(:|;)\s*$" s) s (str s ":")))
 
 (defn collect-header-values
   "Given a header cell, return a vector of header values or nil (if blank)."
@@ -26,7 +26,7 @@
   (when-not (string/blank? s)
     (->> s
          split-cell
-         (mapv string/trim)
+         (mapv string/trimr)
          (mapv format-header-value))))
 
 (defn collect-headers
@@ -103,7 +103,8 @@
        kn/merge-indented
        (kn/read-parses initial-state)
        st/insert-subject-events
-       st/insert-stanza-events))
+       st/insert-stanza-events
+       st/insert-stanza-separators))
 
 (defn read-input
   "Given an initial state and a string,
