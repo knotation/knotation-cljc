@@ -5,8 +5,8 @@
             [org.knotation.environment :as en :refer [wrap-iri]]
             [org.knotation.state :as st]))
 
-(defn escape
-  "Given a literal, escape any special characters. 
+(defn render-lexical
+  "Given a lexical, escape any special characters. 
    Surround in quotes."
   [ol]
   (str
@@ -21,9 +21,9 @@
           (wrap-iri pi)
           (or ob
               (and oi (wrap-iri oi))
-              (and ol lt (str (escape ol) "@" lt))
-              (and ol di (str (escape ol) "^^" (wrap-iri di)))
-              (and ol (escape ol)))
+              (and ol lt (str (render-lexical ol) "@" lt))
+              (and ol di (str (render-lexical ol) "^^" (wrap-iri di)))
+              (and ol (render-lexical ol)))
           (and gi (wrap-iri gi))]
          (remove nil?)
          (interpose " ")
