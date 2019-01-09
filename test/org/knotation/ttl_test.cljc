@@ -58,6 +58,24 @@
            #::rdf{:zn "http://example.com/s"
                   :si "http://example.com/s"
                   :pi "http://example.com/p"
+                  :ol "o\nl"}})
+         "  <http://example.com/p> \"\"\"o\nl\"\"\" ;\n"))
+  (is (= (ttl/render-statement
+          {::st/event ::st/statement
+           ::ttl/terminal " ;\n"
+           ::rdf/quad
+           #::rdf{:zn "http://example.com/s"
+                  :si "http://example.com/s"
+                  :pi "http://example.com/p"
+                  :ol "o\"l"}})
+         "  <http://example.com/p> \"\"\"o\"l\"\"\" ;\n"))
+  (is (= (ttl/render-statement
+          {::st/event ::st/statement
+           ::ttl/terminal " ;\n"
+           ::rdf/quad
+           #::rdf{:zn "http://example.com/s"
+                  :si "http://example.com/s"
+                  :pi "http://example.com/p"
                   :ol "o"
                   :di "http://example.com/d"}})
          "  <http://example.com/p> \"o\"^^<http://example.com/d> ;\n"))
