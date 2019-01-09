@@ -189,6 +189,11 @@
        (reductions update-state previous-state)
        rest))
 
+(defn make-context
+  "Given a state, return a state suitable for use as a 'context'."
+  [state]
+  (select-keys (update-state state state) [::en/env]))
+
 ;; # Quads inside States
 
 ;; These are mostly wrappers around functions in the RDF namepace.

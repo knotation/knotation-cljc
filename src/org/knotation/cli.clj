@@ -33,6 +33,9 @@ Options:
    ["-t" "--to FORMAT" "Format for output"]
    ["-w" "--write FORMAT" "Same as --to"]
    ["-o" "--output FILENAME" "File for output"]
+   ["-c" "--context FILENAME" "File for context"
+    :default []
+    :assoc-fn (fn [m k v] (update-in m [k] conj v))]
    ["-s" "--sequential-blank-nodes" "Outputs sequential blank nodes instead of random ones. Useful for testing purposes."]
    ["-v" "--version"]
    ["-h" "--help"]])
@@ -59,9 +62,15 @@ Options:
       (let [fmt (or (keyword (:to options))
                     (keyword (:write options))
                     (api/path-format (:output options)))
+            context (when (first (:context options))
+                      (->> options
+                           :context
+                           (api/read-paths nil nil)
+                           last
+                           st/make-context))
             in-raw (api/read-paths
                     (or (:from options) (:read options))
-                    nil
+                    context
                     arguments)
             in (if (:sequential-blank-nodes options)
                  (st/sequential-blank-nodes in-raw)
@@ -69,7 +78,7 @@ Options:
             out (if (:output options)
                   (io/file (:output options))
                   System/out)]
-        (api/render-file fmt nil in out)))))
+        (api/render-file fmt context in out)))))
 
 (defn -main [& args]
   (run args))
