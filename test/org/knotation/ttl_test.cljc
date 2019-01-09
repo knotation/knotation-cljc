@@ -7,8 +7,7 @@
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
             [org.knotation.ttl :as ttl]
-            [org.knotation.ttl-spec]
-            [org.knotation.api :as api]))
+            [org.knotation.ttl-spec]))
 
 (stest/instrument)
 
