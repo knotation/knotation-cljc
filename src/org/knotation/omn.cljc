@@ -91,8 +91,8 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
     :LABEL [{::rdf/oi (en/name->iri env (nth parse 2))}]
     :SOME (read-restriction env parse (rdf/owl "someValuesFrom"))
     :ONLY (read-restriction env parse (rdf/owl "allValuesFrom"))
-    :CONJUNCTION (read-combination env parse (rdf/rdf "intersectionOf"))
-    :DISJUNCTION (read-combination env parse (rdf/rdf "unionOf"))
+    :CONJUNCTION (read-combination env parse (rdf/owl "intersectionOf"))
+    :DISJUNCTION (read-combination env parse (rdf/owl "unionOf"))
     :NEGATION (read-negation env parse)
     (util/error :unsupported-manchester-form parse)))
 
@@ -121,8 +121,8 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
                state (first states)
                rdf-type        (find-state states (rdf/rdf "type"))
                complement-of   (find-state states (rdf/owl "complementOf"))
-               intersection-of (find-state states (rdf/rdf "intersectionOf"))
-               union-of        (find-state states (rdf/rdf "unionOf"))
+               intersection-of (find-state states (rdf/owl "intersectionOf"))
+               union-of        (find-state states (rdf/owl "unionOf"))
                on-property     (find-state states (rdf/owl "onProperty"))
                some-values     (find-state states (rdf/owl "someValuesFrom"))
                all-values      (find-state states (rdf/owl "allValuesFrom"))
@@ -197,9 +197,9 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
                           reverse
                           (map ::rdf/quad)
                           (map ::rdf/pi)
-                          (filter #{(rdf/rdf "unionOf") (rdf/rdf "intersectionOf")})
+                          (filter #{(rdf/owl "unionOf") (rdf/owl "intersectionOf")})
                           first
-                          (= (rdf/rdf "unionOf")))]
+                          (= (rdf/owl "unionOf")))]
                  (-> coll
                      (update ::st/states conj (assoc rest-item
                                                      ::st/exact [[:space " "]

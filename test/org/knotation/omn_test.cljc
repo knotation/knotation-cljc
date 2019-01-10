@@ -175,7 +175,7 @@
        "foo or bar"
        [#::rdf{:ob "_:b0"}
         #::rdf{:sb "_:b0" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
-        #::rdf{:sb "_:b0" :pi (rdf/rdf "unionOf") :ob "_:b1"}
+        #::rdf{:sb "_:b0" :pi (rdf/owl "unionOf") :ob "_:b1"}
         #::rdf{:sb "_:b1" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
         #::rdf{:sb "_:b1" :pi (rdf/rdf "rest") :ob "_:b2"}
         #::rdf{:sb "_:b2" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
@@ -193,7 +193,7 @@
         #::rdf{:sb "_:b0" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
         #::rdf{:sb "_:b0" :pi (rdf/owl "someValuesFrom") :ob "_:b1"}
         #::rdf{:sb "_:b1" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
-        #::rdf{:sb "_:b1" :pi (rdf/rdf "unionOf") :ob "_:b2"}
+        #::rdf{:sb "_:b1" :pi (rdf/owl "unionOf") :ob "_:b2"}
         #::rdf{:sb "_:b2" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
         #::rdf{:sb "_:b2" :pi (rdf/rdf "rest") :ob "_:b3"}
         #::rdf{:sb "_:b3" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
