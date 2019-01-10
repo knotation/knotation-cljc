@@ -41,6 +41,7 @@
   (test-roundtrip-line kn/parse-blank kn/read-blank kn/render-blank "\n")
   (test-roundtrip-line kn/parse-comment kn/read-comment kn/render-comment "# Foo \n")
   (test-roundtrip-line kn/parse-prefix kn/read-prefix kn/render-prefix "@prefix foo: <bar>\n")
+  (test-roundtrip-line kn/parse-prefix kn/read-prefix kn/render-prefix "@prefix : <bar>\n")
   (test-roundtrip-line kn/parse-subject kn/read-subject kn/render-subject ": <bar>\n")
   (for [s ["<foo>: bar\n"
            "<foo>; <bat>: bar\n"
@@ -57,6 +58,10 @@ ex:p; ex:d: Multiline
  string
  
  with spaces.
+")
+  (test-roundtrip "@prefix : <http://example.com/>
+: :s
+:p; :d: foo
 "))
 
 (deftest test-templates

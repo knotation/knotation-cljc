@@ -6,8 +6,8 @@
             [org.knotation.environment :as en]))
 
 (s/def ::en/label string?)
-(s/def ::en/prefix (s/and string? #(re-matches #"\S+" %) #(not (re-matches #":" %))))
-(s/def ::en/curie (s/and string? #(re-matches #"(\S+):(\S+)" %)))
+(s/def ::en/prefix (s/and string? #(re-matches #"\S*" %) #(not (re-matches #":" %))))
+(s/def ::en/curie (s/and string? #(re-matches #"(\S*):(\S+)" %)))
 (s/def ::en/wrapped-iri (s/and string? #(re-matches #"<(\S+)>" %)))
 
 (s/def ::en/prefix-iri (s/map-of ::en/prefix ::rdf/iri))
