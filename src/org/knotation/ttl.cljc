@@ -15,8 +15,11 @@
       (en/iri->wrapped-iri iri)))
 
 (defn render-lexical
+  "Given a literal, surround it with quotes to render it. 
+   If there is a newline or a double quote character, 
+   triple-quote the literal."
   [ol]
-  (if (re-find #"\n" ol)
+  (if (or (re-find #"\n" ol) (re-find #"\"" ol))
     (str "\"\"\"" ol "\"\"\"")
     (str "\"" ol "\"")))
 
