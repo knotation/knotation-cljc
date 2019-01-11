@@ -29,6 +29,14 @@
       (string/ends-with? path ".edn") :edn
       :else nil)))
 
+(defn get-lines
+  "Given an input"
+  [input-stream]
+  (->> input-stream
+       io/reader
+       line-seq
+       (map #(str % "\n"))))
+
 (defn read-input
   "Given a format keyword,
    an initial state (or nil for the default state),
@@ -38,8 +46,8 @@
   (let [initial-state (or initial-state st/default-state)]
     (case input-format
       (:nt :ttl :rdfxml) (jena/read-input input-format initial-state input-stream)
-      :kn (kn/read-lines initial-state (line-seq (io/reader input-stream)))
-      :tsv (tsv/read-lines initial-state (line-seq (io/reader input-stream)))
+      :kn (kn/read-lines initial-state (get-lines input-stream))
+      :tsv (tsv/read-lines initial-state (get-lines input-stream))
       (throw (Exception. (format "Unsupported read format '%s'" input-format))))))
 
 (defn read-string

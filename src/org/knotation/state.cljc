@@ -12,6 +12,9 @@
 (def default-state
   {::event ::default})
 
+(def default-io
+  {::content ""})
+
 ;; # Errors
 
 (def error-messages
@@ -20,7 +23,8 @@
    :not-a-subject-line "Not a subject line"
    :not-a-statement "Not a statement"
    :unrecognized-predicate "Unrecognized predicate:"
-   :unrecognized-datatype "Unrecognized datatype:"})
+   :unrecognized-datatype "Unrecognized datatype:"
+   :unrecognized-name "Unrecognized name:"})
 
 (defn error
   [state error-type & info]
@@ -36,12 +40,6 @@
 
 ;; # Locations
 
-(defn step-location
-  "Given a start location, step forward one column,
-   and return the new location."
-  [{:keys [::line-number ::column-number] :as start}]
-  (update start ::column-number inc))
-
 (defn advance-location
   "Given a start location and a content string,
    return an end location."
@@ -53,39 +51,79 @@
        (-> lines last count)
        (-> lines first count (+ column-number)))}))
 
+(defn start-location
+  "Given a previous location, increase the line number and reset the column 
+   number to 1."
+  [prev-location]
+  (-> prev-location
+      (update ::line-number inc)
+      (assoc ::column-number 1)))
+
+(defn end-location
+  "Given a start location, determine if the state has multiple lines. If so, 
+   increase the line number for the end location and set the column number to 
+   the end of that line. If not, just increase the column number to the end of 
+   the line."
+  [{:keys [::line-number ::column-number] :as start} content]
+  (let [lines (string/split content #"\n" -1)]
+    (if (second lines)
+      {::line-number (-> lines count dec (+ line-number))
+       ::column-number (-> lines last count)}
+      {::line-number line-number
+       ::column-number (-> lines last count (+ column-number))})))
+
+(defn step-location
+  "Given a start location, step forward one column,
+   and return the new location."
+  [{:keys [::line-number ::column-number] :as start}]
+  (update start ::column-number inc))
+
+(defn move-location
+  ""
+  [start columns]
+  (update start ::column-number + columns))
+
 ;; # Input and Output
 
 (defn input
-  "Given a state, a format keyword, and an input string (or nil)
+  "Given a state, a format keyword, and an input string (or nil),
    update the state with an ::input map and current ::location."
-  [{:keys [::location] :or {location default-location} :as state} format content]
+  [{:keys [::location ::input] 
+    :or {location default-location 
+         input default-io} :as state} 
+   format content]
   (if (and content (string? content))
-    (let [end (advance-location location content)]
-      (assoc
+    (let [prev-content (::content input)
+          location (or (::location state) default-location)
+          start (if (string/ends-with? prev-content "\n")
+                 (start-location location)
+                 (move-location location (count prev-content)))
+          end (end-location start content)]
+      (assoc 
        state
        ::event ::input
-       ::location (step-location end)
+       ::location start
        ::input
        {::format format
         ::content content
-        ::start location
+        ::start start
         ::end end}))
     state))
 
 (defn output
-  "Given a state, a format keyword, and an output string (or nil)
+  "Given a state, a format keyword, and an output string (or nil),
    update the state with an ::output map and current ::location."
   [{:keys [::location] :or {location default-location} :as state} format content]
   (if (and content (string? content))
     (let [end (advance-location location content)]
       (assoc
-       state
-       ::location (step-location end)
-       ::output
-       {::format format
-        ::content content
-        ::start location
-        ::end end}))
+        state
+        ::location (step-location end)
+        ::output
+        {::format format
+         ::content content
+         ::start location
+         ::end end}))
     state))
 
 (defn render-parse

@@ -8,6 +8,19 @@
             [org.knotation.state :as st]
             [org.knotation.omn :as omn]))
 
+(def fail-on-error (atom true))
+
+(defn get-read-error
+  "Given a state with an error, use the location and error details to construct 
+   a detailed error message."
+  [{:keys [::st/location] :as state}]
+  (let [msg (vector
+              "line" (::st/line-number location) 
+              "column" (::st/column-number location))]
+    (if-let [file (::st/file location)]
+      (->> msg (cons file) (string/join " "))
+      (string/join " " msg))))
+
 (defn parse-map
   "Transform a parse vector into a keyword-string map.
    Beware of duplicate keys!"
@@ -148,12 +161,16 @@
        [:name name]
        [:eol "\n"]]
       (util/error :not-a-subject-line line))))
+  
 
 (defn read-subject
   "Given a state with ::st/parse for a subject line, return a state."
   [{:keys [::en/env ::st/parse] :or {env en/default-env} :as state}]
   (if-let [name (-> parse parse-map :name)]
-    (if-let [iri (en/name->iri env name)]
+    (if-let [iri (try
+                   (en/name->iri env name)
+                   (catch Exception e
+                     nil))]
       (assoc
        state
        ::st/event ::st/subject-start
@@ -634,7 +651,7 @@
        (reductions
         (fn [previous-state line]
           (-> previous-state
-              (select-keys [::st/event ::st/location])
+              (select-keys [::st/event ::st/location ::st/input])
               (st/input :kn line)
               (assoc ::st/event ::st/parse ::st/parse (parse-line line))))
         previous-state)
@@ -661,9 +678,15 @@
   (->> states
        (reductions
         (fn [previous-states state]
-          (->> state
-               (st/update-state (last previous-states))
-               read-parse))
+          (let [parsed (->> state
+                         (st/update-state (last previous-states))
+                         read-parse)]
+            (if (and (some ::st/error parsed) @fail-on-error)
+              (util/throw-exception 
+                "line" (get-in (last parsed) [::st/location ::st/line-number])
+                "column" (get-in (last parsed) [::st/location ::st/column-number])
+                ":" (get-in (last parsed) [::st/error ::st/error-message]))
+              parsed)))
         [initial-state])
        rest
        (mapcat identity)))
