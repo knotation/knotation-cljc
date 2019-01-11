@@ -11,6 +11,7 @@
 
 (def ex-env
   (-> en/blank-env
+      (en/add-prefix "obo" "http://purl.obolibrary.org/obo/")
       (en/add-label "foo" (rdf/ex "foo"))
       (en/add-label "bar" (rdf/ex "bar"))
       (en/add-label "foo bar" (rdf/ex "foo-bar"))
@@ -224,6 +225,7 @@
 (deftest test-round-trips
   (test-round-trip "foo")
   (test-round-trip "'foo bar'")
+  (test-round-trip "obo:OBI_0000070")
   (test-round-trip "not foo")
   (test-round-trip "foo or bar")
   (test-round-trip "foo or foo or foo")

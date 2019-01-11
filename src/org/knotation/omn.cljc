@@ -24,7 +24,7 @@ ONLY = OBJECT_PROPERTY_EXPRESSION SPACE 'only' SPACE CLASS_EXPRESSION
 
 OBJECT_PROPERTY_EXPRESSION = 'inverse' SPACE LABEL | LABEL
 
-LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'\\w+' #''
+LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'(\\w|:)+' #''
 <SPACE> = #'\\s+'")
 
 (def manchester-parser (insta/parser manchester-grammar))
