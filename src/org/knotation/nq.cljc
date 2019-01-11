@@ -5,6 +5,15 @@
             [org.knotation.environment :as en :refer [wrap-iri]]
             [org.knotation.state :as st]))
 
+(defn render-lexical
+  "Given a lexical, escape any special characters. 
+   Surround in quotes."
+  [ol]
+  (str
+    "\""
+    (string/escape ol char-escape-string)
+    "\""))
+
 (defn render-quad
   [{::rdf/keys [gi si sb pi oi ob ol di lt] :as quad}]
   (let [di (when-not (= (rdf/xsd "string") di) di)]
@@ -12,9 +21,9 @@
           (wrap-iri pi)
           (or ob
               (and oi (wrap-iri oi))
-              (and ol lt (str "\"" ol "\"@" lt))
-              (and ol di (str "\"" ol "\"^^" (wrap-iri di)))
-              (and ol (str "\"" ol "\"")))
+              (and ol lt (str (render-lexical ol) "@" lt))
+              (and ol di (str (render-lexical ol) "^^" (wrap-iri di)))
+              (and ol (render-lexical ol)))
           (and gi (wrap-iri gi))]
          (remove nil?)
          (interpose " ")

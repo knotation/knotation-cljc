@@ -10,9 +10,9 @@
         :ret ::st/states)
 
 (s/fdef jena/read-input
-        :args (s/cat :input-format keyword? :initial-state (s/nilable ::st/state) :input #(instance? java.io.InputStream %))
+        :args (s/cat :input-format keyword? :initial-state ::st/state :input #(instance? java.io.InputStream %))
         :ret ::st/states)
 
 (s/fdef jena/read-string
-        :args (s/cat :input-format keyword? :initial-state (s/nilable ::st/state) :input string?)
+        :args (s/cat :input-format keyword? :initial-state ::st/state :input string?)
         :ret ::st/states)

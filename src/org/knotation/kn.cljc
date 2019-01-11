@@ -92,7 +92,7 @@
 (defn parse-prefix
   "Given a prefix line (string), return a parse."
   [line]
-  (if-let [[_ prefix iri] (re-matches #"@prefix (\S+):\s+<(\S+)>\s*\n?" line)]
+  (if-let [[_ prefix iri] (re-matches #"@prefix (\S*):\s+<(\S+)>\s*\n?" line)]
     [::prefix-line
      [:symbol "@"]
      [:keyword "prefix"]
@@ -639,7 +639,7 @@
     (nil \newline) (parse-blank line)
     \# (parse-comment line)
     \@ (parse-declaration line)
-    \: (parse-subject line)
+    \: (if (string/starts-with? line ": ") (parse-subject line) (parse-statement line))
     \space (parse-indented line)
     (parse-statement line)))
 
