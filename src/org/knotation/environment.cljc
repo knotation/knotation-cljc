@@ -90,6 +90,7 @@
   (or (wrapped-iri->iri input)
       (label->iri env input)
       (curie->iri env input)
+      (when (rdf/blank? input) input)
       (when (http-url? input) input)
       #?(:cljs nil
          :clj (util/throw-exception "Unknown name " input " in environment " env))))
