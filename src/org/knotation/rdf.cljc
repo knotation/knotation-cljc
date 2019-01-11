@@ -82,6 +82,33 @@
        nil?
        not))
 
+(defn make-list
+  "Given a sequence of object maps,
+   return a sequence of quads for an RDF list of those objects."
+  [objects]
+  (loop [quads []
+         b1 (random-blank-node)
+         objects objects]
+    (cond
+      (second objects)
+      (let [b2 (random-blank-node)]
+        (recur
+         (concat
+          quads
+          [(assoc (first objects) ::sb b1 ::pi (rdf "first"))
+           {::sb b1 ::pi (rdf "rest") ::ob b2}])
+         b2
+         (rest objects)))
+
+      (first objects)
+      (concat
+       quads
+       [(assoc (first objects) ::sb b1 ::pi (rdf "first"))
+        {::sb b1 ::pi (rdf "rest") ::oi (rdf "nil")}])
+
+      :else
+      quads)))
+
 (defn collect-list
   "Given a sequence of quads and the head of a list,
    return a sequence of the list's rdf:first triples."

@@ -235,4 +235,6 @@
   (test-round-trip "'has part' only foo")
   (test-round-trip "'has part' some (foo or bar)")
   (test-round-trip "'is about' some ('material entity' and 'has role' some 'evaluant role')")
-  (test-round-trip "has_specified_output some ('information content entity' and 'is about' some ('material entity' and 'has role' some 'evaluant role'))"))
+  (test-round-trip "has_specified_output some ('information content entity' and 'is about' some ('material entity' and 'has role' some 'evaluant role'))")
+  (test-round-trip "{foo}")
+  (test-round-trip "{foo, bar}"))

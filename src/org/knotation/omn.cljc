@@ -12,6 +12,7 @@ CLASS_EXPRESSION = '(' SPACE? CLASS_EXPRESSION SPACE? ')' SPACE?
                  | CONJUNCTION
                  | NEGATION
                  | RESTRICTION
+                 | INDIVIDUAL_LIST
                  | LABEL
 
 DISJUNCTION = CLASS_EXPRESSION SPACE 'or'  SPACE CLASS_EXPRESSION
@@ -23,6 +24,7 @@ SOME = OBJECT_PROPERTY_EXPRESSION SPACE 'some' SPACE CLASS_EXPRESSION
 ONLY = OBJECT_PROPERTY_EXPRESSION SPACE 'only' SPACE CLASS_EXPRESSION
 
 OBJECT_PROPERTY_EXPRESSION = 'inverse' SPACE LABEL | LABEL
+INDIVIDUAL_LIST = '{' SPACE? LABEL (SPACE? ',' SPACE? LABEL)* SPACE? '}'
 
 LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'(\\w|:)+' #''
 <SPACE> = #'\\s+'")
@@ -82,6 +84,22 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'(\\w|:)+' #''
       (merge #::rdf{:sb b :pi (rdf/owl "complementOf")} (first target))]
      (rest target))))
 
+(defn read-individual-list
+  [env parse]
+  (let [b1 (rdf/random-blank-node)
+        rdf-list (->> parse
+                      (filter vector?)
+                      (filter #(= :LABEL (first %)))
+                      (map #(nth % 2))
+                      (map #(en/name->iri env %))
+                      (map #(if (rdf/blank? %) {::rdf/ob %} {::rdf/oi %}))
+                      rdf/make-list)]
+    (concat
+     [#::rdf{:ob b1}
+      #::rdf{:sb b1 :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
+      #::rdf{:sb b1 :pi (rdf/owl "oneOf") :ob (-> rdf-list first ::rdf/sb)}]
+     rdf-list)))
+
 (defn read-class-expression
   [env parse]
   (case (first parse)
@@ -94,6 +112,7 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'(\\w|:)+' #''
     :CONJUNCTION (read-combination env parse (rdf/owl "intersectionOf"))
     :DISJUNCTION (read-combination env parse (rdf/owl "unionOf"))
     :NEGATION (read-negation env parse)
+    :INDIVIDUAL_LIST (read-individual-list env parse)
     (util/error :unsupported-manchester-form parse)))
 
 (defn read-class-string
@@ -126,6 +145,7 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'(\\w|:)+' #''
                on-property     (find-state states (rdf/owl "onProperty"))
                some-values     (find-state states (rdf/owl "someValuesFrom"))
                all-values      (find-state states (rdf/owl "allValuesFrom"))
+               one-of          (find-state states (rdf/owl "oneOf"))
                first-item      (find-state states (rdf/rdf "first"))
                rest-item       (find-state states (rdf/rdf "rest"))]
            (cond
@@ -140,6 +160,17 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'(\\w|:)+' #''
                                                      [:space " "]]
                                                     (when ob [[:symbol "("]]))))
                    (update subject (partial remove #{rdf-type complement-of}))
+                   (update ::depth (fnil inc 0))
+                   (assoc ::rdf/subjects (concat
+                                          (when ob [ob])
+                                          subjects))))
+
+             one-of
+             (let [ob (-> one-of ::rdf/quad ::rdf/ob)]
+               (-> coll
+                   (update ::st/states conj (assoc rdf-type ::st/silent true))
+                   (update ::st/states conj (assoc one-of ::st/before [[:symbol "{"]]))
+                   (update subject (partial remove #{rdf-type one-of}))
                    (update ::depth (fnil inc 0))
                    (assoc ::rdf/subjects (concat
                                           (when ob [ob])
@@ -190,31 +221,32 @@ LABEL = \"'\" #\"[^']+\" \"'\" | #'' #'(\\w|:)+' #''
                    (update subject (partial remove #{first-item}))))
 
              rest-item
-             (if-let [ob (-> rest-item ::rdf/quad ::rdf/ob)]
-               (let [union?
-                     (->> coll
-                          ::st/states
-                          reverse
-                          (map ::rdf/quad)
-                          (map ::rdf/pi)
-                          (filter #{(rdf/owl "unionOf") (rdf/owl "intersectionOf")})
-                          first
-                          (= (rdf/owl "unionOf")))]
+             (let [collection
+                   (->> coll
+                        ::st/states
+                        reverse
+                        (map ::rdf/quad)
+                        (map ::rdf/pi)
+                        (filter #{(rdf/owl "unionOf") (rdf/owl "intersectionOf") (rdf/owl "oneOf")})
+                        first)]
+               (if-let [ob (-> rest-item ::rdf/quad ::rdf/ob)]
                  (-> coll
                      (update ::st/states conj (assoc rest-item
-                                                     ::st/exact [[:space " "]
-                                                                 [:keyword (if union? "or" "and")]
-                                                                 [:space " "]]))
+                                                     ::st/exact
+                                                     (condp = collection
+                                                       (rdf/owl "unionOf") [[:space " "] [:keyword "or"] [:space " "]]
+                                                       (rdf/owl "intersectionOf") [[:space " "] [:keyword "and"] [:space " "]]
+                                                       (rdf/owl "oneOf") [[:symbol ","] [:space " "]])))
                      (update subject (partial remove #{rest-item}))
-                     (assoc ::rdf/subjects (concat [ob] subjects))))
-               (if (and depth (> depth 0))
-                 (-> coll
-                     (update ::st/states conj (assoc rest-item ::st/exact [[:symbol ")"]]))
-                     (update subject (partial remove #{rest-item}))
-                     (update ::depth dec))
-                 (-> coll
-                     (update ::st/states conj (assoc rest-item ::st/silent true))
-                     (update subject (partial remove #{rest-item})))))
+                     (assoc ::rdf/subjects (concat [ob] subjects)))
+                 (if (and depth (> depth 0))
+                   (-> coll
+                       (update ::st/states conj (assoc rest-item ::st/exact [(if (= collection (rdf/owl "oneOf")) [:symbol "}"] [:symbol ")"])]))
+                       (update subject (partial remove #{rest-item}))
+                       (update ::depth dec))
+                   (-> coll
+                       (update ::st/states conj (assoc rest-item ::st/silent true))
+                       (update subject (partial remove #{rest-item}))))))
 
              ; this should never be reached?
              :else
