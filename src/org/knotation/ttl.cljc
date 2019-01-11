@@ -21,9 +21,10 @@
    If there is a newline or a double quote character, 
    triple-quote the literal."
   [ol]
-  (if (or (re-find #"\n" ol) (re-find #"\"" ol))
-    (str "\"\"\"" ol "\"\"\"")
-    (str "\"" ol "\"")))
+  (let [s (string/escape ol {\" "\\\""})]
+    (if (re-find #"\n" ol)
+      (str "\"\"\"" s "\"\"\"")
+      (str "\"" s "\""))))
 
 (defn render-object
   "Given an environment, a sequence of states, and an object node,

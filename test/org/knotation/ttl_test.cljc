@@ -68,7 +68,7 @@
                   :si "http://example.com/s"
                   :pi "http://example.com/p"
                   :ol "o\"l"}})
-         "  <http://example.com/p> \"\"\"o\"l\"\"\" ;\n"))
+         "  <http://example.com/p> \"o\\\"l\" ;\n"))
   (is (= (ttl/render-statement
           {::st/event ::st/statement
            ::ttl/terminal " ;\n"
