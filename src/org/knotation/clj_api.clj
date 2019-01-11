@@ -30,7 +30,8 @@
       :else nil)))
 
 (defn get-lines
-  "Given an input"
+  "Given an input stream, return the sequence of lines without the line 
+  terminators stripped."
   [input-stream]
   (->> input-stream
        io/reader

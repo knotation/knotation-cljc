@@ -79,7 +79,8 @@
   (update start ::column-number inc))
 
 (defn move-location
-  ""
+  "Given a start location and a number of columns,
+   move forward that number and return the new location."
   [start columns]
   (update start ::column-number + columns))
 
@@ -117,13 +118,13 @@
   (if (and content (string? content))
     (let [end (advance-location location content)]
       (assoc
-        state
-        ::location (step-location end)
-        ::output
-        {::format format
-         ::content content
-         ::start location
-         ::end end}))
+       state
+       ::location (step-location end)
+       ::output
+       {::format format
+        ::content content
+        ::start location
+        ::end end}))
     state))
 
 (defn render-parse
