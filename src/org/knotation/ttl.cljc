@@ -11,8 +11,10 @@
   "Given an environment and an IRI string,
    return a CURIE or a wrapped IRI string."
   [env iri]
-  (or (en/iri->curie env iri)
-      (en/iri->wrapped-iri iri)))
+  (let [curie (en/iri->curie env iri)]
+    (if (and curie (not (re-find #"/" curie)))
+      curie
+      (en/iri->wrapped-iri iri))))
 
 (defn render-lexical
   "Given a literal, surround it with quotes to render it. 
