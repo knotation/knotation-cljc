@@ -226,8 +226,8 @@
   "Given a statement line (string), return a parse."
   [line]
   (if-let [[_ arrows pd space lexical]
-           (or (re-matches #"(>* )?(.*?):()()\n?" line)
-               (re-matches #"(>* )?(.*?):( )(.*)\n?" line))]
+           (or (re-matches #"(>* )?(.*?):( )(.*)\n?" line)
+               (re-matches #"(>* )?(.*?):()()\n?" line))]
     (if-let [[predicate datatype] (string/split pd #"; " 2)]
       (if datatype
         [::statement-line
