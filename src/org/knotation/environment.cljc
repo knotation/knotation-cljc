@@ -3,8 +3,6 @@
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]))
 
-(def fail-on-error (atom true))
-
 (defn add-base
   [env base]
   (assoc-in env [::base] base))

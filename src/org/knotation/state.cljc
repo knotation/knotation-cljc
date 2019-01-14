@@ -17,6 +17,8 @@
 
 ;; # Errors
 
+(def fail-on-error (atom true))
+
 (def error-messages
   {:not-a-comment "Not a comment line"
    :not-a-prefix-line "Not a @prefix line"

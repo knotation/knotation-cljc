@@ -665,7 +665,7 @@
           (let [parsed (->> state
                          (st/update-state (last previous-states))
                          read-parse)]
-            (if (and (some ::st/error parsed) @en/fail-on-error)
+            (if (and (some ::st/error parsed) @st/fail-on-error)
               (util/throw-exception 
                 "line" (get-in (last parsed) [::st/location ::st/line-number])
                 "column" (get-in (last parsed) [::st/location ::st/column-number])
