@@ -43,9 +43,12 @@
 
 (defn filter-errors
   "Given a lazy sequence of states, 
-   return a filtered sequence with only error states."
+   return a filtered sequence with only error states.
+   If empty, return nil."
   [states]
-  (filter #(::error %) states))
+  (->> states
+       (filter #(::error %))
+       not-empty))
 
 (defn print-errors!
   "Given a lazy sequence of states with ::st/error, 
