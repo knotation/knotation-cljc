@@ -63,18 +63,17 @@
                  input-format 
                  initial-state 
                  (java.io.ByteArrayInputStream. (.getBytes content "UTF-8")))]
-    (if-let [errors (and @fail-on-error (st/filter-errors states))]
-      (do
-        (println
-          (format
-           "Failed to read from string '%s' due to %d error(s):"
-           (if (< (count content) 50)
-             content
-             (str (subs content 0 50) " ..."))
-           (count errors)))
-        (st/print-errors! errors)
-        (System/exit 1))
-      states)))
+    (when-let [errors (and @fail-on-error (st/filter-errors states))]
+      (println
+        (format
+         "Failed to read from string '%s' due to %d error(s):\n\t%s"
+         (if (< (count content) 50)
+           content
+           (str (subs content 0 50) " ..."))
+         (count errors)
+         (st/join-errors errors)))
+      (System/exit 1))
+    states))
 
 (defn read-path
   "Given a format keyword (or nil to detect the format),
@@ -86,16 +85,15 @@
                 (or force-format (path-format path))
                 (or initial-state st/default-state)
                 (io/input-stream path))]
-    (if-let [errors (and @fail-on-error (st/filter-errors states))]
-      (do
-        (println
-          (format 
-            "Failed to read from '%s' due to %d error(s):" 
-            path 
-            (count errors)))
-        (st/print-errors! errors)
-        (System/exit 1))
-      states)))
+    (when-let [errors (and @fail-on-error (st/filter-errors states))]
+      (println
+        (format 
+          "Failed to read from '%s' due to %d error(s):\n\t%s" 
+          path 
+          (count errors)
+          (st/join-errors errors)))
+      (System/exit 1))
+    states))
 
 (defn read-paths
   "Given a format keyword (or nil to detect the format),

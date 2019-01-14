@@ -50,15 +50,22 @@
        (filter #(::error %))
        not-empty))
 
-(defn print-errors!
+(defn join-errors
   "Given a lazy sequence of states with ::st/error, 
-   print each error message with location info."
+   return a string of all error messages with location details."
    [states]
-   (doseq [s states]
-    (let [line (get-in s [::location ::line-number])
-          column (get-in s [::location ::column-number])
-          msg (get-in s [::error ::error-message])]
-      (println (format "\tline %d column %d: %s" line column msg)))))
+   (->> states
+        (reduce
+          (fn [messages s]
+            (conj 
+              messages 
+              (format 
+                "line %d column %d: %s" 
+                (get-in s [::location ::line-number]) 
+                (get-in s [::location ::column-number])
+                (get-in s [::error ::error-message]))))
+          [])
+        (string/join "\n\t")))
 
 ;; # Locations
 
