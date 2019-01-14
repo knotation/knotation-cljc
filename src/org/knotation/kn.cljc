@@ -653,7 +653,7 @@
     ::prefix-line [(read-prefix state)]
     ::subject-line [(read-subject state)]
     ::statement-block (read-statement state)
-    (util/throw-exception :bad-parse state)))
+    (st/error state :bad-parse)))
 
 (defn read-parses
   "Given an initial state and a sequence of states with ::st/parse,
@@ -662,15 +662,9 @@
   (->> states
        (reductions
         (fn [previous-states state]
-          (let [parsed (->> state
-                         (st/update-state (last previous-states))
-                         read-parse)]
-            (if (and (some ::st/error parsed) @st/fail-on-error)
-              (util/throw-exception 
-                "line" (get-in (last parsed) [::st/location ::st/line-number])
-                "column" (get-in (last parsed) [::st/location ::st/column-number])
-                ":" (get-in (last parsed) [::st/error ::st/error-message]))
-              parsed)))
+          (->> state
+               (st/update-state (last previous-states))
+               read-parse))
         [initial-state])
        rest
        (mapcat identity)))
@@ -709,7 +703,7 @@
            ::st/subject-start (render-subject state)
            ::st/subject-end []
            ::st/statement (render-statement state)
-           (util/throw-exception :bad-state state))
+           (st/error state :unrecognized-event event))
          st/render-parse
          (st/output state :kn))))
 

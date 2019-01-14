@@ -17,16 +17,17 @@
 
 ;; # Errors
 
-(def fail-on-error (atom true))
-
 (def error-messages
   {:not-a-comment "Not a comment line"
    :not-a-prefix-line "Not a @prefix line"
    :not-a-subject-line "Not a subject line"
    :not-a-statement "Not a statement"
+   :unrecognized-event "Unrecognized event:"
    :unrecognized-predicate "Unrecognized predicate:"
    :unrecognized-datatype "Unrecognized datatype:"
-   :unrecognized-name "Unrecognized name:"})
+   :unrecognized-name "Unrecognized name:"
+   ;; Needs more details
+   :bad-parse "Bad parse"})
 
 (defn error
   [state error-type & info]
@@ -39,6 +40,22 @@
         ::error-message)
        (merge (when info {::error-info info}))
        (assoc state ::event ::error ::error)))
+
+(defn filter-errors
+  "Given a lazy sequence of states, 
+   return a filtered sequence with only error states."
+  [states]
+  (filter #(::error %) states))
+
+(defn print-errors!
+  "Given a lazy sequence of states with ::st/error, 
+   print each error message with location info."
+   [states]
+   (doseq [s states]
+    (let [line (get-in s [::location ::line-number])
+          column (get-in s [::location ::column-number])
+          msg (get-in s [::error ::error-message])]
+      (println (format "\tline %d column %d: %s" line column msg)))))
 
 ;; # Locations
 
