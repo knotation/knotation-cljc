@@ -3,6 +3,8 @@
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]))
 
+(def fail-on-error (atom true))
+
 (defn add-base
   [env base]
   (assoc-in env [::base] base))
@@ -86,15 +88,14 @@
         (str iri suffix)))))
 
 (defn name->iri
+  "Given an environment and an input name,
+   return the IRI for that name or nil if not found."
   [env input]
   (or (wrapped-iri->iri input)
       (label->iri env input)
       (curie->iri env input)
       (when (http-url? input) input)
-      #?(:cljs nil
-         :clj 
-         (util/throw-exception 
-          "Unknown name" input "in environment:\n" env))))
+      nil))
 
 (defn find-prefix
   "Given an environment and an IRI,
