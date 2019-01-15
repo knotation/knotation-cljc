@@ -10,6 +10,8 @@
             [org.knotation.ttl :as ttl]
             [org.knotation.info :as info]))
 
+(def fail-on-error (atom true))
+
 ; Read input
 
 (defn read-string
@@ -19,8 +21,19 @@
   (let [initial-state (or initial-state st/default-state)]
     (case input-format
       ; TODO: more read formats
-      :kn (kn/read-lines initial-state (util/get-lines content))
-      (util/throw-exception 
+      :kn 
+      (let [states (kn/read-lines initial-state (util/get-lines content))]
+        (when-let [errors (and @fail-on-error (util/filter-errors states))]
+          (throw js/Error 
+            (format 
+              "Failed to read from string '%s' due to %d error(s):\n\t%s"
+              (if (< (count content) 50)
+                content
+                (str (subs content 0 50) " ..."))
+              (count errors)
+              (st/join-errors errors))))
+        states)
+      (throw js/Error
         (str "Unable to read input format: " input-format)))))
 
 (defn read-strings
@@ -47,7 +60,7 @@
     (and (coll? thing) (every? string? thing))
     (read-strings input-format initial-state thing)
     :else 
-    (util/throw-exception (str "Unable to read input type: " (type thing)))))
+    (throw js/Error (str "Unable to read input type: " (type thing)))))
 
 ; Render Output
 
@@ -62,7 +75,7 @@
       (->> states
            st/sequential-blank-nodes
            (ttl/render-states initial-state))
-      (util/throw-exception "Unable to read input format: " fmt))))
+      (throw js/Error (str "Unable to read input format: " fmt)))))
 
 (defn render-output
   "Given a format keyword, an environment (or nil), and a sequence of state
