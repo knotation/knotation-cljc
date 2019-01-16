@@ -465,7 +465,8 @@
         predicate-name (-> names first second)
         datatype-name (-> names second second)
         leading-at? (when datatype-name (string/starts-with? datatype-name "@"))]
-    (if-let [predicate-iri (when predicate-name (en/name->iri env predicate-name))]
+    (if-let [predicate-iri (when predicate-name 
+                             (en/name->iri env predicate-name))]
       (if (or (nil? datatype-name)
               leading-at?
               (when datatype-name (en/name->iri env datatype-name)))
@@ -634,7 +635,7 @@
        (reductions
         (fn [previous-state line]
           (-> previous-state
-              (select-keys [::st/event ::st/location])
+              (select-keys [::st/event ::st/location ::st/input])
               (st/input :kn line)
               (assoc ::st/event ::st/parse ::st/parse (parse-line line))))
         previous-state)
@@ -652,7 +653,7 @@
     ::prefix-line [(read-prefix state)]
     ::subject-line [(read-subject state)]
     ::statement-block (read-statement state)
-    (util/throw-exception :bad-parse state)))
+    (st/error state :bad-parse)))
 
 (defn read-parses
   "Given an initial state and a sequence of states with ::st/parse,
@@ -702,7 +703,7 @@
            ::st/subject-start (render-subject state)
            ::st/subject-end []
            ::st/statement (render-statement state)
-           (util/throw-exception :bad-state state))
+           (st/error state :unrecognized-event event))
          st/render-parse
          (st/output state :kn))))
 

@@ -12,6 +12,8 @@
             [org.knotation.ttl :as ttl]
             [org.knotation.nq :as nq]))
 
+(def fail-on-error (atom true))
+
 ; For Apache Jena's preferred file extnesions see
 ; https://jena.apache.org/documentation/io/#command-line-tools
 
@@ -29,6 +31,15 @@
       (string/ends-with? path ".edn") :edn
       :else nil)))
 
+(defn get-lines
+  "Given an input stream, return the sequence of lines without the line 
+  terminators stripped."
+  [input-stream]
+  (->> input-stream
+       io/reader
+       line-seq
+       (map #(str % "\n"))))
+
 (defn read-input
   "Given a format keyword,
    an initial state (or nil for the default state),
@@ -38,8 +49,8 @@
   (let [initial-state (or initial-state st/default-state)]
     (case input-format
       (:nt :ttl :rdfxml) (jena/read-input input-format initial-state input-stream)
-      :kn (kn/read-lines initial-state (line-seq (io/reader input-stream)))
-      :tsv (tsv/read-lines initial-state (line-seq (io/reader input-stream)))
+      :kn (kn/read-lines initial-state (get-lines input-stream))
+      :tsv (tsv/read-lines initial-state (get-lines input-stream))
       (throw (Exception. (format "Unsupported read format '%s'" input-format))))))
 
 (defn read-string
@@ -48,20 +59,21 @@
    and a content string
    return a lazy sequence of state maps."
   [input-format initial-state content]
-  (try
-    (read-input
-     input-format
-     initial-state
-     (java.io.ByteArrayInputStream. (.getBytes content "UTF-8")))
-    (catch Exception e
-      (throw
-       (Exception.
+  (let [states (read-input 
+                 input-format 
+                 initial-state 
+                 (java.io.ByteArrayInputStream. (.getBytes content "UTF-8")))]
+    (when-let [errors (and @fail-on-error (st/filter-errors states))]
+      (println
         (format
-         "Failed to read from string '%s'"
-         (if (< (count content) 100)
+         "Failed to read from string '%s' due to %d error(s):\n\t%s"
+         (if (< (count content) 50)
            content
-           (str (subs content 0 100) " ...")))
-        e)))))
+           (str (subs content 0 50) " ..."))
+         (count errors)
+         (st/join-errors errors)))
+      (System/exit 1))
+    states))
 
 (defn read-path
   "Given a format keyword (or nil to detect the format),
@@ -69,16 +81,19 @@
    and a file path (string),
    return a lazy sequence of states."
   [force-format initial-state path]
-  (try
-    (read-input
-     (or force-format (path-format path))
-     (or initial-state st/default-state)
-     (io/input-stream path))
-    (catch Exception e
-      (throw
-       (Exception.
-        (format "Failed to read from path '%s'" path)
-        e)))))
+  (let [states (read-input
+                (or force-format (path-format path))
+                (or initial-state st/default-state)
+                (io/input-stream path))]
+    (when-let [errors (and @fail-on-error (st/filter-errors states))]
+      (println
+        (format 
+          "Failed to read from '%s' due to %d error(s):\n\t%s" 
+          path 
+          (count errors)
+          (st/join-errors errors)))
+      (System/exit 1))
+    states))
 
 (defn read-paths
   "Given a format keyword (or nil to detect the format),

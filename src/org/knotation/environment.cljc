@@ -86,14 +86,15 @@
         (str iri suffix)))))
 
 (defn name->iri
+  "Given an environment and an input name,
+   return the IRI for that name or nil if not found."
   [env input]
   (or (wrapped-iri->iri input)
       (label->iri env input)
       (curie->iri env input)
       (when (rdf/blank? input) input)
       (when (http-url? input) input)
-      #?(:cljs nil
-         :clj (util/throw-exception "Unknown name " input " in environment " env))))
+      nil))
 
 (defn find-prefix
   "Given an environment and an IRI,
