@@ -11,17 +11,20 @@
   "Given an environment and an IRI string,
    return a CURIE or a wrapped IRI string."
   [env iri]
-  (or (en/iri->curie env iri)
-      (en/iri->wrapped-iri iri)))
+  (let [curie (en/iri->curie env iri)]
+    (if (and curie (not (re-find #"/" curie)))
+      curie
+      (en/iri->wrapped-iri iri))))
 
 (defn render-lexical
   "Given a literal, surround it with quotes to render it. 
    If there is a newline or a double quote character, 
    triple-quote the literal."
   [ol]
-  (if (or (re-find #"\n" ol) (re-find #"\"" ol))
-    (str "\"\"\"" ol "\"\"\"")
-    (str "\"" ol "\"")))
+  (let [s (string/escape ol {\" "\\\""})]
+    (if (re-find #"\n" ol)
+      (str "\"\"\"" s "\"\"\"")
+      (str "\"" s "\""))))
 
 (defn render-object
   "Given an environment, a sequence of states, and an object node,

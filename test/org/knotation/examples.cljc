@@ -341,7 +341,7 @@ ex:in-taxon
 ex:frog-heart
   rdfs:subClassOf [
     rdf:type owl:Class ;
-    rdf:intersectionOf (
+    owl:intersectionOf (
       ex:heart
       [
         rdf:type owl:Restriction ;

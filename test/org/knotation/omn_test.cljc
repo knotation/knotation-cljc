@@ -11,6 +11,7 @@
 
 (def ex-env
   (-> en/blank-env
+      (en/add-prefix "obo" "http://purl.obolibrary.org/obo/")
       (en/add-label "foo" (rdf/ex "foo"))
       (en/add-label "bar" (rdf/ex "bar"))
       (en/add-label "foo bar" (rdf/ex "foo-bar"))
@@ -175,7 +176,7 @@
        "foo or bar"
        [#::rdf{:ob "_:b0"}
         #::rdf{:sb "_:b0" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
-        #::rdf{:sb "_:b0" :pi (rdf/rdf "unionOf") :ob "_:b1"}
+        #::rdf{:sb "_:b0" :pi (rdf/owl "unionOf") :ob "_:b1"}
         #::rdf{:sb "_:b1" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
         #::rdf{:sb "_:b1" :pi (rdf/rdf "rest") :ob "_:b2"}
         #::rdf{:sb "_:b2" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
@@ -193,7 +194,7 @@
         #::rdf{:sb "_:b0" :pi (rdf/owl "onProperty") :oi "http://example.com/has-part"}
         #::rdf{:sb "_:b0" :pi (rdf/owl "someValuesFrom") :ob "_:b1"}
         #::rdf{:sb "_:b1" :pi (rdf/rdf "type") :oi (rdf/owl "Class")}
-        #::rdf{:sb "_:b1" :pi (rdf/rdf "unionOf") :ob "_:b2"}
+        #::rdf{:sb "_:b1" :pi (rdf/owl "unionOf") :ob "_:b2"}
         #::rdf{:sb "_:b2" :pi (rdf/rdf "first") :oi "http://example.com/foo"}
         #::rdf{:sb "_:b2" :pi (rdf/rdf "rest") :ob "_:b3"}
         #::rdf{:sb "_:b3" :pi (rdf/rdf "first") :oi "http://example.com/bar"}
@@ -224,6 +225,7 @@
 (deftest test-round-trips
   (test-round-trip "foo")
   (test-round-trip "'foo bar'")
+  (test-round-trip "obo:OBI_0000070")
   (test-round-trip "not foo")
   (test-round-trip "foo or bar")
   (test-round-trip "foo or foo or foo")
@@ -233,4 +235,6 @@
   (test-round-trip "'has part' only foo")
   (test-round-trip "'has part' some (foo or bar)")
   (test-round-trip "'is about' some ('material entity' and 'has role' some 'evaluant role')")
-  (test-round-trip "has_specified_output some ('information content entity' and 'is about' some ('material entity' and 'has role' some 'evaluant role'))"))
+  (test-round-trip "has_specified_output some ('information content entity' and 'is about' some ('material entity' and 'has role' some 'evaluant role'))")
+  (test-round-trip "{foo}")
+  (test-round-trip "{foo, bar}"))
