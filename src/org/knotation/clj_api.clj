@@ -12,7 +12,23 @@
             [org.knotation.ttl :as ttl]
             [org.knotation.nq :as nq]))
 
-(def fail-on-error (atom true))
+(def fail-on-error (atom false))
+
+(defn handle-errors
+  "Given a lazy sequence of states,
+   determine if there are any error states.
+   If so, print error message and exit with status 1."
+  [states content]
+  (when-let [errors (st/filter-errors states)]
+    (println
+      (format
+        "Failed to read from '%s' due to %d error(s):\n\t%s"
+        (if (< (count content) 50)
+          content
+          (str (subs content 0 50) " ..."))
+        (count errors)
+        (st/join-errors errors)))
+    (System/exit 1)))
 
 ; For Apache Jena's preferred file extnesions see
 ; https://jena.apache.org/documentation/io/#command-line-tools
@@ -63,16 +79,8 @@
                  input-format 
                  initial-state 
                  (java.io.ByteArrayInputStream. (.getBytes content "UTF-8")))]
-    (when-let [errors (and @fail-on-error (st/filter-errors states))]
-      (println
-        (format
-         "Failed to read from string '%s' due to %d error(s):\n\t%s"
-         (if (< (count content) 50)
-           content
-           (str (subs content 0 50) " ..."))
-         (count errors)
-         (st/join-errors errors)))
-      (System/exit 1))
+    (if @fail-on-error
+      (handle-errors states content))
     states))
 
 (defn read-path
@@ -85,14 +93,8 @@
                 (or force-format (path-format path))
                 (or initial-state st/default-state)
                 (io/input-stream path))]
-    (when-let [errors (and @fail-on-error (st/filter-errors states))]
-      (println
-        (format 
-          "Failed to read from '%s' due to %d error(s):\n\t%s" 
-          path 
-          (count errors)
-          (st/join-errors errors)))
-      (System/exit 1))
+    (if @fail-on-error
+      (handle-errors states path))
     states))
 
 (defn read-paths

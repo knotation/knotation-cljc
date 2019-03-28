@@ -32,8 +32,9 @@
        (cons run (partition-with f (seq (drop (count run) s))))))))
 
 (defn edn->json
-  [content]
-  #?(:clj (json/write-str content)
+  [content & {:keys [escape-slash]
+  	           :or [escape-slash true]}]
+  #?(:clj (json/write-str content :escape-slash escape-slash)
      :cljs (.stringify js/JSON (clj->js content) nil 2)))
 
 (defn error

@@ -15,6 +15,7 @@ Options:
   -t FORMAT, -w FORMAT  --to=FORMAT, --write=FORMAT
   -o FILENAME           --output=FILENAME
   -s                    --sequential-blank-nodes
+  -e                    --fail-on-error
   -v                    --version
   -h                    --help")
 
@@ -37,6 +38,7 @@ Options:
     :default []
     :assoc-fn (fn [m k v] (update-in m [k] conj v))]
    ["-s" "--sequential-blank-nodes" "Outputs sequential blank nodes instead of random ones. Useful for testing purposes."]
+   ["-e" "--fail-on-error" "Fail hard on any parse error"]
    ["-v" "--version"]
    ["-h" "--help"]])
 
@@ -53,6 +55,7 @@ Options:
    run and exit."
   [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
+    (reset! api/fail-on-error (:fail-on-error options))
     (cond
       (:help options) (println usage)
       (:version options) (println (version))

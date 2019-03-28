@@ -41,6 +41,9 @@
        (merge (when info {::error-info info}))
        (assoc state ::event ::error ::error)))
 
+
+;; TODO: can this be made more efficient?
+;; Fails for big inputs (e.g. NCBITaxon)
 (defn filter-errors
   "Given a lazy sequence of states, 
    return a filtered sequence with only error states.
@@ -366,8 +369,7 @@
              (-> states
                  last
                  (select-keys [::location ::rdf/stanza ::rdf/subject])
-                 (assoc ::event ::blank)))])))
-       butlast))
+                 (assoc ::event ::blank)))])))))
 
 (defn insert-stanza-events
   "Given a sequence of states, add ::stanza-start and ::stanza-end events as required."
@@ -418,5 +420,5 @@
   [states]
   (->> states
        insert-subject-events
-       insert-stanza-events
-       insert-stanza-separators))
+							insert-stanza-events
+							insert-stanza-separators))
