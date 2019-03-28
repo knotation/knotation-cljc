@@ -33,7 +33,7 @@
 
 (defn edn->json
   [content]
-  #?(:clj (json/write-str content :escape-slash true)
+  #?(:clj (json/write-str content :escape-slash false)
      :cljs (.stringify js/JSON (clj->js content) nil 2)))
 
 (defn error
