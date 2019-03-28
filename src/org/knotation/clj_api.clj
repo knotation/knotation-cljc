@@ -79,7 +79,7 @@
                  input-format 
                  initial-state 
                  (java.io.ByteArrayInputStream. (.getBytes content "UTF-8")))]
-    (if @fail-on-error
+    (when @fail-on-error
       (handle-errors states content))
     states))
 
@@ -93,7 +93,7 @@
                 (or force-format (path-format path))
                 (or initial-state st/default-state)
                 (io/input-stream path))]
-    (if @fail-on-error
+    (when @fail-on-error
       (handle-errors states path))
     states))
 
