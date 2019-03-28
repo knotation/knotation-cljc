@@ -420,5 +420,5 @@
   [states]
   (->> states
        insert-subject-events
-							insert-stanza-events
-							insert-stanza-separators))
+       insert-stanza-events
+       insert-stanza-separators))
