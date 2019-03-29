@@ -29,35 +29,15 @@
    ;; Needs more details
    :bad-parse "Bad parse"})
 
-(defn error
-  [state error-type & info]
-  (->> info
-       (map str)
-       (concat [(get error-messages error-type "ERROR:")])
-       (string/join " ")
-       (assoc
-        {::error-type error-type}
-        ::error-message)
-       (merge (when info {::error-info info}))
-       (assoc state ::event ::error ::error)))
-
-
-;; TODO: can this be made more efficient?
-;; Fails for big inputs (e.g. NCBITaxon)
-(defn filter-errors
-  "Given a lazy sequence of states, 
-   return a filtered sequence with only error states.
-   If empty, return nil."
-  [states]
-  (->> states
-       (filter #(::error %))
-       not-empty))
+(def error-states (atom ()))
+(def fail-on-error (atom true))
+(def fail-on-error-number (atom 1))
 
 (defn join-errors
   "Given a lazy sequence of states with ::st/error, 
    return a string of all error messages with location details."
-   [states]
-   (->> states
+   []
+   (->> @error-states
         (reduce
           (fn [messages s]
             (conj 
@@ -69,6 +49,41 @@
                 (get-in s [::error ::error-message]))))
           [])
         (string/join "\n\t")))
+
+(defn throw-error
+  "When fail-on-error is true and the number of errors has reached 
+  the specified number to fail on, print an error message and exit 
+  with status 1."
+  []
+  (println
+    (format
+      "Failed to read due to %d error(s):\n\t%s"
+      (count @error-states)
+      (join-errors)))
+  (System/exit 1))
+
+(defn error
+  "Given a state, an error type, and optional info,
+   Create an error state from that state.
+   If fail-on-error, maybe throw the error message and exit.
+   Otherwise, return the error state."
+  [state error-type & info]
+  (let [err (->> info
+                 (map str)
+                 (concat [(get error-messages error-type "ERROR:")])
+                 (string/join " ")
+                 (assoc
+                  {::error-type error-type}
+                  ::error-message)
+                 (merge (when info {::error-info info}))
+                 (assoc state ::event ::error ::error))]
+    (swap! error-states conj err)
+    (if 
+      (and 
+        @fail-on-error 
+        (= (count @error-states) @fail-on-error-number))
+      (throw-error)
+      err)))
 
 ;; # Locations
 

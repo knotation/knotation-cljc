@@ -12,24 +12,6 @@
             [org.knotation.ttl :as ttl]
             [org.knotation.nq :as nq]))
 
-(def fail-on-error (atom false))
-
-(defn handle-errors
-  "Given a lazy sequence of states,
-   determine if there are any error states.
-   If so, print error message and exit with status 1."
-  [states content]
-  (when-let [errors (st/filter-errors states)]
-    (println
-      (format
-        "Failed to read from '%s' due to %d error(s):\n\t%s"
-        (if (< (count content) 50)
-          content
-          (str (subs content 0 50) " ..."))
-        (count errors)
-        (st/join-errors errors)))
-    (System/exit 1)))
-
 ; For Apache Jena's preferred file extnesions see
 ; https://jena.apache.org/documentation/io/#command-line-tools
 
@@ -75,13 +57,10 @@
    and a content string
    return a lazy sequence of state maps."
   [input-format initial-state content]
-  (let [states (read-input 
-                 input-format 
-                 initial-state 
-                 (java.io.ByteArrayInputStream. (.getBytes content "UTF-8")))]
-    (when @fail-on-error
-      (handle-errors states content))
-    states))
+  (read-input 
+     input-format 
+     initial-state 
+     (java.io.ByteArrayInputStream. (.getBytes content "UTF-8"))))
 
 (defn read-path
   "Given a format keyword (or nil to detect the format),
@@ -89,13 +68,10 @@
    and a file path (string),
    return a lazy sequence of states."
   [force-format initial-state path]
-  (let [states (read-input
-                (or force-format (path-format path))
-                (or initial-state st/default-state)
-                (io/input-stream path))]
-    (when @fail-on-error
-      (handle-errors states path))
-    states))
+  (read-input
+    (or force-format (path-format path))
+    (or initial-state st/default-state)
+    (io/input-stream path)))
 
 (defn read-paths
   "Given a format keyword (or nil to detect the format),
