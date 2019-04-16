@@ -290,6 +290,12 @@
    (get-in state [::rdf/quad ::rdf/si])
    (get-in state [::rdf/quad ::rdf/sb])))
 
+(defn assign-subject
+  [state]
+  (if-let [subject (get-subject state)]
+    (assoc state ::rdf/subject subject)
+    state))
+
 (defn sequential-blank-nodes
   "Given a sequence of states, some of which have ::rdf/quads,
    return a lazy sequence of states with sequential blank nodes."
@@ -340,7 +346,8 @@
 (defn assign-stanza
   [coll {:keys [::rdf/quad] :as state}]
   (if quad
-    (assoc state ::rdf/quad (rdf/assign-stanza coll quad))
+    (let [quad (rdf/assign-stanza coll quad)]
+      (assoc state ::rdf/quad quad ::rdf/stanza (::rdf/zn quad)))
     state))
 
 (defn assign-stanzas
@@ -377,14 +384,17 @@
        (partition-by ::rdf/stanza)
        (mapcat
         (fn [states]
-          (concat
-           states
-           [(update-state
-             (last states)
-             (-> states
-                 last
-                 (select-keys [::location ::rdf/stanza ::rdf/subject])
-                 (assoc ::event ::blank)))])))))
+          (let [previous-state (last states)
+                state
+                 (-> previous-state
+                     (select-keys [::location ::rdf/stanza ::rdf/subject])
+                     (assoc ::event ::blank))]
+            (concat
+             states
+             [(if (::en/env previous-state)
+                (update-state previous-state state)
+                state)]))))
+       (drop-last 1)))
 
 (defn insert-stanza-events
   "Given a sequence of states, add ::stanza-start and ::stanza-end events as required."
