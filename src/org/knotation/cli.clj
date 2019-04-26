@@ -14,6 +14,8 @@ Options:
   -f FORMAT, -r FORMAT  --from=FORMAT, --read=FORMAT
   -t FORMAT, -w FORMAT  --to=FORMAT, --write=FORMAT
   -o FILENAME           --output=FILENAME
+  -e                    --fail-on-error=ERR_NUM
+  -i                    --ignore-errors
   -s                    --sequential-blank-nodes
   -v                    --version
   -h                    --help")
@@ -36,6 +38,8 @@ Options:
    ["-c" "--context FILENAME" "File for context"
     :default []
     :assoc-fn (fn [m k v] (update-in m [k] conj v))]
+   ["-e" "--fail-on-error ERR_NUM" "Number of errors to fail after"] 
+   ["-i" "--ignore-errors" "Do not fail on any error"]
    ["-s" "--sequential-blank-nodes" "Outputs sequential blank nodes instead of random ones. Useful for testing purposes."]
    ["-v" "--version"]
    ["-h" "--help"]])
@@ -53,6 +57,8 @@ Options:
    run and exit."
   [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
+    (reset! st/fail-on-error (not (:ignore-errors options)))
+    (reset! st/fail-on-error-number (or (:fail-on-error options) 1))
     (cond
       (:help options) (println usage)
       (:version options) (println (version))

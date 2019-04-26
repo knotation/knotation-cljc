@@ -59,6 +59,5 @@
 
 (defn render-stanza
   [env si states]
-  (util/edn->json
-   (render-stanza-edn env si states)
-   :escape-slash false))
+  (util/edn->json 
+    (render-stanza-edn env si states)))

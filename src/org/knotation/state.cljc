@@ -29,32 +29,15 @@
    ;; Needs more details
    :bad-parse "Bad parse"})
 
-(defn error
-  [state error-type & info]
-  (->> info
-       (map str)
-       (concat [(get error-messages error-type "ERROR:")])
-       (string/join " ")
-       (assoc
-        {::error-type error-type}
-        ::error-message)
-       (merge (when info {::error-info info}))
-       (assoc state ::event ::error ::error)))
-
-(defn filter-errors
-  "Given a lazy sequence of states, 
-   return a filtered sequence with only error states.
-   If empty, return nil."
-  [states]
-  (->> states
-       (filter #(::error %))
-       not-empty))
+(def error-states (atom ()))
+(def fail-on-error (atom true))
+(def fail-on-error-number (atom 1))
 
 (defn join-errors
   "Given a lazy sequence of states with ::st/error, 
    return a string of all error messages with location details."
-   [states]
-   (->> states
+   []
+   (->> @error-states
         (reduce
           (fn [messages s]
             (conj 
@@ -66,6 +49,41 @@
                 (get-in s [::error ::error-message]))))
           [])
         (string/join "\n\t")))
+
+(defn throw-error
+  "When fail-on-error is true and the number of errors has reached 
+  the specified number to fail on, print an error message and exit 
+  with status 1."
+  []
+  (println
+    (format
+      "Failed to read due to %d error(s):\n\t%s"
+      (count @error-states)
+      (join-errors)))
+  (System/exit 1))
+
+(defn error
+  "Given a state, an error type, and optional info,
+   Create an error state from that state.
+   If fail-on-error, maybe throw the error message and exit.
+   Otherwise, return the error state."
+  [state error-type & info]
+  (let [err (->> info
+                 (map str)
+                 (concat [(get error-messages error-type "ERROR:")])
+                 (string/join " ")
+                 (assoc
+                  {::error-type error-type}
+                  ::error-message)
+                 (merge (when info {::error-info info}))
+                 (assoc state ::event ::error ::error))]
+    (swap! error-states conj err)
+    (if 
+      (and 
+        @fail-on-error 
+        (= (count @error-states) @fail-on-error-number))
+      (throw-error)
+      err)))
 
 ;; # Locations
 
@@ -272,6 +290,12 @@
    (get-in state [::rdf/quad ::rdf/si])
    (get-in state [::rdf/quad ::rdf/sb])))
 
+(defn assign-subject
+  [state]
+  (if-let [subject (get-subject state)]
+    (assoc state ::rdf/subject subject)
+    state))
+
 (defn sequential-blank-nodes
   "Given a sequence of states, some of which have ::rdf/quads,
    return a lazy sequence of states with sequential blank nodes."
@@ -322,7 +346,8 @@
 (defn assign-stanza
   [coll {:keys [::rdf/quad] :as state}]
   (if quad
-    (assoc state ::rdf/quad (rdf/assign-stanza coll quad))
+    (let [quad (rdf/assign-stanza coll quad)]
+      (assoc state ::rdf/quad quad ::rdf/stanza (::rdf/zn quad)))
     state))
 
 (defn assign-stanzas
@@ -359,15 +384,17 @@
        (partition-by ::rdf/stanza)
        (mapcat
         (fn [states]
-          (concat
-           states
-           [(update-state
-             (last states)
-             (-> states
-                 last
-                 (select-keys [::location ::rdf/stanza ::rdf/subject])
-                 (assoc ::event ::blank)))])))
-       butlast))
+          (let [previous-state (last states)
+                state
+                 (-> previous-state
+                     (select-keys [::location ::rdf/stanza ::rdf/subject])
+                     (assoc ::event ::blank))]
+            (concat
+             states
+             [(if (::en/env previous-state)
+                (update-state previous-state state)
+                state)]))))
+       (drop-last 1)))
 
 (defn insert-stanza-events
   "Given a sequence of states, add ::stanza-start and ::stanza-end events as required."

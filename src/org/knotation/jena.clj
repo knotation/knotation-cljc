@@ -110,8 +110,8 @@
   [input-format initial-state ^InputStream input]
   (->> input
        (read-basic-input input-format)
+       (map st/assign-subject)
        st/assign-stanzas
-       (st/update-states (or initial-state st/default-state))
        st/insert-events))
 
 (defn read-string
