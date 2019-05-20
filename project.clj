@@ -15,7 +15,8 @@
                  [org.slf4j/slf4j-nop "1.7.12"]
 
                  [instaparse "1.4.9"]
-                 [orchestra "2018.09.10-1"]]
+                 [orchestra "2018.09.10-1"]
+                 [org.clojure/data.xml "0.2.0-alpha6"]]
   :cljsbuild {:builds {:main {:source-paths ["src/org/knotation/"]
                               :jar true
                               :compiler {:output-to "resources/knotation.js"

@@ -10,7 +10,8 @@
             [org.knotation.kn :as kn]
             [org.knotation.tsv :as tsv]
             [org.knotation.ttl :as ttl]
-            [org.knotation.nq :as nq]))
+            [org.knotation.nq :as nq]
+            [org.knotation.draw-io :as draw]))
 
 ; For Apache Jena's preferred file extnesions see
 ; https://jena.apache.org/documentation/io/#command-line-tools
@@ -27,6 +28,7 @@
       (string/ends-with? path ".rdf") :rdfxml
       (string/ends-with? path ".owl") :rdfxml
       (string/ends-with? path ".edn") :edn
+      (string/ends-with? path ".xml") :drawio
       :else nil)))
 
 (defn get-lines
@@ -49,6 +51,7 @@
       (:nt :ttl :rdfxml) (jena/read-input input-format initial-state input-stream)
       :kn (kn/read-lines initial-state (get-lines input-stream))
       :tsv (tsv/read-lines initial-state (get-lines input-stream))
+      :drawio (draw/read-lines initial-state (get-lines input-stream))
       (throw (Exception. (format "Unsupported read format '%s'" input-format))))))
 
 (defn read-string
