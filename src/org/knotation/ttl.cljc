@@ -1,6 +1,7 @@
 (ns org.knotation.ttl
   (:require [clojure.string :as string]
             [clojure.zip :as zip]
+            [clojure.pprint :as pp]
 
             [org.knotation.util :as util]
             [org.knotation.rdf :as rdf]
@@ -209,7 +210,7 @@
    recursively insert states into the tree
    in the order Turtle should render them,
    and return the updated collection."
-  [{:keys [::annotations] :as coll}]
+  [{:keys [::annotations ::blank-objects] :as coll}]
   (loop [coll coll]
     (if-let [subject (first (::subjects coll))]
       (recur
@@ -230,6 +231,9 @@
                  (update ::tree zip/down)
                  (update ::tree zip/rightmost)
                  (assoc ::subjects (->> coll ::subjects (remove #{ob}) (concat [ob]))))
+             ;; two different states refer to the same ob
+             ;; the ob has already been a subject from the first one
+             ;; so the second one gets nothing after it (get coll subject) is empty
 
              ; just add the state
              (-> coll
@@ -279,11 +283,12 @@
    a set of annotations,
    and a sequence of subjects,
    return a sequence of states ready to be rendered."
-  [grouped-states annotations subjects]
+  [grouped-states annotations blank-objects subjects]
   (-> grouped-states
       (assoc ::tree (state-tree st/default-state)
              ::subjects subjects
-             ::annotations annotations)
+             ::annotations annotations
+             ::blank-objects blank-objects)
       build-tree
       ::tree
       zip/root
@@ -301,14 +306,20 @@
                          (map ::rdf/quad)
                          (filter #(= (rdf/owl "annotatedSource") (::rdf/pi %)))
                          (map ::rdf/sb)
-                         set)]
+                         set)
+        blank-annotations (->> states
+        																			(map ::rdf/quad)
+        																			(filter #(= (rdf/owl "annotatedTarget") (::rdf/pi %)))
+        																			(map ::rdf/ob)
+        																			set)
+        annotations (->> annotations (remove blank-annotations annotations) set)]
     (->> states
          (map st/get-subject)
          distinct
          (remove #{zn})
          (concat [zn])
          (remove nil?)
-         (sort-statements (dissoc grouped nil) annotations)
+         (sort-statements (dissoc grouped nil) annotations blank-annotations)
          (concat (get grouped nil)))))
 
 (defn render-stanza

@@ -1,5 +1,6 @@
 (ns org.knotation.rdf
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [clojure.pprint :as pp]))
 
 ; # Namespaces
 
@@ -11,6 +12,71 @@
 (def ex (partial apply str "http://example.com/"))
 
 ; # Blank Nodes
+
+(defn update-blank-node
+  "Given a seq of states, a blank node ID, and a seq of predicate-object maps, 
+   replace any instances of the blank node ID with the seq of maps."
+  [states bnode-id pred-objs]
+  (reduce
+    (fn [updated state]
+      (if-let [ob (->> state ::quad ::ob)]
+        (if (= ob bnode-id)
+          (conj updated (assoc-in state [::quad ::ob] pred-objs))
+          (conj updated state))
+        (conj updated state)))
+    () states))
+
+(defn update-blank-nodes
+  "Given a seq of states and a map of blank node IDs to seqs of predicate-object 
+   maps, replace all instances of the blank node IDs with the seq of maps."
+  [states bnode-map]
+  (reduce-kv
+    (fn [updated bnode-id trps]
+      (update-blank-node updated bnode-id trps))
+    states bnode-map))
+
+(defn expand-ob-value
+  "Given a map of blank node IDs to seqs of predicate-object maps and one 
+   predicate-object map, expand any blank objects in the predicate-object map."
+  [bnode-map pred-obj]
+  (if-let [ob (::ob pred-obj)]
+    (let [pred-objs (reduce 
+                      (fn [v po] 
+                        (conj v (expand-ob-value bnode-map po)))
+                      [] (get bnode-map ob))]
+      (assoc pred-obj ::ob pred-objs))
+    pred-obj))
+
+(defn expand-ob-values
+  "Given a map of blank node IDs to seqs of predicate-object maps,
+   expand any blank objects in the seqs."
+  [bnode-map]
+  (reduce-kv
+    (fn [m bnode pred-objs]
+      (let [new-pos (reduce
+                      (fn [s po]
+                        (conj s (expand-ob-value bnode-map po)))
+                      [] pred-objs)]
+        (assoc m bnode new-pos)))
+    {} bnode-map))
+
+(defn expand-blank-nodes
+  "Given a seq of states, replace any blank node IDs with a vector of 
+   predicate-object maps, supporting nested blank nodes."
+  [states]
+  (let [quads (map ::quad states)
+        blank-objects (->> quads 
+                           (map ::ob) 
+                           distinct 
+                           (remove nil?))
+        bnode-map (reduce
+                    (fn [m bnode]
+                      (let [trps (filter #(= (::sb %) bnode) quads)]
+                        (assoc m bnode (vec (map #(select-keys % [::pi ::oi ::ob]) trps)))))
+                      {} blank-objects)]
+    (->> bnode-map
+         expand-ob-values
+         (update-blank-nodes states))))
 
 (defn blank?
   [s]
