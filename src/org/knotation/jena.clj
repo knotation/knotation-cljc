@@ -2,8 +2,6 @@
   (:refer-clojure :exclude [read-string])
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
-            [clojure.pprint :as pp]
-            [clojure.data :as data]
 
             [org.knotation.rdf :as rdf]
             [org.knotation.environment :as en]
@@ -109,76 +107,6 @@
 
 ;; eventually go from nested list structure to list of quads
 
-;; put this code in rdf.cljc
-(defn compare-blank-nodes
-  [states]
-  (let [quads (map ::rdf/quad states)
-        bnodes (remove nil? (distinct (map ::rdf/sb quads)))
-        bnode-map (reduce
-                    (fn [m bnode]
-                      (let [trps (filter #(= (::rdf/sb %) bnode) quads)]
-                        (assoc m bnode (map #(dissoc % ::rdf/sb) trps))))
-                    {} bnodes)]
-    (into {} (filter #(not (empty? (second %)))
-      ;; returns map of bnode ID to matches
-      (reduce
-        (fn [m bnode]
-          (let [trps (get bnode-map bnode)]
-            (assoc m bnode
-              ;; returns a list of matching bnodes
-              (reduce-kv
-                (fn [vect ky value]
-                  (let [d (data/diff trps value)]
-                    (if (and (nil? (first d)) (nil? (second d)))
-                      (conj vect ky)
-                      vect)))
-                [] (dissoc bnode-map bnode)))))
-        {} bnodes)))))
-
-(defn update-bnode-id
-  "Given the current bnode ID and a new bnode ID,
-   update the ID in the lazy seq of states."
-  [new-id old-id states]
-  (reduce
-    (fn [updated state]
-      (if-let [sb (->> state ::rdf/quad ::rdf/sb)]
-        (if (= sb old-id)
-          (conj updated (assoc-in state [::rdf/quad ::rdf/sb] new-id))
-          (if-let [ob (->> state ::rdf/quad ::rdf/ob)]
-            (if (= ob old-id)
-              (conj updated (assoc-in state [::rdf/quad ::rdf/ob] new-id))
-              (conj updated state))
-            (conj updated state)))
-        (if-let [ob (->> state ::rdf/quad ::rdf/ob)]
-          (if (= ob old-id)
-            (conj updated (assoc-in state [::rdf/quad ::rdf/ob] new-id))
-            (conj updated state))
-          (conj updated state))))
-    () states))
-
-(defn update-bnode-ids
-  "Given a vector of bnode IDs to update and a new ID to update to,
-   update the bnode IDs in states."
-  [new-id old-ids states]
-  (reduce
-    (fn [updated old-id]
-      (update-bnode-id new-id old-id updated))
-    states old-ids))
-
-(defn merge-blank-nodes
-  [states same-bnodes]
-  (reduce-kv
-    (fn [updated new-id old-ids]
-      (update-bnode-ids new-id old-ids updated))
-    states same-bnodes))
-
-(defn compare-and-merge-bnodes
-  [states]
-  (->> states
-       compare-blank-nodes
-       (merge-blank-nodes states)
-       distinct))
-
 (defn read-basic-input
   "Given a format keyword,
    and an input stream of RDF data,
@@ -188,8 +116,8 @@
     (.start (Thread. #(RDFDataMgr/parse (make-stream queue) input (get-format input-format))))
     (->> queue
          queue->lazy-seq
-         ;;rdf/expand-blank-nodes
-         compare-and-merge-bnodes)))
+         rdf/expand-blank-nodes
+         rdf/merge-blank-nodes)))
 
 (defn read-input
   "Given a format keyword,

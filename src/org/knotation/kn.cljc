@@ -6,8 +6,7 @@
             [org.knotation.rdf :as rdf :refer [owl rdf kn]]
             [org.knotation.environment :as en]
             [org.knotation.state :as st]
-            [org.knotation.omn :as omn]
-            [clojure.pprint :as pp]))
+            [org.knotation.omn :as omn]))
 
 (defn parse-map
   "Transform a parse vector into a keyword-string map.
@@ -310,8 +309,6 @@
    If this is an anonymous subject,
    that means recursively reading the content."
   [{:keys [::st/parse ::en/env ::rdf/quad ::rdf/stanza] :as state}]
-  (println "\n")
-  (pp/pprint state)
   (cond
     (= (::rdf/di quad) "https://knotation.org/kn/anon")
     (->> parse
@@ -753,7 +750,14 @@
                  ob (::rdf/ob quad)
                  anon-ob? (and ob (contains? (set subjects) ob))
                  state (if anon-ob? (assoc-in state [::rdf/quad ::rdf/di] (rdf/kn "anon")) state)
-                 list-ob? (and ob (get coll ob) (->> (get coll ob) (map ::rdf/quad) (map ::rdf/pi) (filter #{(rdf/rdf "first") (rdf/rdf "rest")}) first boolean))
+                 list-ob? (and ob 
+                               (get coll ob) 
+                               (->> (get coll ob) 
+                                    (map ::rdf/quad) 
+                                    (map ::rdf/pi) 
+                                    (filter #{(rdf/rdf "first") (rdf/rdf "rest")}) 
+                                    first 
+                                    boolean))
                  state (if list-ob? (assoc-in state [::rdf/quad ::rdf/di] (rdf/kn "list")) state)
                  omn-ob? (and ob
                               (get coll ob)
@@ -773,7 +777,8 @@
                (let [coll (-> coll
                               (assoc ::rdf/subjects [ob])
                               omn/sort-statements
-                              (assoc ::rdf/subjects subjects))]
+                              (assoc ::rdf/subjects subjects))
+                     anns (or anns (::annotations coll))]
                 ;; expr might have annotations
                 ;; insert this then switch to those
                 (if anns
@@ -781,7 +786,6 @@
                       (assoc ::rdf/subjects (concat anns subjects))
                       (update ::st/depth inc))
                   coll))
-               
 
                ; inner list object: insert this state then switch to that subject; do not indent!
                (and list-ob? (= (rdf/rdf "rest") pi))

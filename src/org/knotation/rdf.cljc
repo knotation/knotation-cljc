@@ -1,6 +1,6 @@
 (ns org.knotation.rdf
   (:require [clojure.string :as string]
-            [clojure.pprint :as pp]))
+            [clojure.data :as data]))
 
 ; # Namespaces
 
@@ -13,26 +13,102 @@
 
 ; # Blank Nodes
 
-(defn update-blank-node
+; methods to ensure that identical blank nodes share the same ID
+
+(defn compare-blank-subjects
+  "Given a seq of states,
+   return a map of blank node IDs to a list of identical blank node IDs."
+  [states]
+  (let [quads (map ::quad states)
+        bnodes (remove nil? (distinct (map ::sb quads)))
+        bnode-map (reduce
+                    (fn [m bnode]
+                      (let [trps (filter #(= (::sb %) bnode) quads)]
+                        (assoc m bnode (map #(dissoc % ::sb ::ob) trps))))
+                    {} bnodes)]
+    (into {} (filter #(not (empty? (second %)))
+      ;; returns map of bnode ID to matches
+      (reduce
+        (fn [m bnode]
+          (let [trps (get bnode-map bnode)]
+            (assoc m bnode
+              ;; returns a list of matching bnodes
+              (reduce-kv
+                (fn [vect ky value]
+                  (let [d (data/diff trps value)]
+                    (if (and (nil? (first d)) (nil? (second d)))
+                      (conj vect ky)
+                      vect)))
+                [] (dissoc bnode-map bnode)))))
+        {} bnodes)))))
+
+(defn update-blank-id
+  "Given the current bnode ID and a new bnode ID,
+   update the ID in the lazy seq of states."
+  [new-id old-id states]
+  (reduce
+    (fn [updated state]
+      (if-let [sb (->> state ::quad ::sb)]
+        (if (= sb old-id)
+          (conj updated (assoc-in state [::quad ::sb] new-id))
+          (if-let [ob (->> state ::quad ::ob)]
+            (if (= ob old-id)
+              (conj updated (assoc-in state [::quad ::ob] new-id))
+              (conj updated state))
+            (conj updated state)))
+        (if-let [ob (->> state ::quad ::ob)]
+          (if (= ob old-id)
+            (conj updated (assoc-in state [::quad ::ob] new-id))
+            (conj updated state))
+          (conj updated state))))
+    () states))
+
+(defn merge-same-blank-nodes
+  "Given a seq of states and a map of blank node IDs to their triples, 
+   determine which nodes are identical 
+   and ensure they have the same ID in the states."
+  [states same-bnodes]
+  (reduce-kv
+    (fn [updated new-id old-ids]
+      (reduce
+        (fn [s old-id]
+          (update-blank-id new-id old-id s))
+        updated old-ids))
+    states same-bnodes))
+
+(defn merge-blank-nodes
+  "Given a seq of states, 
+   compare blank nodes and determine if they have identical structure. 
+   If so, ensure the two blank nodes have the same ID."
+  [states]
+  (->> states
+       compare-blank-subjects
+       (merge-same-blank-nodes states)
+       distinct))
+
+; methods to expand blank node objects to their full nested structure
+
+(defn add-blank-structure
   "Given a seq of states, a blank node ID, and a seq of predicate-object maps, 
-   replace any instances of the blank node ID with the seq of maps."
+   add any instances of the blank node object with the seq of maps as ::os"
   [states bnode-id pred-objs]
   (reduce
     (fn [updated state]
       (if-let [ob (->> state ::quad ::ob)]
         (if (= ob bnode-id)
-          (conj updated (assoc-in state [::quad ::ob] pred-objs))
+          (conj updated (assoc-in state [::quad ::os] pred-objs))
           (conj updated state))
         (conj updated state)))
     () states))
 
-(defn update-blank-nodes
-  "Given a seq of states and a map of blank node IDs to seqs of predicate-object 
-   maps, replace all instances of the blank node IDs with the seq of maps."
+(defn add-blank-structures
+  "Given a seq of states 
+   and a map of blank node IDs to seqs of predicate-object maps, 
+   add all instances of the blank node objects with the seq of maps as ::os"
   [states bnode-map]
   (reduce-kv
     (fn [updated bnode-id trps]
-      (update-blank-node updated bnode-id trps))
+      (add-blank-structure updated bnode-id trps))
     states bnode-map))
 
 (defn expand-ob-value
@@ -42,9 +118,11 @@
   (if-let [ob (::ob pred-obj)]
     (let [pred-objs (reduce 
                       (fn [v po] 
-                        (conj v (expand-ob-value bnode-map po)))
+                        (->> po
+                             (expand-ob-value bnode-map)
+                             (conj v)))
                       [] (get bnode-map ob))]
-      (assoc pred-obj ::ob pred-objs))
+      (assoc (dissoc pred-obj ::ob) ::os pred-objs))
     pred-obj))
 
 (defn expand-ob-values
@@ -55,14 +133,16 @@
     (fn [m bnode pred-objs]
       (let [new-pos (reduce
                       (fn [s po]
-                        (conj s (expand-ob-value bnode-map po)))
+                        (->> po
+                             (expand-ob-value bnode-map)
+                             (conj s)))
                       [] pred-objs)]
         (assoc m bnode new-pos)))
     {} bnode-map))
 
 (defn expand-blank-nodes
-  "Given a seq of states, replace any blank node IDs with a vector of 
-   predicate-object maps, supporting nested blank nodes."
+  "Given a seq of states, expand any blank node objects with a vector of 
+   predicate-object maps as ::os, supporting nested blank nodes."
   [states]
   (let [quads (map ::quad states)
         blank-objects (->> quads 
@@ -72,11 +152,16 @@
         bnode-map (reduce
                     (fn [m bnode]
                       (let [trps (filter #(= (::sb %) bnode) quads)]
-                        (assoc m bnode (vec (map #(select-keys % [::pi ::oi ::ob]) trps)))))
+                        (->> trps
+                             (map #(select-keys % [::pi ::oi ::ob]))
+                             vec
+                             (assoc m bnode))))
                       {} blank-objects)]
     (->> bnode-map
          expand-ob-values
-         (update-blank-nodes states))))
+         (add-blank-structures states))))
+
+; other blank node helper methods
 
 (defn blank?
   [s]
