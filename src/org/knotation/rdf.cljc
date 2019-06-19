@@ -1,6 +1,7 @@
 (ns org.knotation.rdf
   (:require [clojure.string :as string]
-            [clojure.data :as data]))
+            [clojure.data :as data]
+            [clojure.set :as set]))
 
 ; # Namespaces
 
@@ -186,6 +187,43 @@
     :else
     (let [new-node (str "_:b" counter)]
       [(-> coll (update ::counter inc) (assoc node new-node)) new-node])))
+
+(defn randomize-blank-nodes
+  "Given a sequence of maps that might be quads,
+   return a lazy sequence of maps with new blank node IDs, 
+   separating duplicated blank nodes 
+   where a bnode is the object of multiple quads."
+  [states]
+  (let [blank-subjects (->> states
+                            (map ::quad)
+                            (map ::sb)
+                            distinct
+                            (remove nil?)
+                            set)
+        blank-objects (->> states
+                           (map ::quad) 
+                           (map ::ob) 
+                           distinct 
+                           (remove nil?)
+                           set)
+        blank-objs-subs (set/intersection blank-subjects blank-objects)
+        old-to-new (reduce
+                     (fn [m obj-sub]
+                      (assoc m obj-sub (random-blank-node)))
+                     {} blank-objs-subs)]
+    (reduce
+      (fn [updated state]
+        (if-let [blank-sub (->> state ::quad ::sb)]
+          (if-let [new-bnode (get old-to-new blank-sub)]
+            ;; need to replace sb in second state
+            (conj (conj updated state) 
+                  (let [zn (->> state ::quad ::zn)]
+                    (if (= zn blank-sub)
+                      (assoc-in state [::quad ::sb] new-bnode [::quad ::zn] new-bnode)
+                      (assoc-in state [::quad ::sb] new-bnode))))
+            (conj updated state))
+          (conj updated state)))
+      [] states)))
 
 (defn sequential-blank-nodes
   "Given a sequence of maps that might be quads,

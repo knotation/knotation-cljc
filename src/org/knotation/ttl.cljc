@@ -235,6 +235,12 @@
              ;; the ob has already been a subject from the first one
              ;; so the second one gets nothing after it (get coll subject) is empty
 
+             ;; take the nested os structure and generate more blank nodes
+             ;; if you know which triples you need, generate the triples
+             ;; see fn for sequential-blank-nodes (maybe randomized blank node?)
+
+             ;; could replace this tree code with use of the nested structures (os)
+
              ; just add the state
              (-> coll
                  (update ::tree zip/append-child state)
@@ -283,12 +289,11 @@
    a set of annotations,
    and a sequence of subjects,
    return a sequence of states ready to be rendered."
-  [grouped-states annotations blank-objects subjects]
+  [grouped-states annotations subjects]
   (-> grouped-states
       (assoc ::tree (state-tree st/default-state)
              ::subjects subjects
-             ::annotations annotations
-             ::blank-objects blank-objects)
+             ::annotations annotations)
       build-tree
       ::tree
       zip/root
@@ -306,20 +311,14 @@
                          (map ::rdf/quad)
                          (filter #(= (rdf/owl "annotatedSource") (::rdf/pi %)))
                          (map ::rdf/sb)
-                         set)
-        blank-annotations (->> states
-        																			(map ::rdf/quad)
-        																			(filter #(= (rdf/owl "annotatedTarget") (::rdf/pi %)))
-        																			(map ::rdf/ob)
-        																			set)
-        annotations (->> annotations (remove blank-annotations annotations) set)]
+                         set)]
     (->> states
          (map st/get-subject)
          distinct
          (remove #{zn})
          (concat [zn])
          (remove nil?)
-         (sort-statements (dissoc grouped nil) annotations blank-annotations)
+         (sort-statements (dissoc grouped nil) annotations)
          (concat (get grouped nil)))))
 
 (defn render-stanza
@@ -339,6 +338,7 @@
 (defn render-states
   [previous-state states]
   (->> states
+  					rdf/randomize-blank-nodes
        (filter #(contains? #{::st/prefix ::st/base ::st/statement} (::st/event %)))
        (partition-by ::rdf/stanza)
        (interpose [{::st/event ::st/blank}])
